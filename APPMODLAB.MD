@@ -11,7 +11,7 @@ modernizationTools: []
 agenticTools: []
 tags: ["angularjs-migration", "spa-modernization", "typescript", "state-management"]
 extensions: ["github.copilot"]
-thumbnail: ""
+thumbnail: "https://raw.githubusercontent.com/EmeaAppGbb/appmodlab-angularjs-to-react-angular-modern/main/assets/thumbnail-gpt-image.png"
 video: ""
 version: "1.0.0"
 ---
