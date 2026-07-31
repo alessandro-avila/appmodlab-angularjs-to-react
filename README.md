@@ -2,22 +2,18 @@
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
+║                                                                                   ║
 ║   ███████╗██████╗  █████╗ ███╗   ███╗███████╗██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗
 ║   ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝
 ║   █████╗  ██████╔╝███████║██╔████╔██║█████╗  ██║ █╗ ██║██║   ██║██████╔╝█████╔╝
 ║   ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝  ██║███╗██║██║   ██║██╔══██╗██╔═██╗
 ║   ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗
 ║   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-║                                                                              ║
-║        AngularJS 1.6  ──▶  React 19    ·    driven by spec2cloud + Copilot   ║
-║                                                                              ║
+║                                                                                   ║
+║        AngularJS 1.6  ──▶  React 19    ·    driven by spec2cloud + Copilot        ║
+║                                                                                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
-
-> **KMD Hackathon — App Modernization: from AngularJS to React using AI**
-> Spec-Driven Development for brownfield code, with GitHub Copilot doing the heavy lifting
-> and humans staying firmly in control of every decision that matters.
 
 ---
 
@@ -27,7 +23,7 @@
 Bower packages, a Grunt pipeline, jQuery DOM manipulation, `$scope` soup, Restangular,
 and a test suite that has been red for years.
 
-AngularJS reached **end of life in January 2022**. No patches. No fixes. No future.
+AngularJS reached **end of life in January 2022** ([link to the blog](https://blog.angular.dev/discontinued-long-term-support-for-angularjs-cc066b82e65a)). No patches. No fixes. No future.
 
 Your mission is to modernize it into **React 19 + TypeScript** — *without* the
 "big bang rewrite that never ships". You will do it the way real modernization
@@ -40,7 +36,7 @@ workflow as the framework and GitHub Copilot as the engine.
 ## 🧭 THE BIG IDEA — WHY NOT JUST "COPILOT, PORT THIS TO REACT"?
 
 You can absolutely paste an AngularJS controller into Copilot and get a React component
-back. That works for *one file*. It falls apart across 40 files, because nobody —
+back. That might work for *some files*. It falls apart across 40 files, because nobody —
 human or model — can answer the only question that matters:
 
 > **"Did we just change the behaviour of the system?"**
@@ -48,7 +44,7 @@ human or model — can answer the only question that matters:
 Legacy apps have no spec. The behaviour *is* the code. So before you touch anything,
 you make the implicit explicit:
 
-```
+```text
    the code           →   what it DOES        →   what it SHOULD do   →   the new code
  (AngularJS 1.6)         (extracted specs)       (reviewed specs)         (React 19)
                                 ▲                       ▲
@@ -57,14 +53,14 @@ you make the implicit explicit:
 ```
 
 That is **Spec-Driven Development (SDD)** applied to brownfield, and it is exactly
-what spec2cloud automates: a set of Copilot skills plus an orchestrator that keeps
+what spec2cloud automates: a set of Copilot skills plus an (agentic) orchestrator that keeps
 state, stops at human gates, and never silently invents behaviour.
 
-📖 Reference: [spec2cloud/docs/brownfield.md @ vNext](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/brownfield.md)
+📖 Reference: [spec2cloud/docs/brownfield.md](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/brownfield.md)
 
 ---
 
-## 🔁 THE WORKFLOW (spec2cloud, brownfield, vNext)
+## 🔁 THE WORKFLOW
 
 ```mermaid
 flowchart TD
@@ -352,6 +348,34 @@ npm start
 | VS Code extensions | Copilot, Copilot Chat, Playwright, Vitest, ESLint, Prettier, YAML, Docker |
 | Ports 3000 / 8080 / 35729 / 5173 / 4173 | mock API · legacy app · livereload · Vite dev · Vite preview |
 | `spec2cloud` npm package pre-cached | `npx spec2cloud init` works instantly, even offline-ish |
+
+### Verified platforms
+
+The container is **multi-architecture** — it is built from `linux/amd64` **and**
+`linux/arm64` images, so it runs natively on Apple Silicon with no emulation and
+no Rosetta.
+
+| Host | Arch | Status |
+|------|------|--------|
+| GitHub Codespaces | x86-64 | ✅ verified |
+| Linux | x86-64 | ✅ verified |
+| Windows + Docker Desktop / WSL2 | x86-64 | ✅ verified |
+| **macOS Apple Silicon** (M1–M4) | arm64 | ✅ image + all 6 features build and every tool runs natively |
+| macOS Intel | x86-64 | ✅ same image as Linux/Windows |
+
+On arm64 every tool resolves to a native build at the **same version** as x86-64 —
+Node 22.16.0, `gh` 2.97.0, Copilot CLI, Python 3.11.2, Docker 29.7.0, `az` 2.88.0
+(from Microsoft's arm64 apt repo, so no slow `pip` fallback) and `azd` 1.29.0.
+Debian ships the identical Chromium build (150.x) for arm64, and Playwright
+publishes a real `debian12-arm64` Chromium — which is precisely why this container
+is based on **bookworm (Debian 12)**: Playwright has *no* arm64 build for Debian 11.
+
+The whole `node_modules` tree is pure JavaScript — **zero native `.node` binaries** —
+so nothing has to be recompiled per architecture.
+
+> **macOS tip:** give Docker Desktop at least **4 CPUs / 8 GB** under
+> *Settings → Resources*. `NODE_OPTIONS` asks for a 4 GB heap, and the default
+> macOS allocation is often too small.
 
 ---
 
@@ -672,6 +696,47 @@ chromium --version
 <summary><b>Karma hangs and never exits</b></summary>
 
 Use `npm test` (adds `--single-run`). `npm run test:watch` is the watching variant.
+</details>
+
+<details>
+<summary><b><code>Cannot start ChromeHeadless</code> / Chrome crashes mid-run</b></summary>
+
+`test/karma.conf.js` auto-detects a container (via `/.dockerenv`) and switches to a
+`ChromeHeadlessContainer` launcher with `--no-sandbox --disable-dev-shm-usage
+--disable-gpu`, so this should not happen. If it does:
+
+```bash
+node -e "var c={set:o=>console.log(o.browsers),LOG_INFO:1};require('./test/karma.conf.js')(c)"
+# in a container this must print [ 'ChromeHeadlessContainer' ]
+```
+
+The three classic causes, all handled:
+
+| Symptom | Cause | Handled by |
+|---------|-------|-----------|
+| `Running as root without --no-sandbox is not supported` | running as root; Chrome refuses | `--no-sandbox` |
+| Chrome dies part-way through the run | Docker gives `/dev/shm` only **64 MB** | `--disable-dev-shm-usage` + `"runArgs": ["--shm-size=1g"]` |
+| `GPU process isn't usable` | no GPU in a container | `--disable-gpu` |
+
+Outside a container the plain `ChromeHeadless` launcher is used, so your local
+Chrome keeps its normal sandbox.
+</details>
+
+<details>
+<summary><b>Apple Silicon: is anything emulated?</b></summary>
+
+No. The base image and every feature publish native `linux/arm64` builds, and
+`node_modules` contains no native binaries, so nothing is cross-compiled or
+emulated. Confirm with:
+
+```bash
+uname -m          # aarch64
+node -p process.arch   # arm64
+```
+
+If you see `x86_64` inside the container on an M-series Mac, Docker Desktop is
+forcing amd64 — clear **Settings → General → "Use Rosetta for x86/amd64 emulation"**
+and any `DOCKER_DEFAULT_PLATFORM=linux/amd64` in your shell profile.
 </details>
 
 <details>

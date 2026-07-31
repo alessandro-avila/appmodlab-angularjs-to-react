@@ -1,8 +1,12 @@
 module.exports = function(grunt) {
   'use strict';
 
+  // Container detection. The env vars are injected at *runtime* by VS Code
+  // (REMOTE_CONTAINERS) or Codespaces (CODESPACES) — they do not exist in the
+  // image, so a plain `docker run` / `devcontainer up` sets none of them.
+  // /.dockerenv is present in every Docker container, which covers those cases.
   var inContainer = !!(process.env.CODESPACES || process.env.REMOTE_CONTAINERS ||
-    process.env.DEVCONTAINER);
+    process.env.DEVCONTAINER || require('fs').existsSync('/.dockerenv'));
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),

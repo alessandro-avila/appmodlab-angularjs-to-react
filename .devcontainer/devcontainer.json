@@ -34,6 +34,12 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "postAttachCommand": "bash .devcontainer/welcome.sh",
 
+  // Docker defaults /dev/shm to 64MB, which makes Chromium crash mid-run under
+  // both Karma and Playwright. The Karma launcher also passes
+  // --disable-dev-shm-usage as a belt-and-braces fallback for hosts that ignore
+  // this (some Codespaces configurations do).
+  "runArgs": ["--shm-size=1g"],
+
   "mounts": [
     "source=appmodlab-node-modules-${devcontainerId},target=${containerWorkspaceFolder}/node_modules,type=volume"
   ],
