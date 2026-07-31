@@ -49,36 +49,9 @@ state, stops at human gates, and never silently invents behaviour.
 
 ## 🔁 THE WORKFLOW
 
-![Workflow](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/assets/brownfield-pipeline.svg)
+![Brownfield modernization pipeline](assets/brownfield-pipeline.svg)
 
-```mermaid
-flowchart TD
-    B0["🚪 B0 · Onboarding<br/><i>install spec2cloud, orient the agent</i>"] --> B1
-    B1["🔍 <b>Phase B1 · EXTRACT</b><br/>document what IS, not what SHOULD BE"] --> G1{{"🧑‍⚖️ Human Gate<br/>Extraction Review"}}
-    G1 --> B2["📝 <b>Phase B2 · SPEC-ENABLE</b><br/>PRD + FRDs + refinement"]
-    B2 --> G2{{"🧑‍⚖️ Human Gates<br/>PRD · FRD · Refinement"}}
-    G2 --> TG["🧪 <b>TESTABILITY GATE</b><br/>can we actually run &amp; test this app?"]
-    TG --> TA["🟢 <b>Track A</b> · Green Baseline<br/>Gherkin @existing-behavior<br/>+ passing tests"]
-    TG --> TH["🟡 <b>Hybrid</b><br/>A where testable, B elsewhere"]
-    TG --> TB["📋 <b>Track B</b> · Doc-Only<br/>@documentation-only scenarios<br/>+ manual checklists"]
-    TA --> P
-    TH --> P
-    TB --> P
-    P{{"🧑‍⚖️ Human Gate<br/>Path Selection"}} --> PA["📊 <b>Phase A · ASSESS</b><br/>modernization-assessment"]
-    PA --> PP["🗺️ <b>Phase P · PLAN</b><br/>modernization-planner<br/>+ tech-stack-resolution"]
-    PP --> P2["🚀 <b>Phase 2 · DELIVER</b><br/>tests → contracts → code → verify<br/><i>increment by increment</i>"]
-    P2 --> P2
-
-    style B1 fill:#1f6feb,color:#fff
-    style B2 fill:#1f6feb,color:#fff
-    style TG fill:#9e6a03,color:#fff
-    style TA fill:#238636,color:#fff
-    style TB fill:#6e40c9,color:#fff
-    style TH fill:#9e6a03,color:#fff
-    style PA fill:#1f6feb,color:#fff
-    style PP fill:#1f6feb,color:#fff
-    style P2 fill:#238636,color:#fff
-```
+<sub>Diagram from [EmeaAppGbb/spec2cloud](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/assets/brownfield-pipeline.svg), vendored so the lab renders offline and does not break when `vNext` moves.</sub>
 
 ### Phase B1 · Extract — *"document what IS, not what SHOULD BE"*
 
@@ -418,6 +391,7 @@ is the exercise. Do not "helpfully" repair these before the hackathon starts.
 | **`npm test` fails 11/11.** `test/spec/flight-search.spec.js` asserts behaviour the controller does not have (e.g. a `getPopularRoutes()` call on init, a different `$scope.filters` shape). | This is the single best artefact in the repo. It feeds `test-discovery`, it is the honest answer to Testability-Gate question 6, and it is the perfect drill for the Track A rule **"fix the test, not the app"**. |
 | `ui.bootstrap` is declared in `app/app.js` but **never used** — no `uib-*` directive, no `$uibModal`. | A real dependency-inventory finding. `modernization-assessment` should catch it and drop the dependency. |
 | API base URL hardcoded to `http://localhost:3000/api` in `app/app.js`. | Config-as-code smell. Becomes `import.meta.env.VITE_API_URL`. |
+| **Searching flights logs a Moment.js deprecation warning** — `moment("08/15/2026")` is parsed with no format string, so it falls back to `new Date()`. | Expected, and harmless. A real `data-model-extractor` / date-handling finding: the React rewrite parses dates explicitly instead of guessing. |
 | JWT stored in `localStorage`, no refresh, no expiry handling. | Feeds the optional `security-assessment` path. |
 | `bower_components/` is **committed to the repo**. | 2016 called. It also means the app runs with zero network access. Deleted at the end of the migration. |
 | Global Bootstrap 3 CSS, no scoping. | Becomes CSS Modules. |
