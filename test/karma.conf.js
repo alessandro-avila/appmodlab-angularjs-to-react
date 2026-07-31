@@ -11,6 +11,7 @@ module.exports = function(config) {
     files: [
       // Bower dependencies
       'bower_components/jquery/dist/jquery.min.js',
+      'bower_components/jquery-ui/jquery-ui.min.js',
       'bower_components/lodash/dist/lodash.min.js',
       'bower_components/moment/min/moment.min.js',
       'bower_components/angular/angular.min.js',
@@ -43,11 +44,11 @@ module.exports = function(config) {
 
     logLevel: config.LOG_INFO,
 
-    autoWatch: true,
+    autoWatch: !process.env.CI,
 
     browsers: ['ChromeHeadless'],
 
-    singleRun: false,
+    singleRun: !!process.env.CI,
 
     concurrency: Infinity
   });

@@ -15,8 +15,12 @@
           template: '<div class="container"><h2>Login</h2><p>Mock login - click to enter</p><button ng-click="enter()">Enter Portal</button></div>',
           controller: ['$scope', '$state', 'AuthService', function($scope, $state, AuthService) {
             $scope.enter = function() {
-              AuthService.login('demo@globaltravel.com', 'password');
-              $state.go('dashboard');
+              // login() is async — wait for the token before changing state,
+              // otherwise the requireAuth guard bounces back to /login.
+              AuthService.login('demo@globaltravel.com', 'password')
+                .then(function() {
+                  $state.go('dashboard');
+                });
             };
           }]
         })

@@ -199,7 +199,10 @@
           }).then(function(rooms) {
             $scope.selectedHotel.rooms = rooms;
             // jQuery scroll (anti-pattern)
-            $('html, body').animate({ scrollTop: $('#hotel-rooms').offset().top - 20 }, 400);
+            var $rooms = $('#hotel-rooms');
+            if ($rooms.length) {
+              $('html, body').animate({ scrollTop: $rooms.offset().top - 20 }, 400);
+            }
           }).catch(function() {
             $scope.errorMessage = 'Could not load room details.';
           }).finally(function() {

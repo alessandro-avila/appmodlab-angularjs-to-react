@@ -200,7 +200,10 @@
         $scope.selectFlight = function(flight) {
           $scope.selectedFlight = flight;
           // jQuery scroll to details panel (anti-pattern)
-          $('html, body').animate({ scrollTop: $('#flight-details').offset().top - 20 }, 400);
+          var $details = $('#flight-details');
+          if ($details.length) {
+            $('html, body').animate({ scrollTop: $details.offset().top - 20 }, 400);
+          }
           $rootScope.$broadcast('flight:selected', flight);
         };
 

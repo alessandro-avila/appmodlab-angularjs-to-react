@@ -4,11 +4,16 @@
   "description": "GlobalTravel Corp - Corporate Travel Booking Portal",
   "private": true,
   "scripts": {
-    "start": "node api-mock/server.js",
-    "build": "grunt build",
-    "test": "karma start test/karma.conf.js"
+    "start": "concurrently -k -n api,web -c cyan,green \"npm:api\" \"npm:serve\"",
+    "api": "node api-mock/server.js",
+    "serve": "grunt serve",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && grunt build",
+    "test": "karma start test/karma.conf.js --single-run",
+    "test:watch": "karma start test/karma.conf.js"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "grunt": "^1.0.4",
     "grunt-contrib-concat": "^1.0.1",
     "grunt-contrib-uglify": "^3.4.0",

@@ -1,28 +1,43 @@
 ---
-title: "AngularJS to React/Angular"
-description: "Upgrade AngularJS 1.x SPAs to React 18 or Angular 17 with TypeScript"
-authors: ["marconsilva"]
+title: "AngularJS to React (spec2cloud brownfield)"
+description: "Modernize an AngularJS 1.x SPA to React 19 + TypeScript using the spec2cloud brownfield Spec-Driven Development workflow and GitHub Copilot"
+authors: ["marconsilva", "alessandro-avila"]
 category: "Code Modernization"
 industry: "Cross-Industry"
 services: ["Azure Static Web Apps", "Azure Functions"]
 languages: ["JavaScript", "TypeScript"]
-frameworks: ["React", "Angular", "Vite"]
-modernizationTools: []
-agenticTools: []
-tags: ["angularjs-migration", "spa-modernization", "typescript", "state-management"]
-extensions: ["github.copilot"]
-thumbnail: "https://raw.githubusercontent.com/EmeaAppGbb/appmodlab-angularjs-to-react-angular-modern/main/assets/thumbnail-gpt-image.png"
+frameworks: ["React", "Vite"]
+modernizationTools: ["spec2cloud"]
+agenticTools: ["GitHub Copilot CLI", "GitHub Copilot Chat"]
+tags: ["angularjs-migration", "spa-modernization", "typescript", "state-management", "spec-driven-development", "brownfield", "agentic-development"]
+extensions: ["github.copilot", "github.copilot-chat"]
+thumbnail: "https://raw.githubusercontent.com/alessandro-avila/appmodlab-angularjs-to-react/main/assets/thumbnail-gpt-image.png"
 video: ""
-version: "1.0.0"
+version: "2.0.0"
 ---
 
 ## Overview
 
-This lab walks you through modernizing a legacy AngularJS 1.x single-page application into a fully typed, component-driven app built with either **React 18** or **Angular 17** and **TypeScript**. You will migrate routing, state management, API integration, and UI components while preserving existing functionality — ultimately producing a maintainable, testable codebase ready for production deployment on Azure Static Web Apps.
+This lab walks you through modernizing a legacy AngularJS 1.x single-page application into a
+fully typed, component-driven app built with **React 19** and **TypeScript** — using
+[**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) (brownfield flow, `vNext`) as the
+Spec-Driven Development framework and **GitHub Copilot** as the execution engine.
+
+Rather than asking an AI to "port this to React" file by file, you follow a disciplined
+brownfield workflow: **B1 Extract** (document what the code actually does) → **B2 Spec-Enable**
+(PRD + FRDs) → **Testability Gate** (can we run and test it?) → **Track A green baseline**
+(behaviour captured as passing tests) → **path selection, assessment, planning** → **incremental
+delivery**. An agentic orchestrator ("Ralph loop") drives the cycle and stops at
+human-in-the-loop gates, so engineers approve every decision that changes meaning.
+
+You will migrate routing, state management, API integration, and UI components while
+*provably* preserving existing functionality — producing a maintainable, testable codebase
+ready for production deployment on Azure Static Web Apps.
 
 ## The Legacy Application
 
-The starting point is **GlobalTravel Corp — Corporate Travel Portal**, a full-featured AngularJS 1.6.x SPA that manages corporate travel workflows. It relies on UI-Router for navigation, Restangular for REST API calls, Bootstrap 3 for styling, and a Bower/Grunt toolchain — all patterns that have since been superseded by modern frameworks and bundlers.
+The starting point is **GlobalTravel Corp — Corporate Travel Portal**, a full-featured AngularJS 1.6.x SPA that manages corporate travel workflows. It relies on UI-Router for navigation, Restangular for REST API calls, Bootstrap 3 for styling, jQuery/jQuery UI for DOM manipulation, and a Bower/Grunt toolchain — all patterns that have since been superseded by modern frameworks and bundlers. Its Karma test suite is red on arrival, which is exactly what makes the Testability Gate a real exercise rather than a formality.
+
 
 ### Application Entry Point
 

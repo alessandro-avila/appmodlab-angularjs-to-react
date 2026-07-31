@@ -79,7 +79,10 @@
             $scope.calculateTotals();
 
             // jQuery scroll (anti-pattern)
-            $('html, body').animate({ scrollTop: $('#itinerary-details').offset().top - 20 }, 400);
+            var $details = $('#itinerary-details');
+            if ($details.length) {
+              $('html, body').animate({ scrollTop: $details.offset().top - 20 }, 400);
+            }
           }).catch(function(err) {
             $scope.errorMessage = 'Failed to load trip details.';
           }).finally(function() {

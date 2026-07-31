@@ -151,7 +151,10 @@
           $scope.newRequest.returnDate = moment(request.returnDate).toDate();
 
           $timeout(function() {
-            $('html, body').animate({ scrollTop: $('#travel-request-form').offset().top - 20 }, 400);
+            var $form = $('#travel-request-form');
+            if ($form.length) {
+              $('html, body').animate({ scrollTop: $form.offset().top - 20 }, 400);
+            }
             $scope.initDatepickers();
           }, 0);
         };
