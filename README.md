@@ -1,19 +1,6 @@
-# 🌆 ANGULARJS → REACT — AI-ASSISTED MODERNIZATION LAB
+# 🌆 ANGULARJS → REACT: AI-ASSISTED MODERNIZATION LAB
 
-```
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                                   ║
-║   ███████╗██████╗  █████╗ ███╗   ███╗███████╗██╗    ██╗ ██████╗ ██████╗ ██╗  ██╗
-║   ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝██║    ██║██╔═══██╗██╔══██╗██║ ██╔╝
-║   █████╗  ██████╔╝███████║██╔████╔██║█████╗  ██║ █╗ ██║██║   ██║██████╔╝█████╔╝
-║   ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝  ██║███╗██║██║   ██║██╔══██╗██╔═██╗
-║   ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗╚███╔███╔╝╚██████╔╝██║  ██║██║  ██╗
-║   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝ ╚══╝╚══╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-║                                                                                   ║
-║        AngularJS 1.6  ──▶  React 19    ·    driven by spec2cloud + Copilot        ║
-║                                                                                   ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
+![Workflow](assets/migrate-modernize-evolve.png)
 
 ---
 
@@ -61,6 +48,8 @@ state, stops at human gates, and never silently invents behaviour.
 ---
 
 ## 🔁 THE WORKFLOW
+
+![Workflow](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/assets/brownfield-pipeline.svg)
 
 ```mermaid
 flowchart TD
