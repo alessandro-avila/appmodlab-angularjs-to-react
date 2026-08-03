@@ -1,5 +1,5 @@
 {
-  "name": "AppMod Lab · AngularJS → React (spec2cloud)",
+  "name": "appmodlab-devcontainer",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 
   "features": {
