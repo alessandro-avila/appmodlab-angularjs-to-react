@@ -425,7 +425,7 @@ This is an AngularJS 1.6 app. Target is React 19 + TypeScript.
 
 | # | Block | ⏱️ | What you actually do | Deliverable |
 |---|-------|----|----------------------|-------------|
-| 1 | **Kick-off & context** | 30m | KMD use cases, current pain, success criteria | Agreed definition of done |
+| 1 | **Kick-off & context** | 30m | Use cases, current pain, success criteria | Agreed definition of done |
 | 2 | **Modernisation approach** | 60m | AngularJS → React patterns; incremental (strangler-fig) vs rewrite; React architecture; **why SDD for brownfield** | Path decision (Modernize) |
 | 3 | **AI-assisted development** | 75m | Copilot for transformation & refactoring; prompting; agentic development; the Ralph loop; HITL gates | Everyone has Copilot CLI working in their Codespace |
 | 4 | **Live demo** | 60m | Facilitator drives **B1 → B2 → Testability Gate → Track A → first React component**, end to end, live | Reference walkthrough |
