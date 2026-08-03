@@ -7,14 +7,9 @@
 
 ## 🎯 Goal
 
-Six skills read the legacy codebase and **write down reality**. No opinions, no improvements, no
-"this should be refactored". The output is a factual snapshot of what exists in August 2016 terms.
+Six skills read the legacy codebase and **write down reality**. No opinions, no improvements, no "this should be refactored". The output is a factual snapshot of what exists in August 2016 terms.
 
-This is the foundation everything else stands on. If the extraction says there are four feature
-modules when there are five, the PRD is wrong, the FRDs are wrong, the Gherkin is wrong, and you
-migrate a system that does not exist.
-
-> **The rule:** *if the docs and the code disagree, the code wins.*
+This is the foundation everything else stands on. If the extraction says there are four feature modules when there are five, the PRD is wrong, the FRDs are wrong, the Gherkin is wrong, and you migrate a system that does not exist.
 
 ---
 
@@ -35,7 +30,7 @@ Six, in sequence, one per Ralph-loop iteration:
 
 ## ✅ Prerequisites
 
-- [ ] [Step 00](00-spec2cloud-init.md) complete — `AGENTS.md` and `.github/skills/` exist
+- [ ] [Step 00](00-spec2cloud-init.md) complete,  `AGENTS.md` and `.github/skills/` exist
 - [ ] `npm start` runs; app renders at http://localhost:8080
 - [ ] Copilot CLI authenticated (`copilot`)
 
@@ -59,48 +54,24 @@ Scope is app/, api-mock/, test/, and the build manifests (bower.json, package.js
 Gruntfile.js). Ignore node_modules/ and do not inventory bower_components/ — record
 only the fact that dependencies are vendored and committed.
 
-Two rules I care about: where a comment, a README or a filename disagrees with the
-code, the code wins. And where you cannot determine something from the source, write
-"unknown" rather than guessing.
-
-Stop at the Extraction Review gate.
+Two rules I care about: where a comment, a README or a filename disagrees with the code, the code wins. And where you cannot determine something from the source, write "unknown" rather than guessing.
 ```
 
 <details>
 <summary><b>Why the prompt is shaped like this</b></summary>
 
-`AGENTS.md` already knows B1 means six skills, what order they run in, where they write, and that
-extraction carries no judgment. Restating all of that is noise — and it trains you to write
-prompts that stop working the moment the framework changes.
+`AGENTS.md` already knows B1 means six skills, what order they run in, where they write, and that extraction carries no judgment. Restating all of that is noise and it trains you to write prompts that stop working the moment the framework changes.
 
 What the agent genuinely cannot know is in the three sentences that remain:
 
-- **`bower_components/` is committed to this repo.** 2016 archaeology. Without that line the agent
-  inventories every file in Angular's dist folder and burns the context window before it reaches
-  `app/`.
+- **`bower_components/` is committed to this repo.** 2016 archaeology. Without that line the agent inventories every file in Angular's dist folder and burns the context window before it reaches `app/`.
 - **"the code wins"** is the brownfield golden rule. `bower.json` declares
   `angular-ui-bootstrap`; `app/app.js:10` loads the module. Neither is evidence it is *used*.
   Only the templates are.
 - **"write unknown rather than guessing"** is the highest-value instruction in the whole
   walkthrough. Extraction that hallucinates is worse than extraction that admits a gap, because
   everything downstream treats it as fact.
-
-**"Stop at the gate"** earns its place too — without it the orchestrator will run B2 in the same
-session, before you have read a word of the output.
 </details>
-
-### If you want to see each skill land separately
-
-Six discrete prompts make each output reviewable on its own. After the first, just name what you
-want next:
-
-```text
-Continue B1. Run dependency-inventory only.
-
-For each dependency record whether app/index.html actually loads it, and its
-maintenance status as a fact with a source. Flag anything declared but never
-referenced in app/ as an observation, not a defect.
-```
 
 ---
 
@@ -125,8 +96,7 @@ specs/
 
 ### What the extraction should find
 
-Use this as your marking scheme at the gate. These are facts about the repo, verified against
-source:
+Use this as your marking scheme at the gate. These are facts about the repo, verified against source:
 
 | Area | Ground truth |
 |------|--------------|
