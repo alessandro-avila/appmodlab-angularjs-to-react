@@ -1,4 +1,4 @@
-# 🌆 ANGULARJS → REACT: AI-ASSISTED MODERNIZATION LAB
+# 🌆 ANGULARJS to REACT: AI-ASSISTED MODERNIZATION LAB
 
 ![Workflow](assets/migrate-modernize-evolve.png)
 
@@ -6,30 +6,21 @@
 
 ## 🎯 MISSION
 
-**GlobalTravel Corp** runs a corporate travel portal built in 2016 on AngularJS 1.6 —
-Bower packages, a Grunt pipeline, jQuery DOM manipulation, `$scope` soup, Restangular,
-and a test suite that has been red for years.
+**GlobalTravel Corp** runs a corporate travel portal built in 2016 on AngularJS 1.6 - Bower packages, a Grunt pipeline, jQuery DOM manipulation, `$scope` soup, Restangular, and a test suite that has been red for years.
 
-AngularJS reached **end of life in January 2022** ([link to the blog](https://blog.angular.dev/discontinued-long-term-support-for-angularjs-cc066b82e65a)). No patches. No fixes. No future.
+AngularJS reached **end of life in January 2022** ([link to the blog](https://blog.angular.dev/discontinued-long-term-support-for-angularjs-cc066b82e65a)).
 
-Your mission is to modernize it into **React 19 + TypeScript** — *without* the
-"big bang rewrite that never ships". You will do it the way real modernization
-programmes should be run: **understand first, specify second, test third, change last** —
-using the [**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) brownfield
-workflow as the framework and GitHub Copilot as the engine.
+Your mission is to modernize it into **React 19 + TypeScript**, *without* the "big bang rewrite that never ships". You will do it the way real modernization programmes should be run: **understand first, specify second, test third, change last** - using the [**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) as the framework and GitHub Copilot as the engine.
 
 ---
 
-## 🧭 THE BIG IDEA — WHY NOT JUST "COPILOT, PORT THIS TO REACT"?
+## 🧭 WHY NOT JUST "COPILOT, PORT THIS TO REACT"?
 
-You can absolutely paste an AngularJS controller into Copilot and get a React component
-back. That might work for *some files*. It falls apart across 40 files, because nobody —
-human or model — can answer the only question that matters:
+You can absolutely paste an AngularJS controller into Copilot and get a React component back. That might work for *some files*. It falls apart across 40 files, because nobody - human or model - can answer the only question that matters:
 
 > **"Did we just change the behaviour of the system?"**
 
-Legacy apps have no spec. The behaviour *is* the code. So before you touch anything,
-you make the implicit explicit:
+Legacy apps have no spec. The behaviour *is* the code. So before you touch anything, you make the implicit explicit:
 
 ```text
    the code           →   what it DOES        →   what it SHOULD do   →   the new code
@@ -39,9 +30,7 @@ you make the implicit explicit:
                          humans review here     humans approve here
 ```
 
-That is **Spec-Driven Development (SDD)** applied to brownfield, and it is exactly
-what spec2cloud automates: a set of Copilot skills plus an (agentic) orchestrator that keeps
-state, stops at human gates, and never silently invents behaviour.
+That is **Spec-Driven Development (SDD)** applied to brownfield, and it is exactly what spec2cloud automates: a set of Copilot skills plus an (agentic) orchestrator that keeps state, stops at human gates, and never silently invents behaviour.
 
 📖 Reference: [spec2cloud/docs/brownfield.md](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/brownfield.md)
 
@@ -51,9 +40,8 @@ state, stops at human gates, and never silently invents behaviour.
 
 ![Brownfield modernization pipeline](assets/brownfield-pipeline.svg)
 
-<sub>Diagram from [EmeaAppGbb/spec2cloud](https://github.com/EmeaAppGbb/spec2cloud/blob/vNext/docs/assets/brownfield-pipeline.svg), vendored so the lab renders offline and does not break when `vNext` moves.</sub>
-
-### Phase B1 · Extract — *"document what IS, not what SHOULD BE"*
+### Phase B1 · Extract
+<sub>*Document what IS, not what SHOULD BE.*</sub>
 
 Six skills read the legacy codebase and write down reality. No opinions, no improvements.
 
@@ -64,25 +52,25 @@ Six skills read the legacy codebase and write down reality. No opinions, no impr
 | `architecture-mapper` | UI-Router state graph, controller ↔ service ↔ Restangular data flow, Mermaid diagrams |
 | `api-extractor` | OpenAPI contract reverse-engineered from `api-mock/server.js` (~36 routes) |
 | `data-model-extractor` | Flight, Hotel, Trip, ItineraryItem, TravelRequest, ExpenseReport entities + relationships |
-| `test-discovery` | 1 Karma spec file, 11 tests, **11 failing**, 0% meaningful coverage |
+| `test-discovery` | 1 Karma spec file, 11 tests, 0% meaningful coverage |
 
-➡️ **🧑‍⚖️ Human Gate — Extraction Review.** If the extraction is wrong, *everything*
-downstream is wrong. Read it. Correct it. Then approve.
+➡️ **🧑‍⚖️ Human Gate: Extraction Review.** If the extraction is wrong, *everything* downstream is wrong, so read it, correct it, then approve.
 
 ### Phase B2 · Spec-Enable
+<sub>*Always produces valuable specifications.*</sub>
 
 | Skill | Output |
 |-------|--------|
-| `prd-generator` | `specs/prd.md` — what the product does, from the outside in |
-| `frd-generator` | `specs/frds/*.md` — one per feature, each with a **"Current Implementation"** section that pins the spec to today's code |
+| `prd-generator` | `specs/prd.md` - **Product Requirement Documentation**. What the product does, from the outside in |
+| `frd-generator` | `specs/frds/*.md` - **Feature Requirement Documentation**, one per feature, each with a **"Current Implementation"** section that pins the spec to today's code |
 | `spec-refinement` | Ambiguities resolved, gaps closed, contradictions surfaced |
 | `ddd-modeling` *(optional)* | `specs/domain/{proposals,domain-model,database-model}.md` |
 
-➡️ **🧑‍⚖️ Human Gates — PRD Review, FRD Review, Refinement Review.**
+➡️ **🧑‍⚖️ Human Gates: PRD Review, FRD Review, Refinement Review.**
 
-### 🧪 The Testability Gate — *the fork in the road*
+### 🧪 The Testability Gate
 
-Before writing a single line of React you answer six questions about the **legacy** app:
+Before writing a single line of React you answer six questions about the legacy app:
 
 | # | Question | This repo |
 |---|----------|-----------|
@@ -99,24 +87,19 @@ Before writing a single line of React you answer six questions about the **legac
 | 3–4 | 🟡 **Hybrid** | Track A for the testable features, Track B for the rest |
 | 0–2 | 📋 **Track B — Doc-Only** | `@documentation-only` scenarios + manual verification checklists + a testability roadmap |
 
-**GlobalTravel Corp scores 6/6 → Track A.** The decision must be recorded as an ADR
-in `specs/adrs/` (skill: `adr`) — because in a real programme, *why* you chose a track
-is the thing people will question six months later.
-
-> 📈 Track promotion **B → A** is encouraged as testability improves.
-> Demotion **A → B** is not allowed — you never give up a safety net you already have.
+**GlobalTravel Corp will score 6/6, so we are in Track A.** The decision must be recorded as an ADR in `specs/adrs/` (skill: `adr`) — because in a real programme, *why* you chose a track is the thing people will question six months later.
 
 ### 🟢 Track A in three steps
 
-1. **Gherkin capture** (`gherkin-generation`) — every FRD behaviour becomes a scenario tagged `@existing-behavior`.
-2. **Test scaffolding** (`test-generation`, `e2e-generation`, `playwright-cli`) — Cucumber steps, Playwright e2e, unit tests.
-3. **Green verification** (`test-runner`, `build-check`) — everything must be green **before** any migration starts.
+1. **Gherkin capture** (`gherkin-generation`): every FRD behaviour becomes a scenario tagged `@existing-behavior`.
+2. **Test scaffolding** (`test-generation`, `e2e-generation`, `playwright-cli`): Cucumber steps, Playwright e2e, unit tests.
+3. **Green verification** (`test-runner`, `build-check`): everything must be green before any migration starts.
 
 > ⚠️ **The golden rule of a green baseline:**
 > if a test fails against the legacy app, **fix the test, not the app.**
-> The legacy behaviour — bugs included — *is* the specification.
+> The legacy behaviour - bugs included - *is* the specification.
 
-➡️ **🧑‍⚖️ Human Gate — Green Baseline.**
+➡️ **🧑‍⚖️ Human Gate: Green Baseline.**
 
 ### 🔀 Choose your path
 
@@ -124,14 +107,14 @@ spec2cloud supports six brownfield paths. **This lab uses `Modernize`.**
 
 | Path | Assessment skill | Planning skill | Used here |
 |------|------------------|----------------|-----------|
-| **Modernize** — tech debt, dead frameworks | `modernization-assessment` | `modernization-planner` | ✅ **yes** |
-| Rewrite — replace components entirely | `rewrite-assessment` | `rewrite-planner` | optional stretch |
-| Cloud-Native — containers / Azure | `cloud-native-assessment` | `cloud-native-planner` | optional stretch |
-| Extend — add features | — | `extension-planner` | no |
-| Security | `security-assessment` | `security-planner` | no |
-| Performance | `performance-assessment` | — | no |
+| **Modernize** (tech debt, dead frameworks) | `modernization-assessment` | `modernization-planner` | ✅ **yes** |
+| **Rewrite** (replace components entirely) | `rewrite-assessment` | `rewrite-planner` | optional stretch |
+| **Cloud-Native** (containers / Azure) | `cloud-native-assessment` | `cloud-native-planner` | optional stretch |
+| **Extend** (add features) | — | `extension-planner` | no |
+| **Security** | `security-assessment` | `security-planner` | no |
+| **Performance** | `performance-assessment` | — | no |
 
-➡️ **🧑‍⚖️ Human Gate — Path Selection.**
+➡️ **🧑‍⚖️ Human Gate: Path Selection.**
 
 ### Phases A → P → 2
 
@@ -143,11 +126,11 @@ spec2cloud supports six brownfield paths. **This lab uses `Modernize`.**
 
 ---
 
-## 🤖 THE RALPH LOOP — how the agent actually works
+## 🤖 THE RALPH LOOP
 
-spec2cloud's orchestrator (`AGENTS.md`) runs a deterministic 11-step cycle, over and
-over, until the work is done. Understanding this loop is what turns "Copilot wrote
-some code" into "Copilot executed a plan".
+<sub>*Ralph is the spec2cloud orchestrator. It runs the 11-step loop below, over and over, until the work is done.*</sub>
+
+spec2cloud's orchestrator (`AGENTS.md`) runs a deterministic 11-step cycle, over and over, until the work is done. 
 
 ```mermaid
 flowchart LR
@@ -186,8 +169,7 @@ Brownfield adds these to `state.json`:
 }
 ```
 
-Because state is in git, you can **stop, hand over, and resume** — `resume` is a
-first-class skill. That matters in a hackathon where teams rotate.
+Because state is in git, you can **stop, hand over, and resume** — `resume` is a first-class skill. 
 
 ---
 
@@ -210,15 +192,9 @@ The agent **stops and waits** at each of these. Nothing is approved by default.
 | **PR Review** | the actual diff | 🟠 the usual |
 | **Deploy Review** | going live | 🔴 the usual, but louder |
 
-> 💡 **Facilitator tip:** these gates are the best teaching moments of the day.
-> Deliberately let the agent extract something slightly wrong, then have the team
-> catch it at the gate. That lesson sticks harder than any slide.
-
 ---
 
-## 🎯 THE TARGET STACK — React, latest
-
-This lab has **one** recommended target. No Angular path, no framework bake-off.
+## 🎯 THE TARGET STACK
 
 ```
 React 19 + TypeScript (strict)
@@ -259,7 +235,7 @@ React 19 + TypeScript (strict)
 
 ## ⚡ QUICK START
 
-### Option A — GitHub Codespaces (recommended for the hackathon)
+### Option A: GitHub Codespaces (recommended for the hackathon)
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/alessandro-avila/appmodlab-angularjs-to-react)
 
@@ -272,9 +248,9 @@ React 19 + TypeScript (strict)
    ```
 4. Open the forwarded port **8080**. Click **Enter Portal**. You are in.
 
-> ⏱️ First build takes ~4–6 minutes. **Create your Codespace the evening before the hackathon.**
+> ⏱️ First build should take ~4–6 minutes.
 
-### Option B — Local dev container (VS Code + Docker)
+### Option B: Local dev container (VS Code + Docker)
 
 ```bash
 git clone https://github.com/alessandro-avila/appmodlab-angularjs-to-react.git
@@ -284,7 +260,7 @@ code .
 npm start
 ```
 
-### Option C — Bare metal (no container)
+### Option C: Bare metal (no container)
 
 Only if A and B are impossible. You need **Node.js 22 LTS**, **git**, and a Chromium
 browser on `CHROME_BIN` for the Karma suite.
@@ -313,9 +289,7 @@ npm start
 
 ### Verified platforms
 
-The container is **multi-architecture** — it is built from `linux/amd64` **and**
-`linux/arm64` images, so it runs natively on Apple Silicon with no emulation and
-no Rosetta.
+The container is **multi-architecture** - it is built from `linux/amd64` **and** `linux/arm64` images, so it runs natively on Apple Silicon with no emulation and no Rosetta.
 
 | Host | Arch | Status |
 |------|------|--------|
@@ -324,16 +298,6 @@ no Rosetta.
 | Windows + Docker Desktop / WSL2 | x86-64 | ✅ verified |
 | **macOS Apple Silicon** (M1–M4) | arm64 | ✅ image + all 6 features build and every tool runs natively |
 | macOS Intel | x86-64 | ✅ same image as Linux/Windows |
-
-On arm64 every tool resolves to a native build at the **same version** as x86-64 —
-Node 22.16.0, `gh` 2.97.0, Copilot CLI, Python 3.11.2, Docker 29.7.0, `az` 2.88.0
-(from Microsoft's arm64 apt repo, so no slow `pip` fallback) and `azd` 1.29.0.
-Debian ships the identical Chromium build (150.x) for arm64, and Playwright
-publishes a real `debian12-arm64` Chromium — which is precisely why this container
-is based on **bookworm (Debian 12)**: Playwright has *no* arm64 build for Debian 11.
-
-The whole `node_modules` tree is pure JavaScript — **zero native `.node` binaries** —
-so nothing has to be recompiled per architecture.
 
 > **macOS tip:** give Docker Desktop at least **4 CPUs / 8 GB** under
 > *Settings → Resources*. `NODE_OPTIONS` asks for a 4 GB heap, and the default
@@ -344,11 +308,11 @@ so nothing has to be recompiled per architecture.
 ## 🏃 RUNNING THE LEGACY APP
 
 ```bash
-npm start        # mock API (:3000) + web app (:8080) together  ← use this
-npm run api      # mock API only
-npm run serve    # web app only
-npm run build    # Grunt production build → dist/
-npm test         # Karma suite (single run) — expected: 11 failures
+npm start           # mock API (:3000) + web app (:8080) together  ← use this
+npm run api         # mock API only
+npm run serve       # web app only
+npm run build       # Grunt production build → dist/
+npm test            # Karma suite (single run) — expected: 11 failures
 npm run test:watch
 ```
 
@@ -358,12 +322,10 @@ npm run test:watch
 | Mock API | http://localhost:3000/api | Express, ~36 routes, JWT middleware |
 | LiveReload | :35729 | injected automatically by `grunt serve` |
 
-**Login:** there is no real login. Click **Enter Portal** — a mock JWT is written to
-`localStorage`. (`AuthService` + a `$rootScope.$on('$stateChangeStart')` guard.)
+**Login:** there is no real login. Click **Enter Portal** — a mock JWT is written to `localStorage`. (`AuthService` + a `$rootScope.$on('$stateChangeStart')` guard.)
 
 **Try:** Flights → `SFO` → `JFK` → pick two dates → **Search Flights** → click a result.
-That single flow touches routing, a directive wrapping a jQuery plugin, a filter, a
-service, Restangular, and jQuery DOM manipulation. It is the perfect first migration target.
+That single flow touches routing, a directive wrapping a jQuery plugin, a filter, a service, Restangular, and jQuery DOM manipulation. It is the perfect first migration target.
 
 ### What you are modernizing
 
@@ -381,52 +343,29 @@ service, Restangular, and jQuery DOM manipulation. It is the perfect first migra
 
 ---
 
-## 🧨 KNOWN — AND INTENTIONAL — LEGACY DEBT
+## 🧨 KNOWN LEGACY DEBT
 
-This is a *brownfield* lab. Some things are broken **on purpose** because fixing them
-is the exercise. Do not "helpfully" repair these before the hackathon starts.
+This is a *brownfield* lab. Some things are broken **on purpose** because fixing them is the exercise. Do not "helpfully" repair these before the hackathon starts.
 
-| Fact | Why it stays |
+| Fact | Notes |
 |------|--------------|
 | **`npm test` fails 11/11.** `test/spec/flight-search.spec.js` asserts behaviour the controller does not have (e.g. a `getPopularRoutes()` call on init, a different `$scope.filters` shape). | This is the single best artefact in the repo. It feeds `test-discovery`, it is the honest answer to Testability-Gate question 6, and it is the perfect drill for the Track A rule **"fix the test, not the app"**. |
-| `ui.bootstrap` is declared in `app/app.js` but **never used** — no `uib-*` directive, no `$uibModal`. | A real dependency-inventory finding. `modernization-assessment` should catch it and drop the dependency. |
+| `ui.bootstrap` is declared in `app/app.js` but **never used**. No `uib-*` directive, no `$uibModal`. | A real dependency-inventory finding. `modernization-assessment` should catch it and drop the dependency. |
 | API base URL hardcoded to `http://localhost:3000/api` in `app/app.js`. | Config-as-code smell. Becomes `import.meta.env.VITE_API_URL`. |
-| **Searching flights logs a Moment.js deprecation warning** — `moment("08/15/2026")` is parsed with no format string, so it falls back to `new Date()`. | Expected, and harmless. A real `data-model-extractor` / date-handling finding: the React rewrite parses dates explicitly instead of guessing. |
+| **Searching flights logs a Moment.js deprecation warning** - `moment("08/15/2026")` is parsed with no format string, so it falls back to `new Date()`. | Expected, and harmless. A real `data-model-extractor` / date-handling finding: the React rewrite parses dates explicitly instead of guessing. |
 | JWT stored in `localStorage`, no refresh, no expiry handling. | Feeds the optional `security-assessment` path. |
 | `bower_components/` is **committed to the repo**. | 2016 called. It also means the app runs with zero network access. Deleted at the end of the migration. |
 | Global Bootstrap 3 CSS, no scoping. | Becomes CSS Modules. |
 | jQuery used for scrolling, datepickers, and animations inside Angular controllers. | The canonical "framework fighting the framework" anti-pattern. |
 
-> 🛠️ **What *was* fixed** (so the app actually boots — Testability-Gate prerequisites, not
-> modernization): the missing `ui-bootstrap-tpls.js` dist bundle and jQuery UI were vendored,
-> the dev server now serves `bower_components/` and binds correctly inside containers,
-> the login navigation race was fixed, `$(...).offset()` calls on not-yet-rendered
-> elements were guarded, and Karma now exits instead of hanging.
-> These are documented in the PR that introduced this README.
-
 ---
 
-## 🌿 BRANCH STRATEGY
+## 🌿 BRANCH STRATEGY - To be updated
 
-| Branch | Contents | Who owns it |
-|--------|----------|-------------|
-| `main` | 🏛️ The **legacy AngularJS app**, running and clean. No framework, no specs. | facilitators |
-| `lab/00-spec2cloud-init` | 🧰 `main` + spec2cloud installed (`.github/skills/`, `AGENTS.md`, `.spec2cloud/`, `specs/`, `.vscode/mcp.json`) | facilitators |
-| `team/<name>/…` | 🏗️ Your team's work | you |
-
-Teams branch from **`lab/00-spec2cloud-init`**:
-
-```bash
-git fetch origin
-git switch -c team/aurora/b1-extract origin/lab/00-spec2cloud-init
-```
-
-Prefer to install the framework yourself (recommended if you want to see what it does):
-
-```bash
-git switch -c team/aurora/b1-extract origin/main
-npx spec2cloud init --flow brownfield --ref vNext
-```
+| Branch | Contents |
+|--------|----------|
+| `main` | 🏛️ The **legacy AngularJS app**. |
+| `lab/00-spec2cloud-init` | 🧰 `main` + spec2cloud installed (`.github/skills/`, `AGENTS.md`, `.spec2cloud/`, `specs/`, `.vscode/mcp.json`) |
 
 <details>
 <summary><b>What <code>spec2cloud init</code> adds to your working tree</b></summary>
@@ -440,9 +379,7 @@ npx spec2cloud init --flow brownfield --ref vNext
 | `.vscode/mcp.json`, `.mcp.json` | MCP server wiring |
 | `specs/` | Where PRDs, FRDs, ADRs, and Gherkin land |
 
-Useful flags: `--minimal` (add to an existing project), `--force` (overwrite),
-`--ref vNext` (pin the branch), `--target <dir>`.
-Conflicting files are preserved as `*.spec2cloud` rather than clobbered.
+Useful flags: `--minimal` (add to an existing project), `--force` (overwrite), `--ref vNext` (pin the branch), `--target <dir>`. Conflicting files are preserved as `*.spec2cloud` rather than clobbered.
 </details>
 
 ---
@@ -450,25 +387,23 @@ Conflicting files are preserved as `*.spec2cloud` rather than clobbered.
 ## 🚀 STARTING THE MODERNIZATION
 
 ```bash
-# 1. install the framework (skip if you branched from lab/00-spec2cloud-init)
+# 1. Install the framework (skip if you branched from lab/00-spec2cloud-init)
 npx spec2cloud init --flow brownfield --ref vNext
 
-# 2. authenticate Copilot CLI (once per Codespace)
+# 2. Authenticate Copilot CLI (once per Codespace)
 copilot
 
-# 3. kick off the loop
+# 3. Kick off the loop
 ```
 
-Then, in Copilot CLI or Copilot Chat — the orchestrator in `AGENTS.md` activates
-automatically:
+Then, in Copilot CLI or Copilot Chat, the orchestrator in `AGENTS.md` activates automatically:
 
 ```
-Analyze this codebase and start the spec2cloud brownfield workflow at Phase B1 (Extract).
+Analyze this codebase and start the spec2cloud brownfield workflow.
 This is an AngularJS 1.6 app. Target is React 19 + TypeScript.
-Stop at every human gate and wait for my approval.
 ```
 
-### 🗣️ Prompting that actually works
+### 🗣️ Prompting that actually works - to be refactored
 
 | ❌ Weak | ✅ Strong |
 |---------|----------|
@@ -479,11 +414,10 @@ Stop at every human gate and wait for my approval.
 
 **Rules of thumb**
 
-1. **One skill per prompt.** The orchestrator handles sequencing — you do not need to.
-2. **Point at files, not vibes.** `app/components/flight-search/` beats "the flight thing".
+1. **One skill per prompt.** The orchestrator handles sequencing, soyou do not need to.
+2. **Point at files to be more specific** `app/components/flight-search/` beats "the flight thing".
 3. **Say what *not* to do.** "Do not refactor", "do not change behaviour", "do not add dependencies".
 4. **Make it prove it.** "Run `npm test` and paste the output" beats "make sure it works".
-5. **Never approve a gate you have not read.** That is the whole point of the gate.
 
 ---
 
@@ -509,11 +443,6 @@ Stop at every human gate and wait for my approval.
 | 1:50–2:10 | Assess + Plan | Migration order, target stack ADR |
 | 2:10–2:50 | Deliver | First React 19 component, tests green |
 | 2:50–3:00 | PR | Open PR, capture learnings |
-
-> 🎯 **One module, all the way through, beats five half-migrated modules.**
-> Suggested per-team scope: `flight-search` (richest), `expense-reconciliation`
-> (most forms), `itinerary` (most async), `travel-request` (most validation),
-> `hotel-booking` (best balance).
 
 ---
 
@@ -558,8 +487,7 @@ appmodlab-angularjs-to-react/
 └── package.json
 ```
 
-**After `spec2cloud init` you additionally get** `AGENTS.md`, `.github/skills/`,
-`.spec2cloud/`, `specs/`, `skills-lock.json`.
+**After `spec2cloud init` you additionally get** `AGENTS.md`, `.github/skills/`, `.spec2cloud/`, `specs/`, `skills-lock.json`.
 
 ---
 
@@ -617,10 +545,8 @@ appmodlab-angularjs-to-react/
 <summary><b>The app loads but every page is blank</b></summary>
 
 Almost always a vendored library failing to load, which stops Angular bootstrapping.
-Open DevTools → Console. Check `bower_components/angular-ui-bootstrap/dist/ui-bootstrap-tpls.js`
-and `bower_components/jquery-ui/jquery-ui.min.js` return **200**, not 404.
-Both are committed — if they 404, your `grunt serve` is serving only `app/`
-(see `Gruntfile.js` → `connect.server.options.base` must be `['app', '.']`).
+Open DevTools → Console. Check `bower_components/angular-ui-bootstrap/dist/ui-bootstrap-tpls.js` and `bower_components/jquery-ui/jquery-ui.min.js` return **200**, not 404.
+Both are committed — if they 404, your `grunt serve` is serving only `app/` (see `Gruntfile.js` → `connect.server.options.base` must be `['app', '.']`).
 </details>
 
 <details>
@@ -647,7 +573,7 @@ Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.Owni
 <details>
 <summary><b><code>npm test</code> fails with 11 failures</b></summary>
 
-✅ **Correct.** That is the designed starting state — see *Known and intentional legacy debt*.
+✅ **Correct.** That is the designed starting state - see *Known and intentional legacy debt*.
 A **crash** (browser never launches) is different: check `CHROME_BIN`.
 ```bash
 echo $CHROME_BIN   # should be /usr/bin/chromium in the container
@@ -672,8 +598,6 @@ Use `npm test` (adds `--single-run`). `npm run test:watch` is the watching varia
 node -e "var c={set:o=>console.log(o.browsers),LOG_INFO:1};require('./test/karma.conf.js')(c)"
 # in a container this must print [ 'ChromeHeadlessContainer' ]
 ```
-
-The three classic causes, all handled:
 
 | Symptom | Cause | Handled by |
 |---------|-------|-----------|
@@ -738,8 +662,7 @@ npx spec2cloud init --flow brownfield --ref vNext --minimal --force
 <details>
 <summary><b>Copilot ignores the workflow / invents its own plan</b></summary>
 
-It has not picked up `AGENTS.md`. Confirm the file exists at the repo root, that you
-opened the repo root (not a subfolder), and start with an explicit instruction:
+It has not picked up `AGENTS.md`. Confirm the file exists at the repo root, that you opened the repo root (not a subfolder), and start with an explicit instruction:
 *"Read AGENTS.md and follow the brownfield workflow. Do not skip human gates."*
 </details>
 
@@ -763,7 +686,7 @@ opened the repo root (not a subfolder), and start with an explicit instruction:
 
 ## 🙋 SUPPORT
 
-- **During the hackathon:** grab a Microsoft facilitator — that is what they are there for.
+- **During the hackathon:** grab a Microsoft facilitator, that is what they are there for.
 - **Lab issues:** open an issue in [this repository](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/issues).
 - **Framework issues:** open an issue in [EmeaAppGbb/spec2cloud](https://github.com/EmeaAppGbb/spec2cloud/issues).
 
@@ -772,11 +695,4 @@ opened the repo root (not a subfolder), and start with an explicit instruction:
 ## 📜 LICENSE
 
 MIT.
-Originally derived from [EmeaAppGbb/appmodlab-angularjs-to-react-angular-modern](https://github.com/EmeaAppGbb/appmodlab-angularjs-to-react-angular-modern),
-re-targeted to React-only and re-platformed onto the spec2cloud brownfield workflow.
-
-```
-        ╔═══════════════════════════════════════════════════════════╗
-        ║   Understand it.  Specify it.  Test it.  Then change it.  ║
-        ╚═══════════════════════════════════════════════════════════╝
-```
+Originally derived from [EmeaAppGbb/appmodlab-angularjs-to-react-angular-modern](https://github.com/EmeaAppGbb/appmodlab-angularjs-to-react-angular-modern), re-targeted to React-only and re-platformed onto the spec2cloud brownfield workflow.
