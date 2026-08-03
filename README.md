@@ -126,6 +126,32 @@ spec2cloud supports six brownfield paths. **This lab uses `Modernize`.**
 
 ---
 
+## 📚 STEP-BY-STEP WALKTHROUGH
+
+Everything above is the map. **[`docs/lab/`](docs/lab/README.md) is the route** — one file per
+step, each with the prompt we actually used, the artifacts it produced, the gate checklist, and
+what went wrong.
+
+| # | Step | Phase | Branch |
+|---|------|-------|--------|
+| 00 | [spec2cloud init](docs/lab/00-spec2cloud-init.md) | B0 · Onboarding | `lab/00-spec2cloud-init` |
+| 01 | [B1 · Extract](docs/lab/01-b1-extract.md) | B1 · Extract | `lab/01-b1-extract` |
+| 02 | [B2 · Spec-Enable](docs/lab/02-b2-spec-enable.md) | B2 · Spec-Enable | `lab/02-b2-spec-enable` |
+| 03 | [Testability Gate](docs/lab/03-testability-gate.md) | Gate | `lab/03-testability-gate` |
+| 04 | [Green Baseline](docs/lab/04-green-baseline.md) | Track A | `lab/04-green-baseline` |
+| 05 | [Path Selection](docs/lab/05-path-selection.md) | Gate | `lab/05-path-selection` |
+| 06 | [Assess](docs/lab/06-assess.md) | A · Assess | `lab/06-assess` |
+| 07 | [Plan](docs/lab/07-plan.md) | P · Plan | `lab/07-plan` |
+| 08 | [Increment 0 — React shell](docs/lab/08-deliver-inc0-shell.md) | 2 · Deliver | `lab/08-deliver-inc0-shell` |
+| 09 | [Increment 1 — flight-search](docs/lab/09-deliver-inc1-flight-search.md) | 2 · Deliver | `lab/09-deliver-inc1-flight-search` |
+| 10 | [Increment 2 — hotel-booking](docs/lab/10-deliver-inc2-hotel-booking.md) | 2 · Deliver | `lab/10-deliver-inc2-hotel-booking` |
+| 11 | [Increment 3 — itinerary](docs/lab/11-deliver-inc3-itinerary.md) | 2 · Deliver | `lab/11-deliver-inc3-itinerary` |
+| 12 | [Increment 4 — travel-request](docs/lab/12-deliver-inc4-travel-request.md) | 2 · Deliver | `lab/12-deliver-inc4-travel-request` |
+| 13 | [Increment 5 — expenses](docs/lab/13-deliver-inc5-expenses.md) | 2 · Deliver | `lab/13-deliver-inc5-expenses` |
+| 14 | [Cutover](docs/lab/14-cutover.md) | 2 · Deliver | `lab/14-cutover` |
+
+---
+
 ## 🤖 THE RALPH LOOP
 
 <sub>*Ralph is the spec2cloud orchestrator. It runs the 11-step loop below, over and over, until the work is done.*</sub>
@@ -367,12 +393,38 @@ This is a *brownfield* lab. Some things are broken **on purpose** because fixing
 
 ---
 
-## 🌿 BRANCH STRATEGY - To be updated
+## 🌿 BRANCH STRATEGY
+
+`main` carries the story — the legacy app plus [`docs/lab/`](docs/lab/README.md). The
+**artifacts** live on `lab/*` branches, one per step, each branched from its predecessor.
+
+So `lab/07-plan` contains everything from steps 00–07, and checking out any branch gives you a
+working snapshot of the journey at that moment. Each step doc carries the exact `git` command to
+create its branch.
 
 | Branch | Contents |
 |--------|----------|
-| `main` | 🏛️ The **legacy AngularJS app**. |
-| `lab/00-spec2cloud-init` | 🧰 `main` + spec2cloud installed (`.github/skills/`, `AGENTS.md`, `.spec2cloud/`, `specs/`, `.vscode/mcp.json`) |
+| `main` | 🏛️ The legacy AngularJS app + the full walkthrough |
+| `lab/00-spec2cloud-init` | 🧰 spec2cloud installed — `AGENTS.md`, 46 skills, `.mcp.json`, `specs/` |
+| `lab/01-b1-extract` | 📋 Extraction: stack, dependencies, architecture, API contracts, coverage |
+| `lab/02-b2-spec-enable` | 📖 PRD + FRDs, refined |
+| `lab/03-testability-gate` | 🚦 Testability ADR + track decision |
+| `lab/04-green-baseline` | ✅ `@existing-behavior` Gherkin + tests, green against the legacy app |
+| `lab/05-path-selection` | 🔀 Path ADR (Modernize) |
+| `lab/06-assess` | 🔍 Module scoring, findings, migration order |
+| `lab/07-plan` | 🗺️ Increment plan + target stack + ADRs |
+| `lab/08-deliver-inc0-shell` | ⚛️ React shell alongside AngularJS — no feature migrated |
+| `lab/09-deliver-inc1-flight-search` | ✈️ First module in React |
+| `lab/10-deliver-inc2-hotel-booking` | 🏨 Second module |
+| `lab/11-deliver-inc3-itinerary` | 🗓️ Third module |
+| `lab/12-deliver-inc4-travel-request` | 📝 Fourth module |
+| `lab/13-deliver-inc5-expenses` | 💳 Fifth module |
+| `lab/14-cutover` | 🔥 AngularJS, Bower and Grunt deleted |
+
+> **Worth internalising:** because the chain is cumulative, an error in step 01's extraction
+> travels all the way to step 14. That is not a flaw in the tooling — it is *why* the Extraction
+> Review gate exists, and why you should read the output rather than clicking approve.
+
 
 <details>
 <summary><b>What <code>spec2cloud init</code> adds to your working tree</b></summary>
@@ -410,21 +462,37 @@ Analyze this codebase and start the spec2cloud brownfield workflow.
 This is an AngularJS 1.6 app. Target is React 19 + TypeScript.
 ```
 
-### 🗣️ Prompting that actually works - to be refactored
+➡️ **From here, follow [`docs/lab/`](docs/lab/README.md) step by step** — starting with
+[step 00](docs/lab/00-spec2cloud-init.md). Every step has its prompt, its branch, its gate
+checklist, and what actually happened.
+
+### 🗣️ Prompting that actually works
+
+The canonical prompts live in the step docs. These are the patterns behind them:
 
 | ❌ Weak | ✅ Strong |
 |---------|----------|
-| "Convert this to React" | "Run `codebase-scanner` and `dependency-inventory` on `app/`. Output the technology inventory only. Do not propose changes." |
-| "Write tests" | "For FRD `flight-search`, generate Gherkin tagged `@existing-behavior` that describes what `flight-search.controller.js` does **today**, including the bugs." |
-| "Make it modern" | "Using `specs/frds/flight-search.md` and the green baseline in `tests/`, implement the React 19 component. Reuse the existing Gherkin as the acceptance criteria. Do not change behaviour." |
-| "Fix the failing tests" | "The Karma suite asserts `popularRoutes` which the controller never populates. Per the Track A rule, correct the **test** to match current behaviour and record the discrepancy in the FRD." |
+| "Convert this to React" | "Run Phase B1 extraction. `bower_components/` is committed — record the fact, don't inventory it. Where the code and a comment disagree, the code wins." |
+| "Write tests" | "Capture flight-search's existing behaviour as Gherkin. Bugs included — if the behaviour is odd, the scenario is odd." |
+| "Make it modern" | "Migrate flight-search. `specs/features/flight-search.feature` is the spec; every scenario must pass. No jQuery, no Moment, no `any`." |
+| "Fix the failing tests" | "The Karma suite asserts `popularRoutes`, which the controller never populates. Per the Track A rule, fix the **test** and record the discrepancy in the FRD." |
 
 **Rules of thumb**
 
-1. **One skill per prompt.** The orchestrator handles sequencing, soyou do not need to.
-2. **Point at files to be more specific** `app/components/flight-search/` beats "the flight thing".
-3. **Say what *not* to do.** "Do not refactor", "do not change behaviour", "do not add dependencies".
+1. **Say what you want, not how the framework works.** `AGENTS.md` already knows which skills a
+   phase runs and in what order. Listing them makes the prompt fragile and teaches you to drive
+   spec2cloud like a CLI.
+2. **Carry only what the agent can't know.** Local facts with consequences, scoping decisions only
+   a human holds, and what is authorised to change.
+3. **State things so they can be falsified.** "Verify whether `ui.bootstrap` is used and say either
+   way" beats "drop the unused dependency" — one of them can prove you wrong.
 4. **Make it prove it.** "Run `npm test` and paste the output" beats "make sure it works".
+5. **Let the artifacts do the talking.** By increment 1 the prompt doesn't list behaviours to
+   preserve — it points at the feature file. If that isn't enough, your baseline has a hole, and
+   that is worth finding out.
+
+> If a line in your prompt would be equally true of any AngularJS app, delete it. What's left is
+> the prompt. More on this in [the walkthrough index](docs/lab/README.md#-a-note-on-the-prompts).
 
 ---
 
@@ -441,15 +509,19 @@ This is an AngularJS 1.6 app. Target is React 19 + TypeScript.
 
 ### Suggested 3-hour team plan
 
-| Time | Phase | Target |
-|------|-------|--------|
-| 0:00–0:30 | B1 Extract | Full extraction + **Extraction Review gate** |
-| 0:30–1:00 | B2 Spec-Enable | PRD + FRD for **one** module + **gate** |
-| 1:00–1:20 | Testability Gate | Checklist + Track A + ADR |
-| 1:20–1:50 | Track A | Gherkin `@existing-behavior` + green baseline |
-| 1:50–2:10 | Assess + Plan | Migration order, target stack ADR |
-| 2:10–2:50 | Deliver | First React 19 component, tests green |
-| 2:50–3:00 | PR | Open PR, capture learnings |
+| Time | Phase | Target | Step |
+|------|-------|--------|------|
+| 0:00–0:30 | B1 Extract | Full extraction + **Extraction Review gate** | [01](docs/lab/01-b1-extract.md) |
+| 0:30–1:00 | B2 Spec-Enable | PRD + FRD for **one** module + **gate** | [02](docs/lab/02-b2-spec-enable.md) |
+| 1:00–1:20 | Testability Gate | Checklist + Track A + ADR | [03](docs/lab/03-testability-gate.md) |
+| 1:20–1:50 | Track A | Gherkin `@existing-behavior` + green baseline | [04](docs/lab/04-green-baseline.md) |
+| 1:50–2:10 | Assess + Plan | Migration order, target stack ADR | [05](docs/lab/05-path-selection.md) · [06](docs/lab/06-assess.md) · [07](docs/lab/07-plan.md) |
+| 2:10–2:50 | Deliver | First React 19 component, tests green | [08](docs/lab/08-deliver-inc0-shell.md) · [09](docs/lab/09-deliver-inc1-flight-search.md) |
+| 2:50–3:00 | PR | Open PR, capture learnings | — |
+
+<sub>Steps [10–13](docs/lab/README.md) (the remaining four modules) and
+[14 Cutover](docs/lab/14-cutover.md) are beyond a 3-hour block — they are documented so a team can
+carry on afterwards.</sub>
 
 ---
 
