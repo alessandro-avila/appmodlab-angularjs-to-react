@@ -19,33 +19,7 @@
       "dataModelExtractor": "specs/docs/architecture/data-models.md",
       "testDiscovery": "specs/docs/testing/coverage.md"
     },
-    "extractionStatus": "complete-artifacts-repaired",
-    "damagedArtifacts": [],
-    "repairedArtifacts": [
-      {
-        "path": "specs/docs/architecture/components.md",
-        "cause": "agent bug — blind character replace, all lowercase t became h",
-        "repairedOn": "2026-08-03",
-        "method": "vocabulary-driven reconstruction — candidate enumeration over each ambiguous run, scored against a corpus built from the uncorrupted sibling extraction artifacts plus app/, api-mock/ and test/ source",
-        "runsRepaired": 387,
-        "unresolved": 0,
-        "verification": "7/7 directive and filter identifiers plus their line numbers match source exactly; no digraph residue; every unmatched word is ordinary prose or a Mermaid node id"
-      },
-      {
-        "path": "specs/docs/architecture/overview.md",
-        "cause": "agent bug — blind character replace, all uppercase U became R",
-        "repairedOn": "2026-08-03",
-        "method": "same vocabulary-driven reconstruction, plus three context-specific fixes for a Mermaid participant-id collision the token pass could not resolve safely",
-        "runsRepaired": 19,
-        "unresolved": 0,
-        "verification": "zero case-sensitive corruption residue; all three Mermaid sequence diagrams internally consistent; 7 of 8 sampled source line references exact"
-      }
-    ],
-    "extractionAccuracyNotes": [
-      "overview.md cites app/app.js:19 and api-mock/server.js:29 for statements that sit a few lines further into the enclosing block — imprecise, not wrong",
-      "state.json entity counts (9 persisted) disagree with data-models.md (11 persisted headings); reconcile before approving the Extraction Review gate"
-    ],
-    "backupLocation": "session-state/00bb33c6-7839-45de-b774-428031e0bdfb/files/corrupted-backup/",
+    "extractionStatus": "complete",
     "sourceUntouched": true,
     "prdGenerated": false,
     "frdCount": 0,
@@ -66,10 +40,28 @@
     "filters": 4,
     "expressRoutes": 36,
     "bowerRuntimeDependencies": 9,
-    "openApiOperations": 36
+    "openApiOperations": 36,
+    "persistedEntities": 11,
+    "generatedEntities": 4
   },
   "humanGates": {
-    "brownfield-b1-extraction-approved": false
+    "brownfield-b1-extraction-approved": true
   },
-  "lastUpdated": "2026-08-03T17:05:00Z"
+  "gateReview": {
+    "gate": "brownfield-b1-extraction",
+    "reviewedOn": "2026-08-03",
+    "decision": "approved",
+    "checksPassed": "9 of 9",
+    "correctionsApplied": [
+      "data-models.md:37 said 'Four module-level JavaScript arrays' while its own evidence column and the following diagram both list five (users, airports, trips, travelRequests, expenseReports) — corrected to 'Five'"
+    ],
+    "evidence": [
+      "36 Express routes matched 1:1 against 36 OpenAPI operations by method and normalised path — set difference empty, not merely a count match",
+      "module count, UI-Router states, controllers, services, directives, filters and Bower runtime dependencies all re-counted from source",
+      "no recommendation or judgement language found in any artifact",
+      "every artifact carries a 'Not determinable from source' section stating why each gap cannot be resolved",
+      "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
+    ]
+  },
+  "lastUpdated": "2026-08-03T19:10:00Z"
 }

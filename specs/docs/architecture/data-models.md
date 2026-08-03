@@ -34,7 +34,7 @@
 | Are there migrations? | No | No `.sql`, `.prisma`, `.db`, `.sqlite` file exists under `app/`, `api-mock/` or `test/`; no migrations directory exists. |
 | Is there a schema definition? | No | No JSON Schema, no validation library, no type declarations. Entity shapes exist only as object literals. |
 | Is anything written to disk? | No | `api-mock/server.js` never requires `fs` and contains no `writeFile`/`readFile` call. |
-| Where does server state live? | Four module-level JavaScript arrays and one object literal | `users` `server.js:42`, `airports` `:50`, `trips` `:142`, `travelRequests` `:175`, `expenseReports` `:222`, `travelPolicy` `:257` |
+| Where does server state live? | Five module-level JavaScript arrays and one object literal | `users` `server.js:42`, `airports` `:50`, `trips` `:142`, `travelRequests` `:175`, `expenseReports` `:222`, `travelPolicy` `:257` |
 | How long does written data survive? | Until the Node process exits | Handlers call `Array.prototype.push`, `splice` and `Object.assign` on the module-level arrays. Nothing is serialised. |
 | Does the browser persist anything? | One string | `localStorage` key `authToken` — written at `app/services/auth.service.js:22`, removed at `:33`, read at `:43` and at `app/app.js:21`. No `sessionStorage`, no `document.cookie`, no IndexedDB anywhere in `app/`. |
 
