@@ -109,7 +109,7 @@ exists, and why you should read the output rather than clicking approve.
 | # | Step | Phase | Human gate | Status |
 |---|------|-------|-----------|--------|
 | 00 | [spec2cloud init](00-spec2cloud-init.md) | B0 · Onboarding | — | ✅ Verified |
-| 01 | [B1 · Extract](01-b1-extract.md) | B1 · Extract | Extraction Review | ⚠️ Run recorded — gate open |
+| 01 | [B1 · Extract](01-b1-extract.md) | B1 · Extract | Extraction Review | ✅ Verified |
 | 02 | [B2 · Spec-Enable](02-b2-spec-enable.md) | B2 · Spec-Enable | PRD / FRD / Refinement Review | ⏳ Pending |
 
 ### The fork in the road

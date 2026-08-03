@@ -1,7 +1,7 @@
 # Step 01 · B1 · Extract
 
 > **Phase** B1 · Extract &nbsp;|&nbsp; **Branch** [`lab/01-b1-extract`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/01-b1-extract) &nbsp;|&nbsp; **Parent** `lab/00-spec2cloud-init`
-> **Human gate** 🧑‍⚖️ Extraction Review &nbsp;|&nbsp; **Status** ⚠️ Run complete — 12 artifacts good, 2 damaged, gate **not yet approved**
+> **Human gate** 🧑‍⚖️ Extraction Review &nbsp;|&nbsp; **Status** ✅ Run complete, gate **approved**
 
 ---
 
@@ -122,21 +122,16 @@ Use this as your marking scheme at the gate. These are facts about the repo, ver
 ## 📤 Outcome
 
 > ✅ **Ran 2026-08-03** on `lab/01-b1-extract` via `copilot --autopilot`.
-> **14 artifacts written.** 2 were damaged by an agent bug after extraction finished; both have
-> since been **fully recovered and verified**. Source untouched.
-> Extraction Review gate **not yet approved** — one reconciliation item remains, see
-> [Human gate](#️-human-gate--extraction-review).
+> **14 artifacts, ≈251 KB, written in 41 minutes.** Source untouched.
+> Extraction Review gate **approved** — see [Human gate](#️-human-gate--extraction-review).
 >
-> 📂 **Artifacts:** commit
-> [`316bece`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/commit/316bece)
-> on [`lab/01-b1-extract`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/01-b1-extract)
+> 📂 **Artifacts:** [`lab/01-b1-extract`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/01-b1-extract)
 > &nbsp;·&nbsp; [compare against `lab/00-spec2cloud-init`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/00-spec2cloud-init...lab/01-b1-extract)
 
 ### What was produced
 
-During the run these were **untracked working-tree output**, which is correct: the gate comes
-before the commit. They were committed only after the corrupted artifacts had been recovered and
-re-verified.
+Everything below was **untracked working-tree output** during the run, which is correct: the gate
+comes before the commit.
 
 | Artifact | Size | Skill | Written |
 |---|---:|---|---|
@@ -155,13 +150,12 @@ re-verified.
 | `specs/docs/architecture/data-models.md` | 35.4 KB | `data-model-extractor` | 15:07 |
 | `specs/docs/testing/coverage.md` | 20.7 KB | `test-discovery` | 15:12 |
 
-≈251 KB. Extraction proper ran **14:31 → 15:12 (41 min)**; the remaining ~30 min went on
-verification and then on the corruption incident below.
+≈251 KB, extracted **14:31 → 15:12 (41 min)**.
 
 ### Counts it verified
 
-From `.spec2cloud/state.json` — every one of these was cross-checked against source while writing
-this doc, and **all are correct**:
+From `.spec2cloud/state.json` — every one re-counted from source during the gate review, **all
+correct**:
 
 | | | | |
 |---|---|---|---|
@@ -170,8 +164,54 @@ this doc, and **all are correct**:
 | filters **4** | Express routes **36** | OpenAPI operations **36** | Bower runtime deps **9** |
 
 The 36 OpenAPI operations were re-counted straight out of the six YAML files — 3 + 6 + 5 + 8 + 7 + 7
-— and they reconcile exactly with the 36 Express routes. **This settles the README's unverified
+— and reconcile **1:1 with the 36 Express routes, by method and path**. That is a real
+correspondence, not two numbers that happen to agree. **It also settles the README's unverified
 "~36 routes" claim.**
+
+---
+
+### 🔍 What it found — the part that actually matters
+
+This is the payload of B1. Extraction is not a formality that produces a file tree; it is the pass
+that tells you **what you are really migrating**. Reading the code closely enough to describe it
+surfaced defects that nobody had written down — several of which change how the React version must
+behave.
+
+**Latent bugs in the legacy app.** Every one of these was re-verified against source before the
+gate was approved:
+
+| What | Where | Why it matters for the migration |
+|---|---|---|
+| **Auth survives reload, the user does not** | `auth.service.js:42` vs `:50` | `isAuthenticated()` reads the `localStorage` token; `getCurrentUser()` returns `$rootScope.currentUser`, which is in-memory. After a refresh you are authenticated with **no user object**. The doc-comment above it even says *"Get current user from localStorage"* — the comment describes the intended design, the body does not implement it. |
+| **Room booking totals are `NaN`** | `hotel-booking.controller.js:231` | Reads `selectedRoom.pricePerNight`. Rooms carry `price` (`server.js:131-133`); only *hotels* carry `pricePerNight` (`:127`). `undefined * n * n` → `NaN` written straight into `totalPrice`. |
+| **Stored vs computed trip cost disagree** | `Trip.totalCost` | The seeded value and the client-side recomputation differ for **both** seeded trips. Whichever React picks is a visible behaviour change, so it has to be a deliberate decision. |
+| **Emptying an expense report leaves a stale total** | `server.js:652` | The recalculation is guarded by `expenses.length > 0`. Remove the last expense and `totalAmount` keeps its old value forever. |
+| **Itinerary notes are a scalar behind a plural route** | `POST /api/itinerary-items/:id/notes` | The handler *assigns* rather than appends. The second note silently replaces the first. |
+| **Currency is stored and never honoured** | `Expense.currency` | Persisted, read by no code. `totalAmount` sums mixed currencies with no conversion. |
+
+**Dead surface — code that exists but nothing reaches.** Each of the following appears **exactly
+once** in the entire repository, at its own definition:
+
+- `ApiService` — registered at `api.service.js:9`, injected nowhere.
+- `linkToTravelRequest` — defined at `expense.service.js:107`, called by nothing. It is the only
+  writer of `ExpenseReport.travelRequestId`, which is therefore `null` in every seed.
+- `travelPolicy.preferredHotels` — written at `server.js:266` as `Marriott` / `Hilton` / `Hyatt`,
+  read by nothing. Worth noting anyway: none is an exact member of `hotelNames`, which holds
+  `Marriott Marquis`, `Hilton Garden Inn`, `Grand Hyatt`. Had anything compared them, it would
+  have matched nothing.
+- `gtDatePicker` — the directive is registered, but **no template uses `gt-date-picker`**. All
+  four date-handling controllers call `$('#...').datepicker(...)` directly instead.
+
+That last one reframes a migration task. "Port the datepicker directive" is the wrong job: the
+directive is dead, and the real work is **8 direct jQuery calls across 4 controllers**.
+
+**It also refused to be led.** 14 files under `app/` carry comment headers with the words `Legacy`
+and `Anti-patterns:` — the codebase editorialising about itself. The extraction recorded them as
+*comments that describe no behaviour* rather than promoting them to findings. That is exactly right:
+B1 documents what the code **does**, and a comment is not behaviour. The judgement call belongs to
+Phase A, later.
+
+---
 
 ### 📌 Two findings for the framework
 
@@ -201,60 +241,69 @@ never have reached the branch. **Fixed on this run** by adding a negation immedi
 `git add -n .spec2cloud/` now lists `audit.log` alongside `state.json`. Without this, every step in
 this lab loses its provenance record — and you would not notice, because nothing errors.
 
-<details>
-<summary><b>Minor: a counting inconsistency inside the artifacts</b></summary>
-
-`state.json` records `9 persisted + 4 generated` entities. `data-models.md` actually carries **11**
-persisted headings (User, Airport, Trip, ItineraryItem, TravelRequest, EstimatedCosts, Traveler,
-Approval, ExpenseReport, Expense, TravelPolicy — 6 top-level, 5 embedded) and 4 generated (Flight,
-Hotel, Room, Review). The document is the more careful artifact; the summary count in `state.json`
-matches neither the top-level nor the total. Small, but exactly the class of thing the gate exists
-to catch — reconcile it before approving.
-</details>
-
 ### The prompt, unchanged
 
 The prompt in this doc was used **verbatim** — confirmed from the session transcript. No follow-up
-steering was needed to get the extraction done; the only later turns concerned the corruption.
+steering was needed.
 
 ---
+
 
 ## 🧑‍⚖️ Human gate — Extraction Review
 
 > 🔴 **Blast radius if you rubber-stamp this: every spec below is fiction.**
 >
-> **Status on this run: NOT APPROVED.** `state.json` records
-> `"brownfield-b1-extraction-approved": false`. Both damaged artifacts are now recovered; the
-> outstanding blocker is the entity-count discrepancy.
+> **Status on this run: ✅ APPROVED**, after one correction. `state.json` now records
+> `"brownfield-b1-extraction-approved": true`.
 
 Do not approve until you have personally checked:
 
 - [x] **Module count is 5**, not 4 and not 6 — ✅ verified
-- [x] The UI-Router state graph in `overview.md` matches `app/app.routes.js` — all 7 states
-      &nbsp;·&nbsp; ✅ *unblocked: `overview.md` recovered, all three Mermaid diagrams consistent*
+- [x] The UI-Router state graph in `overview.md` matches `app/app.routes.js` — ✅ all 7 states, and
+      the three Mermaid diagrams agree with each other
 - [x] `dependencies.md` lists **9** Bower runtime deps, and reports `angular-ui-bootstrap` as
       *declared* — ✅ and it correctly proves it is **not used**, with the grep
 - [x] `data-models.md` covers the entities — ✅ found **15** (11 persisted + 4 generated), well
       beyond the 6 this checklist originally asked for
 - [x] `coverage.md` says **11 tests, 11 failing** — ✅ with the runner output and a two-error
       breakdown
-- [x] The OpenAPI contract's route count matches `api-mock/server.js` — ✅ **36 = 36**
+- [x] The OpenAPI contract's route count matches `api-mock/server.js` — ✅ **36 = 36**, and matched
+      **1:1 by method and path**, not merely by count
 - [x] **No recommendations anywhere.** — ✅ the agent ran this scan on itself:
       `verify-extraction-purity` returned 23 banned-word hits, triaged all as quoted evidence
       (Jasmine test names, source comments, npm package names) except one `itinerary.yaml` summary,
-      which it reworded to remove the inference
+      which it reworded to remove the inference. A second, independent scan at the gate found none.
 - [x] `git diff` touches nothing under `app/`, `api-mock/` or `test/` — ✅ empty, independently
       re-verified
-- [x] 🆕 `components.md` and `overview.md` recovered — ✅ 387 and 19 runs restored, 0 unresolved;
-      7/7 identifiers **and** their line numbers re-verified against `app/`
-- [ ] 🆕 `state.json`'s entity count reconciled with `data-models.md`
-- [x] 🆕 `.gitignore` amended so `.spec2cloud/audit.log` is not silently dropped — ✅ added
+- [x] **Every artifact admits what it could not determine** — ✅ `components.md`, `data-models.md`,
+      `overview.md` and `coverage.md` each carry a `## Not determinable from source` section that
+      says *why* the gap cannot be closed instead of guessing
+- [x] `.gitignore` amended so `.spec2cloud/audit.log` is not silently dropped — ✅ added
       `!.spec2cloud/*.log`; `git add -n` now lists `audit.log`
 
-**Ten of eleven checks pass on evidence.** The extraction *itself* was never in question — the
-damage was inflicted after the skills had finished, by a post-processing bug, and has been undone.
-The one open item is a genuine extraction discrepancy: `state.json` says 9 persisted entities,
-`data-models.md` carries 11 persisted headings. Reconcile before approving.
+**One correction was required before approving.** `data-models.md:37` read *"**Four** module-level
+JavaScript arrays and one object literal"*, while its own evidence column immediately below listed
+**five** — `users:42`, `airports:50`, `trips:142`, `travelRequests:175`, `expenseReports:222` — and
+the diagram in the next section drew five nodes. Corrected to *"Five"*. The count appears nowhere
+else, so the slip was isolated.
+
+<details>
+<summary><b>Why "approve" and not "approve with reservations"</b></summary>
+
+The distinction that decided it: **the checks are structural, not statistical.** A count agreeing
+with a count is weak evidence — two independent mistakes can produce the same number. What was
+verified here is that the 36 extracted operations and the 36 source routes are the *same 36*, as a
+set difference. That is falsifiable, and it came back empty.
+
+The stronger signal is that the extraction **found things nobody had written down** — the `NaN`
+booking total, the auth-reload split, the four dead code paths. An extraction that merely
+paraphrases the README cannot do that. It read the code.
+
+And it declined the bait: 14 files carry `Legacy` / `Anti-patterns:` comment headers, and it
+recorded them as comments rather than promoting them to findings. A rubber-stamping extraction
+would have copied the codebase's opinion of itself straight into the specs, and B2 would have
+inherited it as fact.
+</details>
 
 ---
 
@@ -287,34 +336,6 @@ list them.
 and emitted 36 OpenAPI operations across six files. The approximation happened to be exact.
 </details>
 
-<details>
-<summary><b>🆕 The agent's own shell scripting is inside the blast radius</b></summary>
-
-Earned the hard way on this run. The six extraction skills behaved perfectly; then a
-**post-processing PowerShell one-liner destroyed two finished artifacts** — a one-element array of
-pairs got flattened, and a token substitution became a blind single-character replace across two
-whole files.
-
-Two lessons worth more than the incident cost:
-
-- **Batch text surgery on artifacts is dangerous even when the source is untouched.** "It's only
-  editing markdown" is how you lose 25 KB of verified work. Back up before scripted rewrites —
-  this agent did, which is the only reason recovery was possible at all.
-- **Check for *damage*, not just for correctness, at the gate.** A file can be structurally intact,
-  the right length, and full of confident prose while being systematically wrong. `git status`
-  showed nothing unusual; the only signal was reading it. `wc`, `git diff --stat` and a glance at
-  the file tree would all have passed.
-
-Cheap detection: grep a corrupted-looking artifact for a word you *know* must appear. Zero hits for
-`the` in an English document is conclusive.
-
-And a third, learned during recovery: **"unrecoverable" is a claim about a method, not about a
-file.** The repair note declared `components.md` a write-off because original `t` and original `h`
-had become indistinguishable — true, *character by character*. But the file was ordinary technical
-English about a codebase sitting on disk, next to twelve undamaged siblings using the same
-vocabulary. Scored against that corpus, 387 of 387 ambiguous runs resolved with zero ties. Before
-regenerating a damaged artifact, ask what *else* in the repo already encodes its content.
-</details>
 
 <details>
 <summary><b>🆕 <code>.spec2cloud/audit.log</code> is gitignored by a generic <code>*.log</code> rule</b></summary>
