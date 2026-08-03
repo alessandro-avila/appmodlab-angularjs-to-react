@@ -257,8 +257,15 @@ git clone https://github.com/alessandro-avila/appmodlab-angularjs-to-react.git
 cd appmodlab-angularjs-to-react
 code .
 # then: Ctrl/Cmd+Shift+P → "Dev Containers: Reopen in Container"
+
+# ⚠️ everything below runs in the CONTAINER terminal, not your host shell.
+# Wait for post-create.sh to print "Dev container is ready." — it runs `npm ci` for you.
 npm start
 ```
+
+> 🔁 **Pulled new commits into an existing clone?** Run `npm ci` again before `npm start`.
+> npm does not re-install on `git pull`, so a stale `node_modules/` gives you
+> `'concurrently' is not recognized`.
 
 ### Option C: Bare metal (no container)
 
@@ -540,6 +547,28 @@ appmodlab-angularjs-to-react/
 ---
 
 ## 🛠️ TROUBLESHOOTING
+
+<details>
+<summary><b><code>'concurrently' is not recognized</code> / <code>command not found</code> when running <code>npm start</code></b></summary>
+
+Your `node_modules/` is **stale** — it was installed before `concurrently` was added to
+`package.json`. npm does not re-install automatically when you pull.
+
+```bash
+npm ci        # preferred: exact versions from package-lock.json
+# or, if npm ci complains:
+npm install
+```
+
+You will hit this if you cloned the repo *before* the lab commit landed, or if you are
+running `npm start` **on your host machine** rather than inside the dev container.
+Inside the container `post-create.sh` runs `npm ci` for you, so it cannot happen there.
+
+Sanity check:
+```bash
+npx concurrently --version   # should print 9.x
+```
+</details>
 
 <details>
 <summary><b>The app loads but every page is blank</b></summary>
