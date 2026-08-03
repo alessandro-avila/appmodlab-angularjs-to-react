@@ -1,0 +1,83 @@
+{
+  "name": "AppMod Lab · AngularJS → React (spec2cloud)",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/copilot-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "os-provided"
+    },
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/azure/azure-dev/azd:0": {}
+  },
+
+  "containerEnv": {
+    "CHROME_BIN": "/usr/bin/chromium",
+    "PLAYWRIGHT_BROWSERS_PATH": "/home/node/.cache/ms-playwright",
+    "NODE_OPTIONS": "--max-old-space-size=4096"
+  },
+
+  "forwardPorts": [3000, 8080, 35729, 5173, 4173],
+
+  "portsAttributes": {
+    "3000": { "label": "Mock API (Express)", "onAutoForward": "silent" },
+    "8080": { "label": "Legacy AngularJS app", "onAutoForward": "notify" },
+    "35729": { "label": "LiveReload", "onAutoForward": "silent" },
+    "5173": { "label": "React dev server (Vite)", "onAutoForward": "notify" },
+    "4173": { "label": "React preview (Vite)", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": "bash .devcontainer/welcome.sh",
+
+  // Docker defaults /dev/shm to 64MB, which makes Chromium crash mid-run under
+  // both Karma and Playwright. The Karma launcher also passes
+  // --disable-dev-shm-usage as a belt-and-braces fallback for hosts that ignore
+  // this (some Codespaces configurations do).
+  "runArgs": ["--shm-size=1g"],
+
+  "mounts": [
+    "source=appmodlab-node-modules-${devcontainerId},target=${containerWorkspaceFolder}/node_modules,type=volume"
+  ],
+
+  "remoteUser": "node",
+
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "GitHub.vscode-pull-request-github",
+        "ms-playwright.playwright",
+        "vitest.explorer",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "EditorConfig.EditorConfig",
+        "yzhang.markdown-all-in-one",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.eol": "\n",
+        "editor.formatOnSave": false,
+        "javascript.updateImportsOnFileMove.enabled": "always",
+        "chat.agent.enabled": true,
+        "github.copilot.chat.codesearch.enabled": true
+      }
+    },
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  }
+}

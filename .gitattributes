@@ -1,0 +1,17 @@
+# Shell scripts must always use LF, otherwise bash inside the dev container fails
+# with "set: pipefail: invalid option name" when the repo is cloned on Windows.
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Dev container config is consumed by Linux tooling
+.devcontainer/** text eol=lf
+
+# Keep binaries untouched
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
