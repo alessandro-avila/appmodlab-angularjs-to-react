@@ -1,0 +1,350 @@
+openapi: 3.0.3
+
+# Extracted on 2026-08-03 by `api-extractor` from api-mock/server.js.
+# Pure extraction: every field, status code and error string below was read from the handler body.
+
+info:
+  title: globaltravel-portal — Hotel Booking
+  version: "0.0.0"          # unknown — no version field exists in api-mock/server.js
+  description: |
+    Feature area: hotel search, hotel detail, room availability, reviews and hotel booking.
+    Source: api-mock/server.js lines 378-457. 5 of 36 route handlers.
+
+    No hotel, room, review or booking is persisted. Every response is generated per call by
+    `generateHotels()` (api-mock/server.js:110) or by an inline literal using randomItem/randomInt.
+
+servers:
+  - url: http://localhost:3000/api
+
+x-source:
+  file: api-mock/server.js
+  generator:
+    name: generateHotels
+    definedAt: "api-mock/server.js:110-138"
+    signature: "generateHotels(city, checkIn, checkOut)"
+    behaviour: |
+      Loops `randomInt(6, 15)` times building hotel objects from the `hotelNames` (:63) and
+      `amenities` (:64) literal arrays. `name` is `randomItem(hotelNames) + ' ' + (city ||
+      randomItem(cities))`. `amenities` is a shuffled slice of 3-7 entries. `checkIn` and
+      `checkOut` are accepted as parameters but are not read anywhere in the function body, so
+      they never reach the response. Results are sorted by rating DESCENDING (:137).
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    Hotel:
+      type: object
+      description: Shape emitted by generateHotels (api-mock/server.js:110-138).
+      properties:
+        id:            { type: string }
+        name:          { type: string, description: "randomItem(hotelNames) + ' ' + city" }
+        city:          { type: string, description: "request city, or randomItem(cities) when absent" }
+        rating:        { type: integer, description: "randomInt(2, 5)" }
+        reviewCount:   { type: integer, description: "randomInt(50, 500)" }
+        pricePerNight: { type: number,  description: "randomInt(80, 450)" }
+        amenities:     { type: array, items: { type: string }, description: "shuffled slice of 3-7 of the 10 fixed amenity names (api-mock/server.js:64)" }
+        featured:      { type: boolean, description: "Math.random() < 0.2" }
+        rooms:
+          type: array
+          description: "always 3 entries — Standard (80-200), Deluxe (200-350), Suite (350-600)"
+          items: { $ref: '#/components/schemas/HotelRoomSummary' }
+
+    HotelDetail:
+      type: object
+      description: |
+        Inline literal built by GET /api/hotels/{id} (api-mock/server.js:384-400). Differs from
+        the search shape: it adds `description`, and its `rooms` entries use the 3 short types.
+      properties:
+        id:            { type: string, description: "echo of req.params.id" }
+        name:          { type: string, description: "randomItem(hotelNames) + ' Downtown'" }
+        city:          { type: string, description: "randomItem(cities) — ignores any prior search" }
+        rating:        { type: integer, description: "randomInt(3, 5)" }
+        reviewCount:   { type: integer, description: "randomInt(100, 500)" }
+        pricePerNight: { type: number,  description: "randomInt(100, 400)" }
+        amenities:     { type: array, items: { type: string }, description: "amenities.slice(0, 5) — always the same first 5" }
+        featured:      { type: boolean, example: false, description: "fixed literal" }
+        description:   { type: string, description: "fixed literal string" }
+        rooms:
+          type: array
+          items: { $ref: '#/components/schemas/HotelRoomSummary' }
+
+    HotelRoomSummary:
+      type: object
+      description: Nested in Hotel and HotelDetail. Types are 'Standard', 'Deluxe', 'Suite'.
+      properties:
+        type:      { type: string }
+        price:     { type: number }
+        available: { type: integer }
+
+    HotelRoom:
+      type: object
+      description: |
+        Returned only by GET /api/hotels/{id}/rooms (api-mock/server.js:404-410). Richer than
+        HotelRoomSummary — adds `beds` and `maxGuests` — and uses 5 longer type names.
+        The array has NO `id` field on any entry.
+      properties:
+        type:      { type: string, x-observed-values: ["Standard King", "Standard Double", "Deluxe King", "Executive Suite", "Presidential Suite"] }
+        price:     { type: number }
+        available: { type: integer }
+        beds:      { type: string, x-observed-values: ["1 King", "2 Double", "1 King + Living Area"] }
+        maxGuests: { type: integer }
+
+    Review:
+      type: object
+      properties:
+        id:     { type: string }
+        author: { type: string, x-source-values: "api-mock/server.js:417 — 6 fixed names" }
+        rating: { type: integer, description: "randomInt(3, 5)" }
+        text:   { type: string, x-source-values: "api-mock/server.js:418-424 — 5 fixed strings" }
+        date:   { type: string, description: "'2024-0' + randomInt(1,3) + '-' + zero-padded randomInt(1,28)" }
+
+    ReviewPage:
+      type: object
+      description: |
+        Envelope returned by GET /api/hotels/{id}/reviews (api-mock/server.js:437-442).
+        This is an OBJECT, not an array — see x-discrepancies/reviews-envelope-vs-array.
+      properties:
+        reviews:    { type: array, items: { $ref: '#/components/schemas/Review' } }
+        totalCount: { type: integer, example: 47, description: "fixed literal, unrelated to the array length" }
+        page:       { type: integer }
+        perPage:    { type: integer }
+
+    HotelBookingConfirmation:
+      type: object
+      description: Built inline at api-mock/server.js:446-453. Nothing is persisted.
+      properties:
+        confirmationNumber: { type: string, description: "'HT' + generateId().toUpperCase()" }
+        hotelId:            { type: string, description: "echo of req.body.hotelId" }
+        roomType:           { type: string, description: "echo of req.body.roomType — see x-discrepancies/room-key-mismatch" }
+        checkIn:            { type: string, description: "echo of req.body.checkIn" }
+        checkOut:           { type: string, description: "echo of req.body.checkOut" }
+        status:             { type: string, enum: [confirmed], description: "fixed literal" }
+        bookedAt:           { type: string, format: date-time }
+
+    Error:
+      type: object
+      properties: { error: { type: string } }
+
+  responses:
+    Unauthorized:
+      description: Produced by authMiddleware (api-mock/server.js:26 and :33).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missingHeader: { value: { error: "Unauthorized" } }
+            badToken:      { value: { error: "Invalid token" } }
+
+paths:
+  /hotels:
+    get:
+      operationId: searchHotels
+      summary: Generate hotels for a city.
+      x-express-declaration: "app.get('/api/hotels', authMiddleware, function(req, res) {...})"
+      x-source-line: 378
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-client-callers:
+        - "app/components/hotel-booking/hotel-booking.service.js:19 — HotelBookingService.searchHotels, called from hotel-booking.controller.js:121"
+      parameters:
+        - { name: city,     in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:379" }
+        - { name: checkIn,  in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:379, not echoed into the response" }
+        - { name: checkOut, in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:379, not echoed into the response" }
+      responses:
+        '200':
+          description: Always. Array length varies per call.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Hotel' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /hotels/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/hotels/:id"
+    get:
+      operationId: getHotelDetails
+      summary: Return a freshly randomised hotel object carrying the requested id.
+      x-express-declaration: "app.get('/api/hotels/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 383
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        No lookup occurs and there is no 404 branch — any id returns 200 with a new object.
+        `city` is randomItem(cities), so it will usually not match the city the user searched.
+      x-client-callers:
+        - "app/components/hotel-booking/hotel-booking.service.js:57 — HotelBookingService.getHotelDetails (no caller in app/)"
+      responses:
+        '200':
+          description: Always, for any id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /hotels/{id}/rooms:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/hotels/:id/rooms"
+    get:
+      operationId: getHotelRooms
+      summary: Return 5 room types with randomised prices and availability.
+      x-express-declaration: "app.get('/api/hotels/:id/rooms', authMiddleware, function(req, res) {...})"
+      x-source-line: 403
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        The handler reads neither req.params.id nor any query parameter. The same 5 room types
+        are returned for every hotel, with prices and availability re-randomised per call.
+      x-client-callers:
+        - "app/components/hotel-booking/hotel-booking.service.js:37 — HotelBookingService.getHotelRooms, called from hotel-booking.controller.js:196"
+      parameters:
+        - name: checkIn
+          in: query
+          required: false
+          schema: { type: string }
+          description: Sent by the client (hotel-booking.controller.js:196-199). Not read by the handler.
+        - name: checkOut
+          in: query
+          required: false
+          schema: { type: string }
+          description: Sent by the client. Not read by the handler.
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/HotelRoom' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /hotels/{id}/reviews:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/hotels/:id/reviews"
+    get:
+      operationId: getHotelReviews
+      summary: Generate a page of reviews.
+      x-express-declaration: "app.get('/api/hotels/:id/reviews', authMiddleware, function(req, res) {...})"
+      x-source-line: 414
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Generates exactly `perPage` reviews in a loop (api-mock/server.js:427-435) regardless of
+        the requested page, drawing author and text from fixed literal arrays. `req.params.id` is
+        not read. `totalCount` is the fixed literal 47.
+      x-client-callers:
+        - "app/components/hotel-booking/hotel-booking.service.js:67 — HotelBookingService.getReviews (no caller in app/)"
+      parameters:
+        - { name: page,    in: query, required: false, schema: { type: integer, default: 1 },  description: "parseInt(req.query.page) || 1 — api-mock/server.js:415" }
+        - { name: perPage, in: query, required: false, schema: { type: integer, default: 10 }, description: "parseInt(req.query.perPage) || 10 — api-mock/server.js:416" }
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /bookings/hotels:
+    post:
+      operationId: bookHotelRoom
+      summary: Return a hotel booking confirmation.
+      x-express-declaration: "app.post('/api/bookings/hotels', authMiddleware, function(req, res) {...})"
+      x-source-line: 445
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Echoes four body keys into the response and adds a generated confirmation number.
+        Nothing is appended to `trips` or any other array — the booking is not persisted.
+      x-client-callers:
+        - "app/components/hotel-booking/hotel-booking.service.js:48 — HotelBookingService.bookRoom, called from hotel-booking.controller.js:234"
+      requestBody:
+        required: true
+        description: |
+          Keys the handler reads: hotelId, roomType, checkIn, checkOut (api-mock/server.js:448-451).
+          Keys the client sends: hotelId, roomId, checkIn, checkOut, guests, rooms, totalPrice
+          (hotel-booking.controller.js:224-231). `roomType` is never sent; `roomId`, `guests`,
+          `rooms` and `totalPrice` are never read.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hotelId:    { type: string }
+                roomType:   { type: string, description: "read by the handler; not sent by the client" }
+                roomId:     { type: string, description: "sent by the client; not read by the handler" }
+                checkIn:    { type: string, description: "YYYY-MM-DD, formatted client-side with Moment.js" }
+                checkOut:   { type: string, description: "YYYY-MM-DD, formatted client-side with Moment.js" }
+                guests:     { type: integer, description: "sent by the client; not read by the handler" }
+                rooms:      { type: integer, description: "sent by the client; not read by the handler" }
+                totalPrice: { type: number,  description: "sent by the client; not read by the handler" }
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelBookingConfirmation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+x-discrepancies:
+  - id: room-key-mismatch
+    severity: contract-break
+    summary: |
+      The client sends `roomId` (app/components/hotel-booking/hotel-booking.controller.js:226);
+      the handler echoes `req.body.roomType` (api-mock/server.js:449). The confirmation therefore
+      always carries `roomType: undefined`, which JSON-serialises to an absent key.
+      Compounding this: GET /api/hotels/{id}/rooms returns room objects that carry no `id` field
+      at all (api-mock/server.js:404-410), so the client's `selectedRoom.id` is also undefined.
+  - id: confirmation-key-mismatch
+    severity: contract-break
+    summary: |
+      The handler returns `confirmationNumber` (api-mock/server.js:447). The controller reads
+      `confirmation.confirmationCode` (hotel-booking.controller.js:237), producing
+      "Confirmation: undefined" in the success notification.
+  - id: reviews-envelope-vs-array
+    severity: contract-break
+    summary: |
+      GET /api/hotels/{id}/reviews responds with the object { reviews, totalCount, page, perPage }
+      (api-mock/server.js:437-442). The client requests it with Restangular's `getList`
+      (hotel-booking.service.js:67), which expects a JSON array. Restangular raises an error for a
+      non-array response to getList. HotelBookingService.getReviews has no caller, so this is
+      never exercised at runtime.
+  - id: room-price-field-mismatch
+    severity: contract-break
+    summary: |
+      The client computes `totalPrice` as
+      `$scope.selectedRoom.pricePerNight * $scope.nightCount * $scope.searchParams.rooms`
+      (app/components/hotel-booking/hotel-booking.controller.js:231). The room objects returned by
+      GET /api/hotels/{id}/rooms carry `price`, not `pricePerNight` (api-mock/server.js:405-409),
+      so the multiplication yields NaN. `totalPrice` is not read by the handler, so the value does
+      not affect the response.
+  - id: room-shape-divergence
+    severity: informational
+    summary: |
+      Three different room shapes exist. Hotel.rooms and HotelDetail.rooms carry
+      { type, price, available } with the type names Standard/Deluxe/Suite. The dedicated
+      /rooms endpoint returns { type, price, available, beds, maxGuests } with five longer type
+      names. No shape carries a room identifier.
+  - id: booking-not-persisted
+    severity: informational
+    summary: |
+      POST /api/bookings/hotels writes nothing. A subsequent GET /api/trips will not show the
+      booked hotel, although the controller broadcasts 'itinerary:refresh'
+      (hotel-booking.controller.js:238).
+  - id: checkin-checkout-ignored
+    severity: informational
+    summary: |
+      GET /api/hotels reads checkIn and checkOut (api-mock/server.js:379) and passes them to
+      generateHotels, but generateHotels does not write them into the returned objects.
+      GET /api/hotels/{id}/rooms does not read them at all.

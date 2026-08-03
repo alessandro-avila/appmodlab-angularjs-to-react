@@ -1,0 +1,324 @@
+openapi: 3.0.3
+
+# Extracted on 2026-08-03 by `api-extractor` from api-mock/server.js.
+# Pure extraction: every field, status code and error string below was read from the handler body.
+
+info:
+  title: globaltravel-portal — Flight Search
+  version: "0.0.0"          # unknown — no version field exists in api-mock/server.js
+  description: |
+    Feature area: airport lookup, flight search, flight detail and flight booking.
+    Source: api-mock/server.js lines 311-372. 6 of 36 route handlers.
+
+    No flight is persisted anywhere. Every flight in every response is generated on the fly by
+    `generateFlights()` (api-mock/server.js:78) or by an inline object literal, using
+    `randomItem`/`randomInt`. Two identical requests return different data.
+
+servers:
+  - url: http://localhost:3000/api
+
+x-source:
+  file: api-mock/server.js
+  generator:
+    name: generateFlights
+    definedAt: "api-mock/server.js:78-108"
+    signature: "generateFlights(origin, destination, date, cabinClass)"
+    behaviour: |
+      Loops `randomInt(5, 12)` times building flight objects from the `airlines` literal array
+      (:47). `origin` and `destination` fall back to `randomItem(cities)` when falsy.
+      `departDate` is `date || new Date().toISOString()`. Price is
+      `randomInt(200,800) * multiplier`, where multiplier is 2.5 for cabinClass 'business',
+      4.0 for 'first' and 1.0 otherwise (:81). Results are sorted by price ascending (:107).
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    Airport:
+      type: object
+      description: One of 10 fixed records in the `airports` array (api-mock/server.js:50-61).
+      properties:
+        code: { type: string, example: "JFK" }
+        name: { type: string, example: "John F. Kennedy International" }
+        city: { type: string, example: "New York" }
+      required: [code, name, city]
+
+    Flight:
+      type: object
+      description: Shape emitted by generateFlights (api-mock/server.js:78-108).
+      properties:
+        id:              { type: string }
+        airline:         { type: string, x-source-values: "api-mock/server.js:47 — 6 fixed airline names" }
+        origin:          { type: string, description: "request origin, or randomItem(cities) when absent" }
+        destination:     { type: string, description: "request destination, or randomItem(cities) when absent" }
+        departDate:      { type: string, description: "request date, or new Date().toISOString() when absent" }
+        departureTime:   { type: string, example: "10:30", description: "HH:mm, hour randomInt(6,21), minute a multiple of 15" }
+        arrivalTime:     { type: string, example: "14:45", description: "departure + durationMinutes, wrapped at 1440" }
+        durationMinutes: { type: integer, description: "randomInt(120, 480)" }
+        stops:           { type: integer, x-observed-values: [0, 1, 2] }
+        price:           { type: number, description: "randomInt(200,800) x cabin multiplier, rounded to 2dp" }
+        cabinClass:      { type: string, description: "request cabinClass, or 'economy' when absent" }
+        booked:          { type: boolean, example: false, description: "fixed literal" }
+
+    FlightDetail:
+      type: object
+      description: |
+        Inline literal built by GET /api/flights/{id} (api-mock/server.js:349-361). NOTE: it has
+        no `departDate` key, unlike the objects returned by the search routes.
+      properties:
+        id:              { type: string, description: "echo of req.params.id" }
+        airline:         { type: string }
+        origin:          { type: string, description: "randomItem(cities) — ignores any prior search" }
+        destination:     { type: string, description: "randomItem(cities)" }
+        departureTime:   { type: string, example: "10:30", description: "fixed literal" }
+        arrivalTime:     { type: string, example: "14:45", description: "fixed literal" }
+        durationMinutes: { type: integer, example: 255, description: "fixed literal" }
+        stops:           { type: integer, example: 1, description: "fixed literal" }
+        price:           { type: number, description: "randomInt(200, 800)" }
+        cabinClass:      { type: string, example: "economy", description: "fixed literal" }
+        booked:          { type: boolean, example: false, description: "fixed literal" }
+
+    PopularRoute:
+      type: object
+      properties:
+        origin:      { type: string }
+        destination: { type: string }
+        avgPrice:    { type: number }
+
+    FlightBookingConfirmation:
+      type: object
+      description: |
+        Built inline at api-mock/server.js:366-371. The handler does not read req.body and does
+        not append to any array — the booking is not recorded server-side.
+      properties:
+        confirmationNumber: { type: string, description: "'GT' + generateId().toUpperCase()" }
+        flightId:           { type: string, description: "echo of req.params.id" }
+        status:             { type: string, enum: [confirmed], description: "fixed literal" }
+        bookedAt:           { type: string, format: date-time }
+
+    Error:
+      type: object
+      properties: { error: { type: string } }
+
+  responses:
+    Unauthorized:
+      description: Produced by authMiddleware (api-mock/server.js:26 and :33).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missingHeader: { value: { error: "Unauthorized" } }
+            badToken:      { value: { error: "Invalid token" } }
+
+paths:
+  /airports:
+    get:
+      operationId: listAirports
+      summary: Return the 10 seeded airports, optionally filtered by a substring.
+      x-express-declaration: "app.get('/api/airports', function(req, res) {...})"
+      x-source-line: 311
+      x-auth-required: false      # 1 of only 3 handlers declared without authMiddleware
+      security: []
+      x-client-callers:
+        - "app/components/flight-search/flight-search.service.js:65 — FlightSearchService.searchAirports (no caller in app/)"
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+          description: |
+            Lower-cased, then matched with indexOf against each airport's code, name and city
+            (api-mock/server.js:316-320). When absent or empty the full array is returned (:314).
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Airport' } }
+
+  /flights:
+    get:
+      operationId: searchFlights
+      summary: Generate flights matching the query parameters.
+      x-express-declaration: "app.get('/api/flights', authMiddleware, function(req, res) {...})"
+      x-source-line: 328
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-client-callers:
+        - "app/components/flight-search/flight-search.service.js:19 — FlightSearchService.search, called from flight-search.controller.js:112"
+      parameters:
+        - { name: origin,      in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:329" }
+        - { name: destination, in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:329" }
+        - { name: date,        in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:329 — see x-discrepancies/flight-date-param-name" }
+        - { name: cabinClass,  in: query, required: false, schema: { type: string }, description: "read at api-mock/server.js:329" }
+      x-unread-parameters:
+        note: |
+          The client sends departDate, returnDate, passengers and tripType in addition to origin,
+          destination and cabinClass (app/components/flight-search/flight-search.controller.js:106-110
+          → flight-search.service.js:19). The handler reads none of these four.
+      responses:
+        '200':
+          description: Always. Array length varies per call.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Flight' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      operationId: searchFlightsByBody
+      summary: Same generation as GET /api/flights, with the criteria taken from the body.
+      x-express-declaration: "app.post('/api/flights', authMiddleware, function(req, res) {...})"
+      x-source-line: 333
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-client-callers: []        # no code in app/ issues POST /api/flights
+      x-behaviour: |
+        Calls the same generateFlights helper as the GET form, but reads req.body.departDate
+        where the GET form reads req.query.date (api-mock/server.js:334 vs :329).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                origin:      { type: string }
+                destination: { type: string }
+                departDate:  { type: string }
+                cabinClass:  { type: string }
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Flight' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /flights/popular:
+    get:
+      operationId: getPopularRoutes
+      summary: Return 4 hardcoded route/price pairs.
+      x-express-declaration: "app.get('/api/flights/popular', authMiddleware, function(req, res) {...})"
+      x-source-line: 338
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-route-order: |
+        Declared at line 338, BEFORE `GET /api/flights/{id}` at line 348. Express matches in
+        declaration order, so this literal path is reached. (Contrast
+        `/expense-reports/statistics`, which is declared after its `{id}` sibling and is
+        therefore unreachable — see expense-reconciliation.yaml.)
+      x-client-callers:
+        - "app/components/flight-search/flight-search.service.js:47 — FlightSearchService.getPopularRoutes (no caller in app/)"
+      responses:
+        '200':
+          description: Always. The same 4 objects every call (api-mock/server.js:339-344).
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PopularRoute' } }
+              example:
+                - { origin: SFO, destination: JFK, avgPrice: 350 }
+                - { origin: LAX, destination: ORD, avgPrice: 280 }
+                - { origin: SEA, destination: BOS, avgPrice: 420 }
+                - { origin: DEN, destination: MIA, avgPrice: 310 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /flights/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/flights/:id"
+    get:
+      operationId: getFlightDetails
+      summary: Return a freshly randomised flight object carrying the requested id.
+      x-express-declaration: "app.get('/api/flights/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 348
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        No lookup occurs. The handler builds a new object literal, sets `id` from req.params.id
+        and fills the remaining fields with randomItem/randomInt or fixed literals
+        (api-mock/server.js:349-361). There is no 404 branch — any id returns 200.
+      x-client-callers:
+        - "app/components/flight-search/flight-search.service.js:56 — FlightSearchService.getFlightDetails (no caller in app/)"
+      responses:
+        '200':
+          description: Always, for any id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FlightDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /flights/{id}/book:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/flights/:id/book"
+    post:
+      operationId: bookFlight
+      summary: Return a booking confirmation.
+      x-express-declaration: "app.post('/api/flights/:id/book', authMiddleware, function(req, res) {...})"
+      x-source-line: 365
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        The handler does not read req.body, does not validate the flight id, and does not append
+        to `trips` or any other array. Nothing is persisted.
+      x-client-callers:
+        - "app/components/flight-search/flight-search.service.js:39 — FlightSearchService.bookFlight, called from flight-search.controller.js:216"
+      requestBody:
+        required: false
+        description: |
+          The client sends { passengers, cabinClass } (flight-search.controller.js:217-218).
+          The handler reads neither.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                passengers: { type: integer }
+                cabinClass: { type: string }
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FlightBookingConfirmation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+x-discrepancies:
+  - id: flight-date-param-name
+    severity: contract-break
+    summary: |
+      The client formats and sends `departDate` (app/components/flight-search/flight-search.controller.js:107);
+      the handler reads `req.query.date` (api-mock/server.js:329). `date` is therefore always
+      undefined server-side and the chosen departure date has no effect on the generated results.
+      `origin` and `destination` DO reach the generator, so those inputs do take effect.
+  - id: confirmation-key-mismatch
+    severity: contract-break
+    summary: |
+      The handler returns `confirmationNumber` (api-mock/server.js:367). The controller reads
+      `booking.confirmationCode` (app/components/flight-search/flight-search.controller.js:220),
+      producing the string "Confirmation: undefined" in the success notification.
+  - id: booking-not-persisted
+    severity: informational
+    summary: |
+      POST /api/flights/{id}/book returns a confirmation but writes nothing. A subsequent
+      GET /api/trips will not show the booked flight. The controller nevertheless broadcasts
+      'itinerary:refresh' (flight-search.controller.js:221).
+  - id: flight-detail-has-no-departDate
+    severity: informational
+    summary: |
+      GET /api/flights/{id} omits the `departDate` key that generateFlights includes
+      (api-mock/server.js:349-361 vs :78-108), so the two flight shapes are not interchangeable.
+  - id: uncalled-endpoints
+    severity: informational
+    summary: |
+      3 of the 6 handlers in this file have a client method defined but that method has no
+      caller: /airports (FlightSearchService.searchAirports), /flights/popular
+      (getPopularRoutes), /flights/{id} (getFlightDetails). POST /api/flights has no client
+      method at all.

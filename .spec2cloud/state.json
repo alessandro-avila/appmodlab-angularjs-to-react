@@ -1,0 +1,75 @@
+{
+  "mode": "brownfield",
+  "currentPhase": "B1-extract",
+  "project": {
+    "name": "globaltravel-portal",
+    "version": "1.6.0",
+    "repository": "appmodlab-angularjs-to-react"
+  },
+  "brownfield": {
+    "testability": null,
+    "track": null,
+    "testabilityChecklist": null,
+    "featureTracks": null,
+    "extraction": {
+      "codebaseScanner": "specs/docs/technology/stack.md",
+      "dependencyInventory": "specs/docs/technology/dependencies.md",
+      "architectureMapper": "specs/docs/architecture/overview.md",
+      "apiExtractor": "specs/contracts/api/",
+      "dataModelExtractor": "specs/docs/architecture/data-models.md",
+      "testDiscovery": "specs/docs/testing/coverage.md"
+    },
+    "extractionStatus": "complete-artifacts-repaired",
+    "damagedArtifacts": [],
+    "repairedArtifacts": [
+      {
+        "path": "specs/docs/architecture/components.md",
+        "cause": "agent bug — blind character replace, all lowercase t became h",
+        "repairedOn": "2026-08-03",
+        "method": "vocabulary-driven reconstruction — candidate enumeration over each ambiguous run, scored against a corpus built from the uncorrupted sibling extraction artifacts plus app/, api-mock/ and test/ source",
+        "runsRepaired": 387,
+        "unresolved": 0,
+        "verification": "7/7 directive and filter identifiers plus their line numbers match source exactly; no digraph residue; every unmatched word is ordinary prose or a Mermaid node id"
+      },
+      {
+        "path": "specs/docs/architecture/overview.md",
+        "cause": "agent bug — blind character replace, all uppercase U became R",
+        "repairedOn": "2026-08-03",
+        "method": "same vocabulary-driven reconstruction, plus three context-specific fixes for a Mermaid participant-id collision the token pass could not resolve safely",
+        "runsRepaired": 19,
+        "unresolved": 0,
+        "verification": "zero case-sensitive corruption residue; all three Mermaid sequence diagrams internally consistent; 7 of 8 sampled source line references exact"
+      }
+    ],
+    "extractionAccuracyNotes": [
+      "overview.md cites app/app.js:19 and api-mock/server.js:29 for statements that sit a few lines further into the enclosing block — imprecise, not wrong",
+      "state.json entity counts (9 persisted) disagree with data-models.md (11 persisted headings); reconcile before approving the Extraction Review gate"
+    ],
+    "backupLocation": "session-state/00bb33c6-7839-45de-b774-428031e0bdfb/files/corrupted-backup/",
+    "sourceUntouched": true,
+    "prdGenerated": false,
+    "frdCount": 0,
+    "selectedPaths": []
+  },
+  "testsStatus": {
+    "karma-jasmine": { "pass": 0, "fail": 11, "total": 11, "exitCode": 1 }
+  },
+  "verifiedCounts": {
+    "filesInScope": 30,
+    "linesInScope": 5966,
+    "angularModules": 1,
+    "featureVerticals": 5,
+    "uiRouterStates": 7,
+    "controllers": "5 named + 1 inline anonymous",
+    "services": 8,
+    "directives": 3,
+    "filters": 4,
+    "expressRoutes": 36,
+    "bowerRuntimeDependencies": 9,
+    "openApiOperations": 36
+  },
+  "humanGates": {
+    "brownfield-b1-extraction-approved": false
+  },
+  "lastUpdated": "2026-08-03T17:05:00Z"
+}

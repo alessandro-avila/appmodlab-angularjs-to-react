@@ -1,0 +1,378 @@
+openapi: 3.0.3
+
+# Extracted on 2026-08-03 by `api-extractor` from api-mock/server.js.
+# Pure extraction: every field, status code and error string below was read from the handler body.
+
+info:
+  title: globaltravel-portal — Travel Request
+  version: "0.0.0"          # unknown — no version field exists in api-mock/server.js
+  description: |
+    Feature area: travel authorisation requests, their approval chain, and the travel policy.
+    Source: api-mock/server.js lines 556-613. 7 of 36 route handlers.
+
+    Travel requests live in the module-level `travelRequests` array (api-mock/server.js:175-220),
+    seeded with 2 records. Handlers mutate that array in place; writes are lost on restart.
+    The travel policy is a single module-level object (`travelPolicy`, :257-267) returned verbatim.
+
+servers:
+  - url: http://localhost:3000/api
+
+x-source:
+  file: api-mock/server.js
+  store:
+    kind: in-process JavaScript array
+    declaredAt: "api-mock/server.js:175"
+    seedRecords: 2      # tr-1 status 'pending', tr-2 status 'approved'
+    persistence: none
+  approvalWorkflow: |
+    No handler advances an approval. `approvals` is written once, at creation
+    (api-mock/server.js:566-568), as a single hardcoded pending entry for approver
+    'Mike Chen' / role 'Manager'. Thereafter it changes only if a caller passes an `approvals`
+    key to PUT /api/travel-requests/{id}, which Object.assign copies verbatim. There is no
+    approve endpoint, no reject endpoint and no role check anywhere in the file.
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    TravelRequest:
+      type: object
+      properties:
+        id:             { type: string, example: "tr-1", description: "seeded ids are 'tr-1'/'tr-2'; created ids are 'tr-' + generateId()" }
+        userId:         { type: integer, description: "1 in both seeded records; on create, taken from req.user.id" }
+        destination:    { type: string, example: "London, UK" }
+        departDate:     { type: string, example: "2024-05-01" }
+        returnDate:     { type: string, example: "2024-05-05" }
+        purpose:        { type: string, example: "Client onboarding meetings" }
+        department:     { type: string, example: "Engineering" }
+        justification:  { type: string }
+        estimatedCosts: { $ref: '#/components/schemas/EstimatedCosts' }
+        totalEstimate:  { type: number, example: 2500, description: "computed client-side (travel-request.controller.js); no handler recalculates it" }
+        travelers:
+          type: array
+          items: { $ref: '#/components/schemas/Traveler' }
+        needsVisa:      { type: boolean }
+        needsInsurance: { type: boolean }
+        status:         { type: string, x-observed-values: [pending, approved, cancelled], description: "'pending' is the fixed literal assigned on create (api-mock/server.js:564); 'approved' appears in seed tr-2; 'cancelled' is written by the client via PUT (travel-request.service.js:65)" }
+        createdAt:      { type: string, format: date-time }
+        approvals:
+          type: array
+          items: { $ref: '#/components/schemas/Approval' }
+
+    EstimatedCosts:
+      type: object
+      description: |
+        Five fixed cost buckets. The same five keys appear in the statistics categoryBreakdown
+        (api-mock/server.js:679-685) and as the seeded expense `category` values.
+      properties:
+        flights:   { type: number }
+        hotels:    { type: number }
+        meals:     { type: number }
+        transport: { type: number }
+        other:     { type: number }
+
+    Traveler:
+      type: object
+      properties:
+        name:  { type: string }
+        email: { type: string }
+
+    Approval:
+      type: object
+      properties:
+        approver: { type: string, example: "Mike Chen" }
+        role:     { type: string, x-observed-values: [Manager, VP] }
+        status:   { type: string, x-observed-values: [pending, approved] }
+        date:
+          type: string
+          format: date-time
+          nullable: true
+          description: null while status is 'pending'
+
+    TravelPolicy:
+      type: object
+      description: |
+        The `travelPolicy` object literal (api-mock/server.js:257-267), returned verbatim.
+        A singleton — there is no collection, no id, and no write endpoint.
+      properties:
+        maxFlightCost:       { type: number,  example: 2000 }
+        maxHotelPerNight:    { type: number,  example: 300 }
+        maxMealPerDay:       { type: number,  example: 75 }
+        maxTripDuration:     { type: integer, example: 14 }
+        requiresApproval:
+          type: object
+          properties:
+            flights: { type: number, example: 500 }
+            hotels:  { type: number, example: 250 }
+            total:   { type: number, example: 1000 }
+        allowedCabinClasses: { type: array, items: { type: string }, example: [economy, business] }
+        advanceBookingDays:  { type: integer, example: 14 }
+        preferredAirlines:   { type: array, items: { type: string }, example: ["United Airlines", "Delta Air Lines"] }
+        preferredHotels:     { type: array, items: { type: string }, example: [Marriott, Hilton, Hyatt] }
+
+    DeleteResult:
+      type: object
+      properties: { message: { type: string } }
+
+    Error:
+      type: object
+      properties: { error: { type: string } }
+
+  responses:
+    Unauthorized:
+      description: Produced by authMiddleware (api-mock/server.js:26 and :33).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missingHeader: { value: { error: "Unauthorized" } }
+            badToken:      { value: { error: "Invalid token" } }
+    RequestNotFound:
+      description: No element of `travelRequests` has the requested id.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Travel request not found" }
+
+paths:
+  /travel-requests:
+    get:
+      operationId: listTravelRequests
+      summary: Return the entire `travelRequests` array.
+      x-express-declaration: "app.get('/api/travel-requests', authMiddleware, function(req, res) {...})"
+      x-source-line: 556
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Returns `travelRequests` unfiltered (api-mock/server.js:557). `req.user.id` is not
+        consulted, so every authenticated caller sees every request regardless of userId,
+        and there is no manager-versus-employee distinction.
+      x-client-callers:
+        - "app/components/travel-request/travel-request.service.js:18 — TravelRequestService.getRequests, called from travel-request.controller.js:98"
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/TravelRequest' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      operationId: createTravelRequest
+      summary: Append a new travel request.
+      x-express-declaration: "app.post('/api/travel-requests', authMiddleware, function(req, res) {...})"
+      x-source-line: 560
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `Object.assign(skeleton, req.body)` (api-mock/server.js:561-569) — the BODY IS THE SECOND
+        ARGUMENT, so any key in the body overwrites the skeleton, including `id`, `userId`,
+        `status`, `createdAt` and `approvals`. No field is validated and no field is rejected.
+      x-client-callers:
+        - "app/components/travel-request/travel-request.service.js:46 — TravelRequestService.submitRequest, called from travel-request.controller.js:179"
+      requestBody:
+        required: true
+        description: |
+          The client sends the full form plus `travelerName` and `travelerEmail`
+          (travel-request.controller.js:172-173), which are not part of the stored shape but are
+          copied in verbatim by Object.assign.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                destination:    { type: string }
+                departDate:     { type: string }
+                returnDate:     { type: string }
+                purpose:        { type: string }
+                department:     { type: string }
+                justification:  { type: string }
+                estimatedCosts: { $ref: '#/components/schemas/EstimatedCosts' }
+                totalEstimate:  { type: number }
+                travelers:      { type: array, items: { $ref: '#/components/schemas/Traveler' } }
+                needsVisa:      { type: boolean }
+                needsInsurance: { type: boolean }
+                travelerName:   { type: string, description: "sent by the client; not part of the seeded shape" }
+                travelerEmail:  { type: string, description: "sent by the client; not part of the seeded shape" }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TravelRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /travel-requests/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/travel-requests/:id"
+    get:
+      operationId: getTravelRequest
+      summary: Return one travel request by id.
+      x-express-declaration: "app.get('/api/travel-requests/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 575
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-client-callers:
+        - "app/components/travel-request/travel-request.service.js:37 — TravelRequestService.getRequest (no caller in app/)"
+      responses:
+        '200':
+          description: Found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TravelRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/RequestNotFound' }
+
+    put:
+      operationId: updateTravelRequest
+      summary: Shallow-merge the request body into an existing travel request.
+      x-express-declaration: "app.put('/api/travel-requests/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 583
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `Object.assign(request, req.body)` (api-mock/server.js:588). No field whitelist, no
+        validation, no status-transition rules, and no check that the caller owns the request or
+        holds an approver role. A body of { status: 'approved' } would be accepted from any
+        authenticated caller.
+      x-client-callers:
+        - "app/components/travel-request/travel-request.service.js:56 — TravelRequestService.updateRequest, called from travel-request.controller.js:177"
+        - "app/components/travel-request/travel-request.service.js:65 — TravelRequestService.cancelRequest, called from travel-request.controller.js:234. It sends { status: 'cancelled' }."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: Any JSON object. Every key is assigned onto the stored record.
+            example: { status: "cancelled" }
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TravelRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/RequestNotFound' }
+
+    delete:
+      operationId: deleteTravelRequest
+      summary: Remove a travel request from the array.
+      x-express-declaration: "app.delete('/api/travel-requests/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 592
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `travelRequests.splice(index, 1)` (api-mock/server.js:597). No ownership or status check —
+        an approved request can be deleted by any authenticated caller.
+      x-client-callers: []       # the client "cancels" via PUT { status: 'cancelled' } instead
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeleteResult' }
+              example: { message: "Travel request deleted" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/RequestNotFound' }
+
+  /travel-requests/{id}/approvals:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/travel-requests/:id/approvals"
+    get:
+      operationId: getApprovalHistory
+      summary: Return the `approvals` array nested in one travel request.
+      x-express-declaration: "app.get('/api/travel-requests/:id/approvals', authMiddleware, function(req, res) {...})"
+      x-source-line: 601
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Returns `request.approvals || []` (api-mock/server.js:606) — the nested array, not a
+        separate resource. There is no POST/PUT counterpart, so approvals cannot be recorded
+        through the API.
+      x-client-callers:
+        - "app/components/travel-request/travel-request.service.js:74 — TravelRequestService.getApprovalHistory (no caller in app/)"
+      responses:
+        '200':
+          description: Found. Empty array when the request has no `approvals` key.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Approval' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/RequestNotFound' }
+
+  /travel-policy:
+    get:
+      operationId: getTravelPolicy
+      summary: Return the singleton travel policy object.
+      x-express-declaration: "app.get('/api/travel-policy', authMiddleware, function(req, res) {...})"
+      x-source-line: 609
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Returns the module-level `travelPolicy` object verbatim (api-mock/server.js:610). It is
+        never read by any other handler, so none of its limits is enforced server-side.
+      x-client-callers:
+        - "app/components/travel-request/travel-request.service.js:87 — TravelRequestService.getPolicyLimits (no caller in app/)"
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TravelPolicy' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+x-discrepancies:
+  - id: policy-never-enforced
+    severity: informational
+    summary: |
+      `travelPolicy` (api-mock/server.js:257-267) declares maxFlightCost, maxHotelPerNight,
+      maxMealPerDay, maxTripDuration, requiresApproval thresholds, allowedCabinClasses and
+      advanceBookingDays. GET /api/travel-policy is the only handler that reads the object. No
+      create or update handler compares a request against it, and the client method that fetches
+      it (TravelRequestService.getPolicyLimits) has no caller — so the policy is not applied on
+      either side.
+  - id: approval-chain-is-static
+    severity: informational
+    summary: |
+      Every created request receives exactly one hardcoded approval entry —
+      { approver: 'Mike Chen', role: 'Manager', status: 'pending', date: null }
+      (api-mock/server.js:567). There is no approve/reject endpoint. Seed record tr-2 carries
+      two completed approvals that no handler could have produced.
+  - id: object-assign-body-wins
+    severity: contract-break
+    summary: |
+      POST /api/travel-requests calls Object.assign(skeleton, req.body) with the body SECOND
+      (api-mock/server.js:561-569), so a client-supplied `id`, `userId`, `status`, `createdAt` or
+      `approvals` silently overrides the server-assigned value. The same applies to PUT, which
+      assigns the raw body onto the stored record (:588).
+  - id: no-authorization-check
+    severity: contract-break
+    summary: |
+      None of the 7 handlers reads `req.user.role`, although the JWT carries it
+      (api-mock/server.js:284) and the seeded users include a 'manager'. Any authenticated caller
+      can read, modify, approve (via PUT) or delete any travel request belonging to any user.
+  - id: delete-endpoint-unused
+    severity: informational
+    summary: |
+      DELETE /api/travel-requests/{id} exists but no client method calls it. The client's "cancel"
+      action is a PUT that sets status to 'cancelled'
+      (app/components/travel-request/travel-request.service.js:65), leaving the record in place.
+  - id: uncalled-endpoints
+    severity: informational
+    summary: |
+      3 of the 7 handlers have a client method with no caller: GET /api/travel-requests/{id}
+      (getRequest), GET /api/travel-requests/{id}/approvals (getApprovalHistory),
+      GET /api/travel-policy (getPolicyLimits). DELETE /api/travel-requests/{id} has no client
+      method at all.

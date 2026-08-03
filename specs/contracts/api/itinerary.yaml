@@ -1,0 +1,390 @@
+openapi: 3.0.3
+
+# Extracted on 2026-08-03 by `api-extractor` from api-mock/server.js.
+# Pure extraction: every field, status code and error string below was read from the handler body.
+
+info:
+  title: globaltravel-portal — Itinerary
+  version: "0.0.0"          # unknown — no version field exists in api-mock/server.js
+  description: |
+    Feature area: trips and the itinerary items nested inside them.
+    Source: api-mock/server.js lines 461-553. 8 of 36 route handlers.
+
+    This is the only feature area whose data is stored rather than generated. Trips live in the
+    module-level `trips` array (api-mock/server.js:142-173), seeded with 2 records. Handlers
+    mutate that array in place, so writes are visible to subsequent reads within the same
+    process and are lost when the process exits.
+
+servers:
+  - url: http://localhost:3000/api
+
+x-source:
+  file: api-mock/server.js
+  store:
+    kind: in-process JavaScript array
+    declaredAt: "api-mock/server.js:142"
+    seedRecords: 2
+    persistence: none — no database, no file writes, no serialisation of any kind
+  itineraryItemAccess: |
+    Itinerary items have no top-level collection. Both /itinerary-items handlers locate an item by
+    iterating every trip and every item within it (api-mock/server.js:520-527 and :537-544),
+    keeping the LAST match rather than breaking on the first.
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    Trip:
+      type: object
+      properties:
+        id:        { type: string, example: "trip-1", description: "seeded ids are 'trip-1'/'trip-2'; created ids are 'trip-' + generateId()" }
+        userId:    { type: integer, description: "1 in both seeded records; on create, taken from req.user.id (the JWT claim)" }
+        name:      { type: string, example: "NYC Business Trip" }
+        startDate: { type: string, example: "2024-03-15" }
+        endDate:   { type: string, example: "2024-03-18" }
+        status:    { type: string, x-observed-values: [upcoming], description: "'upcoming' in both seeded records and the fixed literal assigned on create (api-mock/server.js:472). No handler ever writes another value." }
+        totalCost: { type: number, example: 2450.00, description: "0 on create; hand-written in the seeds; never recalculated by any handler" }
+        items:
+          type: array
+          description: "5 entries in trip-1, 3 in trip-2"
+          items: { $ref: '#/components/schemas/ItineraryItem' }
+      required: [id, userId, name, startDate, endDate, status, totalCost, items]
+
+    ItineraryItem:
+      type: object
+      description: |
+        Nested inside Trip.items. Never returned at the top level except by the two
+        /itinerary-items handlers, which return the mutated item.
+      properties:
+        id:          { type: string }
+        type:        { type: string, x-observed-values: [flight, hotel, activity, transport] }
+        date:        { type: string, example: "2024-03-15" }
+        time:        { type: string, example: "08:30" }
+        description: { type: string }
+        cost:        { type: number }
+        status:      { type: string, x-observed-values: [confirmed, pending, cancelled] }
+        notes:
+          type: string
+          description: |
+            Not present on any seeded item. Assigned only by POST /api/itinerary-items/{id}/notes,
+            from `req.body.notes` — see x-discrepancies/note-key-mismatch.
+
+    ShareResult:
+      type: object
+      description: Built inline at api-mock/server.js:507-511. Nothing is persisted.
+      properties:
+        shareUrl:   { type: string, description: "'https://globaltravel.com/shared/' + generateId()" }
+        sharedWith: { type: string, description: "echo of req.body.email" }
+        expiresAt:  { type: string, format: date-time, description: "now + 7 days" }
+
+    DeleteResult:
+      type: object
+      properties:
+        message: { type: string }
+
+    Error:
+      type: object
+      properties: { error: { type: string } }
+
+  responses:
+    Unauthorized:
+      description: Produced by authMiddleware (api-mock/server.js:26 and :33).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missingHeader: { value: { error: "Unauthorized" } }
+            badToken:      { value: { error: "Invalid token" } }
+    TripNotFound:
+      description: No element of `trips` has the requested id.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Trip not found" }
+    ItemNotFound:
+      description: No item in any trip has the requested id.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Itinerary item not found" }
+
+paths:
+  /trips:
+    get:
+      operationId: listTrips
+      summary: Return the entire `trips` array.
+      x-express-declaration: "app.get('/api/trips', authMiddleware, function(req, res) {...})"
+      x-source-line: 461
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Returns `trips` unfiltered (api-mock/server.js:462). `req.user.id` is not consulted, so
+        every authenticated caller sees every trip regardless of `Trip.userId`.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:16 — ItineraryService.getTrips, called from itinerary.controller.js:31"
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Trip' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      operationId: createTrip
+      summary: Append a new trip to the `trips` array.
+      x-express-declaration: "app.post('/api/trips', authMiddleware, function(req, res) {...})"
+      x-source-line: 465
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Builds the record from a fixed skeleton (api-mock/server.js:466-475), copying only
+        `name`, `startDate` and `endDate` from the body. `status` is forced to 'upcoming',
+        `totalCost` to 0 and `items` to []. No validation of any field.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:71 — ItineraryService.createTrip (no caller in app/)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:      { type: string }
+                startDate: { type: string }
+                endDate:   { type: string }
+      responses:
+        '201':
+          description: Created. The only 201 in this feature area besides POST /travel-requests and POST /expense-reports.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Trip' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /trips/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/trips/:id"
+    get:
+      operationId: getTrip
+      summary: Return one trip by id.
+      x-express-declaration: "app.get('/api/trips/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 480
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:31 — ItineraryService.getTripDetails, called from itinerary.controller.js:60"
+      responses:
+        '200':
+          description: Found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Trip' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TripNotFound' }
+
+    put:
+      operationId: updateTrip
+      summary: Shallow-merge the request body into an existing trip.
+      x-express-declaration: "app.put('/api/trips/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 488
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `Object.assign(trip, req.body)` (api-mock/server.js:493). Any key in the body overwrites
+        the stored value, including `id`, `userId` and `items`. There is no field whitelist and
+        no validation.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:81 — ItineraryService.updateTrip (no caller in app/)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: Any JSON object. Every key is assigned onto the stored trip.
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Trip' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TripNotFound' }
+
+    delete:
+      operationId: deleteTrip
+      summary: Remove a trip from the array.
+      x-express-declaration: "app.delete('/api/trips/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 497
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `trips.splice(index, 1)` (api-mock/server.js:502). `req.user.id` is not checked against
+        `Trip.userId`, so any authenticated caller can delete any trip.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:90 — ItineraryService.deleteTrip (no caller in app/)"
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeleteResult' }
+              example: { message: "Trip deleted" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/TripNotFound' }
+
+  /trips/{id}/share:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/trips/:id/share"
+    post:
+      operationId: shareTrip
+      summary: Return a share URL.
+      x-express-declaration: "app.post('/api/trips/:id/share', authMiddleware, function(req, res) {...})"
+      x-source-line: 506
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Does not read req.params.id, does not verify the trip exists, and does not record the
+        share anywhere. Returns a generated URL and echoes req.body.email. There is no 404 branch.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:100 — ItineraryService.shareTrip (no caller in app/)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+      responses:
+        '200':
+          description: Always, for any id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /itinerary-items/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/itinerary-items/:id"
+    put:
+      operationId: updateItineraryItem
+      summary: Shallow-merge the request body into an item nested in some trip.
+      x-express-declaration: "app.put('/api/itinerary-items/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 518
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Iterates every trip and every item (api-mock/server.js:520-527), applying
+        `Object.assign(item, req.body)` to each match and keeping the last one found. Duplicate
+        item ids across trips would all be mutated.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:62 — ItineraryService.cancelItem, called from itinerary.controller.js:160. It sends { status: 'cancelled' }."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example: { status: "cancelled" }
+      responses:
+        '200':
+          description: The mutated item.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItineraryItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/ItemNotFound' }
+
+  /itinerary-items/{id}/notes:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/itinerary-items/:id/notes"
+    post:
+      operationId: addItineraryItemNote
+      summary: Assign a note onto an item nested in some trip.
+      x-express-declaration: "app.post('/api/itinerary-items/:id/notes', authMiddleware, function(req, res) {...})"
+      x-source-line: 535
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Same nested search as PUT /itinerary-items/{id}, then `item.notes = req.body.notes`
+        (api-mock/server.js:540). This is an overwrite, not an append — there is no notes array
+        and no note record is created. Returns the whole item, not the note.
+      x-client-callers:
+        - "app/components/itinerary/itinerary.service.js:50 — ItineraryService.addNote, called from itinerary.controller.js:142"
+      requestBody:
+        required: true
+        description: |
+          The handler reads `notes`. The client sends `{ text, createdAt }`
+          (itinerary.service.js:51) — see x-discrepancies/note-key-mismatch.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:     { type: string, description: "read by the handler; not sent by the client" }
+                text:      { type: string, description: "sent by the client; not read by the handler" }
+                createdAt: { type: string, format: date-time, description: "sent by the client; not read by the handler" }
+      responses:
+        '200':
+          description: The mutated item.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItineraryItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/ItemNotFound' }
+
+x-discrepancies:
+  - id: note-key-mismatch
+    severity: contract-break
+    summary: |
+      The client POSTs `{ text: noteText, createdAt: moment().toISOString() }`
+      (app/components/itinerary/itinerary.service.js:50-52). The handler assigns
+      `item.notes = req.body.notes` (api-mock/server.js:540), which is undefined. The note text
+      is discarded, and the response contains no note. The controller nevertheless reports
+      'Note added' (itinerary.controller.js:150) because the request returns 200.
+  - id: note-overwrite-not-append
+    severity: informational
+    summary: |
+      The route path ends in `/notes` (plural), but the handler assigns a single value to
+      `item.notes` (api-mock/server.js:540) rather than pushing to an array. No `notes` array
+      is ever initialised and no note carries an identity, so a second call to this route
+      replaces the value written by the first.
+  - id: no-ownership-check
+    severity: informational
+    summary: |
+      None of the 8 handlers compares `req.user.id` with `Trip.userId`. GET /api/trips returns
+      every trip in the array (both seeded trips belong to userId 1), and DELETE /api/trips/{id}
+      will remove any trip for any authenticated caller.
+  - id: totalCost-never-recalculated
+    severity: informational
+    summary: |
+      `Trip.totalCost` is set to 0 on create (api-mock/server.js:473) and is never recalculated
+      from `items[].cost` by any handler — unlike ExpenseReport.totalAmount, which PUT
+      /api/expense-reports/{id} does recalculate (api-mock/server.js:650-652). The two seeded
+      trips carry hand-written totalCost values.
+  - id: uncalled-endpoints
+    severity: informational
+    summary: |
+      4 of the 8 handlers have a client method with no caller: POST /api/trips (createTrip),
+      PUT /api/trips/{id} (updateTrip), DELETE /api/trips/{id} (deleteTrip),
+      POST /api/trips/{id}/share (shareTrip).

@@ -1,0 +1,202 @@
+openapi: 3.0.3
+
+# Extracted on 2026-08-03 by `api-extractor` from api-mock/server.js.
+# Pure extraction: every field, status code and error string below was read from the handler body.
+# Nothing is inferred from naming, comments or README.md.
+
+info:
+  title: globaltravel-portal — Authentication
+  version: "0.0.0"          # unknown — no version field exists in api-mock/server.js or package.json
+  description: |
+    Feature area: authentication and current-user lookup.
+    Source: api-mock/server.js lines 273-304. 3 of 36 route handlers.
+
+    Two of the three handlers in this file are declared WITHOUT `authMiddleware`
+    (`POST /api/auth/login` at :273, `POST /api/auth/logout` at :295). They are 2 of only
+    3 unauthenticated handlers in the whole server; the third is `GET /api/airports`.
+
+servers:
+  - url: http://localhost:3000/api
+    description: |
+      Hardcoded literal. Declared as `var PORT = 3000` at api-mock/server.js:12 (not read from
+      process.env) and consumed client-side as the literal 'http://localhost:3000/api' at
+      app/app.js:14 (RestangularProvider.setBaseUrl) and 'http://localhost:3000/api/auth/login'
+      at app/services/auth.service.js:18.
+
+x-source:
+  file: api-mock/server.js
+  runtime: Node.js / Express 4.22.1
+  globalMiddleware:
+    - { name: cors, args: none, line: 15 }
+    - { name: bodyParser.json, args: none, line: 16 }
+    - { name: "bodyParser.urlencoded", args: "{ extended: true }", line: 17 }
+  authMiddleware:
+    definedAt: "api-mock/server.js:23-35"
+    applied: per-route, passed explicitly as the second argument. NOT mounted with app.use.
+    behaviour: |
+      Reads req.headers.authorization. If absent or not prefixed 'Bearer ',
+      responds 401 {"error":"Unauthorized"}. Otherwise splits on ' ' and calls
+      jwt.verify(token, JWT_SECRET). On throw, responds 401 {"error":"Invalid token"}.
+      On success assigns req.user = decoded and calls next().
+  errorHandling: |
+    No error-handling middleware, no 404 fallback route. The only try/catch in the file is
+    inside authMiddleware (lines 29-34).
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      x-implementation:
+        library: jsonwebtoken 9.0.3
+        secret: "globaltravel-secret-key-2024"   # hardcoded literal, api-mock/server.js:13
+        signedAt: "api-mock/server.js:283-287"
+        verifiedAt: "api-mock/server.js:29"
+        algorithm: unknown — not specified in the jwt.sign call; the jsonwebtoken default applies
+        expiresIn: "24h"                          # api-mock/server.js:286
+        claims: [id, email, name, role]           # api-mock/server.js:284
+
+  schemas:
+    User:
+      type: object
+      description: |
+        Shape returned by the login and /auth/me handlers. The stored records
+        (api-mock/server.js:42-45) additionally carry a plaintext `password` field, which
+        neither handler includes in its response.
+      properties:
+        id:         { type: integer, example: 1 }
+        name:       { type: string, example: "Sarah Johnson" }
+        email:      { type: string, example: "demo@globaltravel.com" }
+        department: { type: string, example: "Engineering" }
+        role:       { type: string, example: "employee", x-observed-values: [employee, manager] }
+      required: [id, name, email, department, role]
+
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+
+  responses:
+    Unauthorized:
+      description: Produced by authMiddleware (api-mock/server.js:26 and :33).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missingHeader: { value: { error: "Unauthorized" } }
+            badToken:      { value: { error: "Invalid token" } }
+
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      summary: Exchange email + password for a JWT.
+      x-express-declaration: "app.post('/api/auth/login', function(req, res) {...})"
+      x-source-line: 273
+      x-auth-required: false      # authMiddleware is NOT in the handler chain
+      security: []
+      x-client-callers:
+        - "app/services/auth.service.js:18 — via $http.post to a literal URL, bypassing Restangular"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:    { type: string }
+                password: { type: string }
+              required: [email, password]
+            example: { email: "demo@globaltravel.com", password: "password" }
+      responses:
+        '200':
+          description: Credentials matched a record in the in-memory `users` array.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, description: "JWT, expiresIn 24h" }
+                  user:  { $ref: '#/components/schemas/User' }
+                required: [token, user]
+        '401':
+          description: |
+            No record satisfied `u.email === email && u.password === password`
+            (api-mock/server.js:277 — plaintext string comparison, no hashing).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Invalid credentials" }
+
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Returns a fixed message.
+      x-express-declaration: "app.post('/api/auth/logout', function(req, res) {...})"
+      x-source-line: 295
+      x-auth-required: false
+      security: []
+      x-behaviour: |
+        The handler body is a single res.json call (api-mock/server.js:296). It does not read the
+        request, does not invalidate the token, and does not mutate any array. Tokens remain
+        valid until their 24h expiry.
+      x-client-callers: []       # AuthService.logout (app/services/auth.service.js:32) removes the
+                                 # localStorage key locally and never calls this route
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example: { message: "Logged out successfully" }
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      summary: Look up the caller's user record by the `id` claim in the token.
+      x-express-declaration: "app.get('/api/auth/me', authMiddleware, function(req, res) {...})"
+      x-source-line: 299
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-client-callers: []       # no code in app/ requests /api/auth/me. UserService requests
+                                 # /api/users/me instead, which is not a declared route.
+      responses:
+        '200':
+          description: A user with `id === req.user.id` exists in the `users` array.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The token decoded but no matching user record exists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "User not found" }
+
+x-discrepancies:
+  - id: users-me-not-declared
+    severity: contract-break
+    summary: |
+      UserService requests GET /api/users/me (app/services/user.service.js:15) and
+      PUT /api/users/me (:27). Neither is declared in api-mock/server.js at any method.
+      The declared current-user route is GET /api/auth/me. UserService has no callers,
+      so neither request is issued at runtime.
+  - id: logout-is-client-side-only
+    severity: informational
+    summary: |
+      POST /api/auth/logout exists and is unauthenticated, but AuthService.logout
+      (app/services/auth.service.js:32-36) does not call it — it removes the localStorage key,
+      clears $rootScope.currentUser and broadcasts 'auth:logout'. That broadcast has no listener
+      anywhere in app/.
+  - id: seeded-passwords-plaintext
+    severity: informational
+    summary: |
+      The two seeded users (api-mock/server.js:43-44) carry `password: 'password'` as a literal
+      string, and the login handler compares it with `===` (:277). No hashing library is
+      required by api-mock/server.js.

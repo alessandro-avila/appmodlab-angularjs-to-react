@@ -1,0 +1,425 @@
+openapi: 3.0.3
+
+# Extracted on 2026-08-03 by `api-extractor` from api-mock/server.js.
+# Pure extraction: every field, status code and error string below was read from the handler body.
+
+info:
+  title: globaltravel-portal — Expense Reconciliation
+  version: "0.0.0"          # unknown — no version field exists in api-mock/server.js
+  description: |
+    Feature area: expense reports, the expenses nested inside them, receipts, and statistics.
+    Source: api-mock/server.js lines 617-699. 7 of 36 route handlers.
+
+    Expense reports live in the module-level `expenseReports` array (api-mock/server.js:222-255),
+    seeded with 2 records. Handlers mutate that array in place; writes are lost on restart.
+
+    One of the 7 handlers is unreachable — see x-discrepancies/statistics-route-shadowed.
+
+servers:
+  - url: http://localhost:3000/api
+
+x-source:
+  file: api-mock/server.js
+  store:
+    kind: in-process JavaScript array
+    declaredAt: "api-mock/server.js:222"
+    seedRecords: 2      # exp-1 status 'pending' (4 expenses), exp-2 status 'draft' (2 expenses)
+    persistence: none
+  expenseAccess: |
+    Individual expenses have no routes of their own. They exist only as `ExpenseReport.expenses[]`
+    and are created, edited and removed by sending the whole report to
+    PUT /api/expense-reports/{id}. POST /api/expenses/{id}/receipt is the one handler whose path
+    names an expense id, and it does not look the expense up.
+  routeOrder: |
+    Route registration order determines matching. GET /api/expense-reports/:id is registered at
+    line 636, before GET /api/expense-reports/statistics at line 668. Express matches the first
+    declaration, so 'statistics' is captured as an :id value and the statistics handler is never
+    entered. The flight routes avoid this: GET /api/flights/popular (:338) is registered before
+    GET /api/flights/:id (:348).
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+    ExpenseReport:
+      type: object
+      properties:
+        id:              { type: string, example: "exp-1", description: "seeded ids are 'exp-1'/'exp-2'; created ids are 'exp-' + generateId()" }
+        userId:          { type: integer, description: "1 in both seeded records; on create, taken from req.user.id" }
+        title:           { type: string, example: "NYC Business Trip Expenses" }
+        tripDestination: { type: string, example: "New York" }
+        travelRequestId:
+          type: string
+          nullable: true
+          description: |
+            null in both seeded records. No handler ever sets it — the only writer would be a
+            client-supplied key on POST/PUT. ExpenseService.linkToTravelRequest
+            (expense.service.js:107) sends it, but that method has no caller in app/.
+        status:          { type: string, x-observed-values: [draft, pending, approved], description: "'draft' is the fixed literal assigned on create (api-mock/server.js:625); 'pending' appears in seed exp-1; 'approved' is counted by the statistics handler (:671) but is not present in any seed record" }
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: null on create; a timestamp in seed exp-1; null in seed exp-2
+        submittedBy:     { type: string, description: "on create, taken from req.user.name (the JWT claim)" }
+        totalAmount:     { type: number, example: 1875.50, description: "0 on create; recalculated by PUT when expenses is non-empty" }
+        expenses:
+          type: array
+          description: "4 entries in exp-1, 2 in exp-2"
+          items: { $ref: '#/components/schemas/Expense' }
+
+    Expense:
+      type: object
+      description: Nested inside ExpenseReport.expenses. Never addressed by a route of its own.
+      properties:
+        id:          { type: string, example: "e-1" }
+        date:        { type: string, example: "2024-03-15" }
+        category:
+          type: string
+          x-observed-values: [flights, hotels, meals, transport, other]
+          description: |
+            Lowercase plural in every seeded record and in the statistics categoryBreakdown. The
+            client offers a different, Title Case vocabulary — see
+            x-discrepancies/category-vocabulary-mismatch.
+        description: { type: string }
+        amount:      { type: number }
+        currency:    { type: string, x-observed-values: [USD], description: "'USD' in all 6 seeded expenses. No handler reads or converts currency." }
+        notes:       { type: string, description: "empty string in 3 of the 6 seeded expenses" }
+
+    Statistics:
+      type: object
+      description: |
+        Built inline at api-mock/server.js:673-690. Unreachable — see
+        x-discrepancies/statistics-route-shadowed. Documented here because the handler exists.
+      properties:
+        totalExpenses: { type: number,  description: "sum of every report's totalAmount (:669)" }
+        reportCount:   { type: integer, description: "expenseReports.length" }
+        pendingCount:  { type: integer, description: "reports with status === 'pending' (:670)" }
+        approvedCount: { type: integer, description: "reports with status === 'approved' (:671)" }
+        categoryBreakdown:
+          type: object
+          description: |
+            Hardcoded literals (api-mock/server.js:679-683), not derived from `expenseReports`.
+            The five values happen to equal the seeded exp-1 expense amounts plus exp-2's 'other'
+            entry, but nothing recomputes them.
+          properties:
+            flights:   { type: number, example: 930.00 }
+            hotels:    { type: number, example: 750.00 }
+            meals:     { type: number, example: 245.50 }
+            transport: { type: number, example: 50.00 }
+            other:     { type: number, example: 150.00 }
+        monthlyTotals:
+          type: array
+          description: Hardcoded literals (api-mock/server.js:686-688), not derived from any record.
+          items:
+            type: object
+            properties:
+              month: { type: string, example: "2024-03" }
+              total: { type: number, example: 1875.50 }
+
+    ReceiptResult:
+      type: object
+      description: Built inline at api-mock/server.js:694-698. Nothing is stored.
+      properties:
+        expenseId:  { type: string, description: "echo of req.params.id" }
+        receiptUrl: { type: string, description: "'https://globaltravel.com/receipts/' + generateId() + '.pdf'" }
+        uploadedAt: { type: string, format: date-time }
+
+    DeleteResult:
+      type: object
+      properties: { message: { type: string } }
+
+    Error:
+      type: object
+      properties: { error: { type: string } }
+
+  responses:
+    Unauthorized:
+      description: Produced by authMiddleware (api-mock/server.js:26 and :33).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            missingHeader: { value: { error: "Unauthorized" } }
+            badToken:      { value: { error: "Invalid token" } }
+    ReportNotFound:
+      description: No element of `expenseReports` has the requested id.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: "Expense report not found" }
+
+paths:
+  /expense-reports:
+    get:
+      operationId: listExpenseReports
+      summary: Return the entire `expenseReports` array.
+      x-express-declaration: "app.get('/api/expense-reports', authMiddleware, function(req, res) {...})"
+      x-source-line: 617
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Returns `expenseReports` unfiltered (api-mock/server.js:618). `req.user.id` is not
+        consulted, so every authenticated caller sees every report.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:18 — ExpenseService.getReports, called from expense.controller.js:79"
+      responses:
+        '200':
+          description: Always.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ExpenseReport' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      operationId: createExpenseReport
+      summary: Append a new expense report.
+      x-express-declaration: "app.post('/api/expense-reports', authMiddleware, function(req, res) {...})"
+      x-source-line: 621
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `Object.assign(skeleton, req.body)` (api-mock/server.js:622-630) — the body is the second
+        argument, so any key in the body overwrites the skeleton, including `id`, `userId`,
+        `status`, `submittedBy` and `totalAmount`. `totalAmount` is NOT recalculated here even
+        when the body supplies a populated `expenses` array; only PUT recalculates.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:54 — ExpenseService.submitReport, called from expense.controller.js:202"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              properties:
+                title:           { type: string }
+                tripDestination: { type: string }
+                expenses:        { type: array, items: { $ref: '#/components/schemas/Expense' } }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /expense-reports/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/expense-reports/:id"
+        description: |
+          This parameter also captures the literal segment 'statistics' — see
+          x-discrepancies/statistics-route-shadowed.
+    get:
+      operationId: getExpenseReport
+      summary: Return one expense report by id.
+      x-express-declaration: "app.get('/api/expense-reports/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 636
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Registered BEFORE GET /api/expense-reports/statistics (:668), so it also serves the
+        request GET /api/expense-reports/statistics with req.params.id === 'statistics'.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:35 — ExpenseService.getReportDetails, called from expense.controller.js:220"
+      responses:
+        '200':
+          description: Found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/ReportNotFound' }
+
+    put:
+      operationId: updateExpenseReport
+      summary: Shallow-merge the request body into an existing report, then recalculate the total.
+      x-express-declaration: "app.put('/api/expense-reports/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 644
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `Object.assign(report, req.body)` (api-mock/server.js:649), then — only when
+        `report.expenses` is non-empty — `totalAmount` is recomputed as the sum of
+        `expenses[].amount`, treating a missing amount as 0 (:652-654). When the body empties the
+        expenses array the guard is false, so the previous totalAmount is left in place.
+        This is the only handler in the whole file that derives a stored value.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:64 — ExpenseService.updateReport (no caller in app/)"
+        - "app/components/expense-reconciliation/expense.service.js:108 — ExpenseService.linkToTravelRequest (no caller in app/)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: Any JSON object. Every key is assigned onto the stored report.
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExpenseReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/ReportNotFound' }
+
+    delete:
+      operationId: deleteExpenseReport
+      summary: Remove an expense report from the array.
+      x-express-declaration: "app.delete('/api/expense-reports/:id', authMiddleware, function(req, res) {...})"
+      x-source-line: 659
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        `expenseReports.splice(index, 1)` (api-mock/server.js:664). No ownership or status check —
+        a submitted report can be deleted by any authenticated caller.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:73 — ExpenseService.deleteReport, called from expense.controller.js:235"
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeleteResult' }
+              example: { message: "Expense report deleted" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/ReportNotFound' }
+
+  /expense-reports/statistics:
+    get:
+      operationId: getExpenseStatistics
+      summary: Aggregate counts and totals across all expense reports.
+      x-express-declaration: "app.get('/api/expense-reports/statistics', authMiddleware, function(req, res) {...})"
+      x-source-line: 668
+      x-auth-required: true
+      x-reachable: false
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        UNREACHABLE. GET /api/expense-reports/:id is registered 32 lines earlier (:636) and
+        matches this path first, binding req.params.id to the string 'statistics'. No report has
+        that id, so a request to this path returns 404 { error: 'Expense report not found' } and
+        this handler body never executes. The 200 response below is what the handler would
+        produce if it were reached.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:98 — ExpenseService.getStatistics (no caller in app/)"
+      responses:
+        '200':
+          description: Not observable — the handler is shadowed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Statistics' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: |
+            What this path actually returns, produced by GET /api/expense-reports/:id at line 639.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "Expense report not found" }
+
+  /expenses/{id}/receipt:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        x-express-path: "/api/expenses/:id/receipt"
+    post:
+      operationId: uploadReceipt
+      summary: Return a receipt URL for an expense.
+      x-express-declaration: "app.post('/api/expenses/:id/receipt', authMiddleware, function(req, res) {...})"
+      x-source-line: 693
+      x-auth-required: true
+      security: [{ bearerAuth: [] }]
+      x-behaviour: |
+        Does not read the request body, does not verify the expense exists, and does not store
+        anything. Echoes req.params.id and returns a generated URL. There is no 404 branch, so
+        any id succeeds. The generated URL points at a host the application never contacts.
+      x-client-callers:
+        - "app/components/expense-reconciliation/expense.service.js:87 — ExpenseService.uploadReceipt (no caller in app/)"
+      requestBody:
+        required: false
+        description: |
+          The client would send multipart/form-data — ExpenseService.uploadReceipt builds a
+          FormData with the field name 'receipt' and sets Content-Type to undefined
+          (expense.service.js:83-87). The server registers only bodyParser.json (:16) and
+          bodyParser.urlencoded (:17); there is no multipart parser, and the handler reads no
+          body at all.
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                receipt: { type: string, format: binary, description: "sent by the client; not read by the handler" }
+      responses:
+        '200':
+          description: Always, for any id.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+x-discrepancies:
+  - id: statistics-route-shadowed
+    severity: contract-break
+    summary: |
+      GET /api/expense-reports/statistics (api-mock/server.js:668) is registered after
+      GET /api/expense-reports/:id (:636). Express matches routes in registration order, so the
+      literal path is captured by the parameterised one and the statistics handler is dead code.
+      The path returns 404 { error: 'Expense report not found' }. The client method that would
+      call it, ExpenseService.getStatistics (expense.service.js:98), has no caller, so the
+      failure is not observable in the running application.
+  - id: category-vocabulary-mismatch
+    severity: contract-break
+    summary: |
+      The client's category list is
+      ['Airfare', 'Hotel', 'Meals', 'Ground Transport', 'Car Rental', 'Fuel', 'Parking', 'Tips',
+       'Phone/Internet', 'Office Supplies', 'Entertainment', 'Other']
+      (app/components/expense-reconciliation/expense.controller.js:28-32) — Title Case, 12 values,
+      mostly singular, rendered into the category dropdown at expense.template.html:121. Every
+      stored expense and the statistics categoryBreakdown use
+      ['flights', 'hotels', 'meals', 'transport', 'other'] — lowercase, 5 values, mostly plural.
+      Only 'Meals'/'meals' and 'Other'/'other' correspond, and neither matches by string
+      equality. The server never validates the field, so both vocabularies coexist in the array.
+      ExpenseService.getReportDetails groups expenses by the raw `category` string
+      (expense.service.js:41), so a report holding both vocabularies produces separate totals for
+      'Meals' and 'meals'.
+  - id: totalAmount-recalculated-only-on-put
+    severity: informational
+    summary: |
+      POST /api/expense-reports accepts a client-supplied `expenses` array but leaves
+      `totalAmount` at whatever the body says, or 0 (api-mock/server.js:622-630). Only
+      PUT /api/expense-reports/{id} recomputes it (:652-654), and only when the array is
+      non-empty. A report can therefore hold a totalAmount that does not match its expenses.
+  - id: statistics-values-hardcoded
+    severity: informational
+    summary: |
+      Within the (unreachable) statistics handler, totalExpenses, reportCount, pendingCount and
+      approvedCount are computed from `expenseReports`, but categoryBreakdown and monthlyTotals
+      are object and array literals (api-mock/server.js:679-688). They would not change if the
+      underlying data changed.
+  - id: receipt-upload-is-a-stub
+    severity: contract-break
+    summary: |
+      ExpenseService.uploadReceipt posts multipart/form-data (expense.service.js:83-87), but the
+      server registers no multipart parser and the handler reads neither req.body nor req.file
+      (api-mock/server.js:693-699). The returned receiptUrl refers to a file that was never
+      received or written. No handler reads a receiptUrl back, and Expense has no receipt field.
+  - id: no-ownership-check
+    severity: informational
+    summary: |
+      None of the 7 handlers compares `req.user.id` with `ExpenseReport.userId`, and none reads
+      `req.user.role`. GET /api/expense-reports returns every report (both seeds belong to
+      userId 1), and PUT/DELETE accept any id from any authenticated caller.
+  - id: uncalled-endpoints
+    severity: informational
+    summary: |
+      3 of the 7 handlers have a client method with no caller: PUT /api/expense-reports/{id}
+      (updateReport and linkToTravelRequest), GET /api/expense-reports/statistics
+      (getStatistics), POST /api/expenses/{id}/receipt (uploadReceipt).
