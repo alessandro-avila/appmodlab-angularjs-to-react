@@ -1,5 +1,6 @@
 # General
 *.log
+!.spec2cloud/*.log
 *.tmp
 .DS_Store
 Thumbs.db
