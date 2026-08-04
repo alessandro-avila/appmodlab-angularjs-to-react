@@ -26,7 +26,12 @@
     "selectedPaths": []
   },
   "testsStatus": {
-    "karma-jasmine": { "pass": 0, "fail": 11, "total": 11, "exitCode": 1 }
+    "karma-jasmine": {
+      "pass": 0,
+      "fail": 11,
+      "total": 11,
+      "exitCode": 1
+    }
   },
   "verifiedCounts": {
     "filesInScope": 30,
@@ -63,5 +68,6 @@
       "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
     ]
   },
-  "lastUpdated": "2026-08-03T19:10:00Z"
+  "lastUpdated": "2026-08-03T19:24:00Z",
+  "humanGateApprovedAt": "2026-08-03T19:24:00Z"
 }

@@ -16,3 +16,7 @@
 [2026-08-03T19:10:00Z] phase=B1-extract action=gate-review result=ok message="Extraction Review: 36 express routes matched 1:1 with 36 openapi operations by method and path; module, state, controller, service, directive, filter and dependency counts re-verified from source; no recommendation language in any artifact; every artifact declares its unresolved gaps; git diff against app/, api-mock/ and test/ empty"
 [2026-08-03T19:10:00Z] phase=B1-extract action=artifact-correction result=ok message="data-models.md:37 said Four module-level JavaScript arrays while its own evidence column and the following diagram list five; corrected to Five"
 [2026-08-03T19:10:00Z] phase=B1-extract action=human-gate result=approved message="brownfield-b1-extraction-approved=true; B1 outputs accepted as the basis for B2 spec generation"
+2026-08-03T19:24:00Z | B1-extract | artifact-repair | components.md + overview.md restored from committed clean copy (git checkout HEAD); corruption markers 0; 385 + 521 lines
+2026-08-03T19:24:00Z | B1-extract | verification | mermaid 5 blocks validated (2 graph, 3 sequenceDiagram); all node + participant refs resolve
+2026-08-03T19:24:00Z | B1-extract | verification | source untouched confirmed: git status clean for app/ api-mock/ test/ bower.json package.json Gruntfile.js
+2026-08-03T19:24:00Z | B1-extract | human-gate | Extraction Review APPROVED by user; extractionStatus=complete; damagedArtifacts cleared
