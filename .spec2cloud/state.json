@@ -1,6 +1,8 @@
 {
   "mode": "brownfield",
-  "currentPhase": "B1-extract",
+  "currentPhase": "B2-spec-enable",
+  "currentStep": "prd-generation",
+  "status": "awaiting-approval",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -21,9 +23,30 @@
     },
     "extractionStatus": "complete",
     "sourceUntouched": true,
-    "prdGenerated": false,
+    "prdGenerated": true,
     "frdCount": 0,
-    "selectedPaths": []
+    "selectedPaths": [],
+    "openQuestions": {
+      "total": 12,
+      "blockingB2b": ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5", "Q-6", "Q-7"],
+      "blockingDeployment": ["Q-12"],
+      "answered": [],
+      "raisedWithOwnerAt": "2026-08-04T16:53:06+02:00",
+      "note": "Q-1..Q-7 were put to the product owner at the close of B2a and are unanswered. None resolved by inference. B2b (FRD generation) should not begin until they are answered."
+    }
+  },
+  "artifacts": {
+    "prd": {
+      "path": "specs/prd.md",
+      "features_count": 22,
+      "personas_count": 2,
+      "generated_at": "2026-08-04T16:53:06+02:00",
+      "generated_from": "extraction artifacts only",
+      "source_code_read": false,
+      "diagrams": 3,
+      "citations_verified": 333,
+      "citations_unresolved": 0
+    }
   },
   "testsStatus": {
     "karma-jasmine": {
@@ -50,7 +73,8 @@
     "generatedEntities": 4
   },
   "humanGates": {
-    "brownfield-b1-extraction-approved": true
+    "brownfield-b1-extraction-approved": true,
+    "brownfield-b2a-prd-approved": false
   },
   "gateReview": {
     "gate": "brownfield-b1-extraction",
@@ -68,6 +92,6 @@
       "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
     ]
   },
-  "lastUpdated": "2026-08-03T19:24:00Z",
+  "lastUpdated": "2026-08-04T16:53:06+02:00",
   "humanGateApprovedAt": "2026-08-03T19:24:00Z"
 }
