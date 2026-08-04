@@ -92,7 +92,8 @@ tiers and have no caller.
 **Acceptance Criteria:**
 - GIVEN either view button is clicked WHEN `toggleView(mode)` runs THEN `viewMode` becomes that mode
 - GIVEN the mode changed WHEN the next tick occurs THEN the matching container is hidden and faded in over 300 ms
-- GIVEN `viewMode` is `list` THEN the list container renders; GIVEN it is `timeline` THEN the timeline container renders
+- GIVEN `viewMode` is `list` WHEN the itinerary renders THEN the list container renders
+- GIVEN `viewMode` is `timeline` WHEN the itinerary renders THEN the timeline container renders
 
 ### US-F009-005: Narrow the itinerary by item status
 

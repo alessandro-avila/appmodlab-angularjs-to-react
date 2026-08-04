@@ -89,7 +89,10 @@ and have no caller.
 - GIVEN `filters.maxPrice` is set WHEN filters are applied THEN only hotels with `pricePerNight <= maxPrice` remain
 - GIVEN one or more amenities are selected WHEN filters are applied THEN only hotels whose `amenities` contain **every** selected amenity remain
 - GIVEN an amenity checkbox is clicked WHEN `toggleAmenity` runs THEN that amenity is added to `filters.amenities` if absent and removed if present
-- GIVEN `filters.sortBy` is `priceLow` THEN results ascend by `pricePerNight`; `priceHigh` reverses that; `rating` orders by rating descending; `recommended` (the default) orders by `featured` then `rating`, both descending
+- GIVEN `filters.sortBy` is `priceLow` WHEN results are ordered THEN they ascend by `pricePerNight`
+- GIVEN `filters.sortBy` is `priceHigh` WHEN results are ordered THEN they descend by `pricePerNight`
+- GIVEN `filters.sortBy` is `rating` WHEN results are ordered THEN they descend by rating
+- GIVEN `filters.sortBy` is `recommended` (the default) WHEN results are ordered THEN they descend by `featured`, then by `rating`
 
 ### US-F008-001: View the rooms available at a hotel
 

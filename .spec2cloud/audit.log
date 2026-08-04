@@ -89,3 +89,16 @@
 2026-08-04T21:48:56Z phase=B2b action=verify-diff scope=specs/ result=pass detail='diff is additive; no Current Implementation prose removed; only preambles, SEAM-labelled headings, Traceability prose and one renumber (itinerary 21 to 22) changed'
 2026-08-04T21:48:56Z phase=B2b action=state-update target=.spec2cloud/state.json result=ok detail='adr_refs, adr_questions and seams_named added to all 6 FRD records; ADR-001 record gains linked_from_frds=6 and seams_linked for SEAM-1..5'
 2026-08-04T21:48:56Z phase=B2b action=coverage-check scope=SEAM-1..SEAM-5 result=pass detail='all five seams now named in the FRD that owns them; all six FRDs reference ADR-001'
+2026-08-04T22:40:00Z | phase=B2c | action=spec-refinement-start | skill=spec-refinement | scope=6 FRDs | max_passes=5
+2026-08-04T22:40:00Z | phase=B2c | action=pass-1-product-lens | result=4 changes | detail=8 personas added to frd-authentication, US-F022-001 marked non-story, 2 malformed acceptance criteria split into 6
+2026-08-04T22:40:00Z | phase=B2c | action=pass-2-technical-lens | result=3 changes | detail=POST /api/flights recorded in frd-flight-search (API table, dependencies, new KL 12), source-file table corrected, Direction statements added to 2 dependency tables
+2026-08-04T22:40:00Z | phase=B2c | action=route-contract-reconciliation | result=pass | detail=36 of 36 Express routes documented in some FRD; 26 distinct paths across 6 contract yaml files
+2026-08-04T22:40:00Z | phase=B2c | action=pass-3-cross-cutting-seams | result=no-defects | detail=37 of 37 rootScope event sites match source by name, direction, line, payload and listener set
+2026-08-04T22:40:00Z | phase=B2c | action=dead-asset-trap-check | result=not-sprung | detail=date-picker.directive.js in zero templates, ApiService and UserService injected nowhere, all 6 FRDs describe them as dead
+2026-08-04T22:40:00Z | phase=B2c | action=evaluative-language-scan | result=clean | detail=30 raw hits all false positives (propert*, recommended sort value, quoted test names, quoted source comments)
+2026-08-04T22:40:00Z | phase=B2c | action=intent-vs-code-scan | result=clean | detail=single hit sits inside a labelled ADR-001 Q-5 decision note, not in Current Implementation
+2026-08-04T22:40:00Z | phase=B2c | action=skip-detection-scan | result=clean | matches=0
+2026-08-04T22:40:00Z | phase=B2c | action=citation-verification | result=pass | detail=POST /api/flights :333, GET /api/flights :328, req.query.date :329 all confirmed against api-mock/server.js
+2026-08-04T22:40:00Z | phase=B2c | action=tone-scan | result=pass | hits=1 | detail=known false positive frd-itinerary.md:78 "broken down into"
+2026-08-04T22:40:00Z | phase=B2c | action=contradictions-listed | count=6 | detail=listed not resolved per brownfield rule
+2026-08-04T22:40:00Z | phase=B2c | action=spec-refinement-complete | result=converged-at-pass-3 | passes_run=5 | open_questions=1 | next=refinement-review-human-gate

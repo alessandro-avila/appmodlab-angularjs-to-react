@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
   "currentPhase": "B2-spec-enable",
-  "currentStep": "frd-generation",
+  "currentStep": "spec-refinement",
   "status": "awaiting-approval",
   "project": {
     "name": "globaltravel-portal",
@@ -113,7 +113,7 @@
         "user_stories_count": 7,
         "requirements_count": 15,
         "nfr_count": 4,
-        "known_limitations": 12,
+        "known_limitations": 13,
         "test_coverage": "0% — 11 tests present, 11 failing",
         "source_code_read": true,
         "line_citations_verified": 104,
@@ -171,7 +171,7 @@
         "user_stories_count": 9,
         "requirements_count": 14,
         "nfr_count": 5,
-        "known_limitations": 21,
+        "known_limitations": 22,
         "test_coverage": "0% — no test file exists for this module",
         "source_code_read": true,
         "line_citations_verified": 130,
@@ -354,6 +354,74 @@
       "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
     ]
   },
-  "lastUpdated": "2026-08-04T21:48:38Z",
+  "refinement": {
+    "phase": "B2c",
+    "skill": "spec-refinement",
+    "passesRun": 5,
+    "passesAllowed": 5,
+    "convergedAtPass": 3,
+    "passes": [
+      {
+        "pass": 1,
+        "lens": "product",
+        "changed": [
+          "frd-authentication.md — added AS A / I WANT / SO THAT persona blocks to 8 user stories (the FRD had zero personas; the other five averaged 8.6)",
+          "frd-authentication.md — US-F022-001 relabelled 'no derivable story' with an explicit instruction that downstream Gherkin generation must skip it",
+          "frd-hotel-booking.md — split 1 malformed compound acceptance criterion into 4 well-formed GIVEN/WHEN/THEN lines (sort ordering)",
+          "frd-itinerary.md — split 1 malformed compound acceptance criterion into 2 (viewMode list/timeline)"
+        ],
+        "result": "0 malformed acceptance criteria remain; 51 personas across 51 derivable user stories"
+      },
+      {
+        "pass": 2,
+        "lens": "technical",
+        "changed": [
+          "frd-flight-search.md — recorded POST /api/flights (api-mock/server.js:333) in three places: API-surface table, Dependencies table, and new Known Limitation 12; old KL 12 renumbered to 13",
+          "frd-flight-search.md — source-file table now lists all three flight routes (328, 333, 365) instead of two",
+          "frd-travel-request.md + frd-expense-reconciliation.md — added an explicit Direction statement under each Dependencies table"
+        ],
+        "result": "36 of 36 Express routes are documented in some FRD; 26 distinct paths reconcile against the 6 contract yaml files"
+      },
+      {
+        "pass": 3,
+        "lens": "cross-cutting-seams",
+        "changed": [],
+        "result": "no defects found — 37 of 37 $rootScope event sites match source exactly across the six FRDs by name, direction, line, payload and listener set"
+      },
+      {
+        "pass": 4,
+        "lens": "residual-convergence",
+        "changed": [],
+        "result": "dead-asset trap not sprung; evaluative-language scan clean; intent-vs-code scan clean"
+      },
+      {
+        "pass": 5,
+        "lens": "final-verification",
+        "changed": [],
+        "result": "tone scan 1 hit (known false positive 'broken down into'); skip-detection scan 0 matches; all citations added this session verified against source"
+      }
+    ],
+    "verification": [
+      "event matrix built mechanically from app/**/*.js and diffed against every FRD event table — 37 of 37 sites correct (notification:add 24 broadcasts + 1 listener, auth:login 1 + 3, auth:logout 1 + 0, flight:selected 1 + 1, itinerary:refresh 2 + 1)",
+      "payload shapes verified at source: auth:login carries response.data.user, flight:selected carries the flight object, itinerary:refresh and auth:logout carry none, notification:add carries (message, type)",
+      "the three payload-consumption claims verified line by line — flight-search:245-247 _.get(user,'preferences.cabinClass','economy'); hotel-booking:266-270 city/checkIn/checkOut+3days; itinerary:223-225 loadTrips()",
+      "dead-asset trap checked and NOT sprung — date-picker.directive.js appears in zero templates, ApiService and UserService are injected nowhere, and all six FRDs describe them as dead rather than as shared components",
+      "evaluative-language scan: 30 raw hits, all false positives (propert*, the 'recommended' sort-option value, quoted Karma test names, and quoted source comments that themselves say 'legacy'/'anti-pattern')",
+      "intent-vs-code scan: the single hit sits inside a labelled ADR-001 Q-5 decision note, not in a Current Implementation section",
+      "skip-detection scan across tests/, e2e/, specs/features/, test/ returned 0 matches"
+    ],
+    "contradictionsListedNotResolved": [
+      "frd-authentication.md carries 17 functional requirements but only 4 (FR-F001-001, -004, -007 and FR-F004-001) use the Input/Processing/Output/Error handling structure that contract-generation consumes; the other five FRDs are 100% structured. Left as-is because restructuring 13 requirements risks inventing behaviour the code does not state.",
+      "Three acceptance-criterion formatting families coexist: bullet GIVEN/WHEN/THEN (flight-search, hotel-booking, itinerary), bold-block **GIVEN**/**WHEN**/**THEN** (travel-request, expense-reconciliation) and bold-block only (authentication). All parse as GIVEN/WHEN/THEN, so normalising them was judged cosmetic churn.",
+      "Two event-table conventions coexist: | in/out | event | line | payload | (travel-request, expense) versus | event | broadcast/listen | line | description | (flight-search, hotel-booking, itinerary). Both are complete and correct; neither was rewritten.",
+      "Three dependency-table conventions coexist: Dependency/Type/Direction/Description, Depends on/Why/Evidence, and Dependency/Version/Used for/Where. Direction was added in prose to the two that lacked it rather than by rewriting the tables.",
+      "specs/docs/architecture/data-models.md:676 records the intended Trip.totalCost semantics as 'not determinable from source'. ADR-001 Q-6 has since settled it. The B1 extraction artifact was deliberately NOT edited — extraction records what the code says; the decision is recorded in frd-itinerary.md instead.",
+      "No FRD has an Edge Cases section. This is correct for the frd-generator output format, which defines none; edge cases live in acceptance criteria and Known Limitations. The spec-refinement checklist rule conflicts with the generator format."
+    ],
+    "openQuestionsForHuman": [
+      "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
+    ]
+  },
+  "lastUpdated": "2026-08-04T22:40:00Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }

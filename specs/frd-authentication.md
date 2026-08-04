@@ -85,6 +85,10 @@ and loaded by the shell (`app/index.html:65`), and it is injected into nothing.
 
 ### US-F001-001: Enter the portal
 
+**AS A** GlobalTravel employee
+**I WANT** to be taken to a sign-in screen when I open the portal
+**SO THAT** I know where to start
+
 **GIVEN** I open the application at any URL that is not a declared state
 **WHEN** the router resolves
 **THEN** I am sent to `/login` (`app/app.routes.js:10`)
@@ -93,6 +97,10 @@ and loaded by the shell (`app/index.html:65`), and it is injected into nothing.
 **AND** I am not asked for an email address or a password.
 
 ### US-F001-002: Authenticate
+
+**AS A** GlobalTravel employee
+**I WANT** to sign in with a single action
+**SO THAT** I can reach the screens that require a session
 
 **GIVEN** I am on the login screen
 **WHEN** I press `Enter Portal`
@@ -107,6 +115,10 @@ constructed (`app/services/auth.service.js:24`)
 
 ### US-F001-003: Be kept out of protected screens
 
+**AS A** GlobalTravel employee
+**I WANT** the portal to stop me reaching a feature screen before I have signed in
+**SO THAT** I am never shown a screen that cannot load its data
+
 **GIVEN** no `authToken` exists in my browser
 **WHEN** I navigate to `/flights`, `/hotels`, `/itinerary`, `/travel-request`, `/expenses` or
 `/dashboard`
@@ -114,6 +126,10 @@ constructed (`app/services/auth.service.js:24`)
 **AND** I am redirected to the login screen (`app/app.js:35`).
 
 ### US-F001-004: Have my identity attached to what I create
+
+**AS A** GlobalTravel employee
+**I WANT** my name and email recorded on what I submit
+**SO THAT** a request, report or note is attributable to me
 
 **GIVEN** I am authenticated and my user record is in memory
 **WHEN** I submit a travel request or an expense report
@@ -124,12 +140,20 @@ constructed (`app/services/auth.service.js:24`)
 
 ### US-F001-005: Have my requests authorised without doing anything
 
+**AS A** GlobalTravel employee
+**I WANT** my session to authorise every API call on my behalf
+**SO THAT** I do not have to re-authenticate on each screen
+
 **GIVEN** I am authenticated
 **WHEN** any feature screen calls the API
 **THEN** the `Authorization: Bearer <token>` header is added for me (`app/app.js:21-23`)
 **AND** the server decodes it and exposes my claims to the handler (`api-mock/server.js:30-31`).
 
 ### US-F002-001: Move between features from anywhere
+
+**AS A** GlobalTravel employee
+**I WANT** one persistent navigation bar
+**SO THAT** I can move between features without returning to a menu
 
 **GIVEN** I am anywhere in the portal
 **WHEN** I use the fixed navbar
@@ -139,6 +163,10 @@ constructed (`app/services/auth.service.js:24`)
 
 ### US-F003-001: Land somewhere after logging in
 
+**AS A** GlobalTravel employee
+**I WANT** a landing screen once I have signed in
+**SO THAT** I have a starting point for the task I came to do
+
 **GIVEN** I have just authenticated
 **WHEN** the dashboard renders
 **THEN** I see the portal title and the same five links (`app/app.routes.js:29`)
@@ -146,16 +174,21 @@ constructed (`app/services/auth.service.js:24`)
 
 ### US-F004-001: Be told what happened
 
+**AS A** GlobalTravel employee
+**I WANT** feedback after each action I take
+**SO THAT** I know whether it succeeded
+
 **GIVEN** I performed an action in any feature screen
 **WHEN** that action succeeds or fails
 **THEN** a coloured alert appears in the notification area (`app/index.html:41-45`)
 **AND** it stays there for the rest of the session, because nothing removes it.
 
-### US-F022-001: Read and update my profile
+### US-F022-001: Read and update my profile — **no derivable story**
 
-> No user story is derivable from running behaviour. `UserService` is injected nowhere, so neither
-> `getProfile()` nor `updatePreferences()` is reachable from any screen. Recorded as
-> *Known Limitations 13-14*.
+> **Not a user story. Generates no Gherkin scenario.** No behaviour is reachable, so nothing can be
+> asserted. `UserService` is injected nowhere, so neither `getProfile()` nor `updatePreferences()`
+> can be called from any screen. Recorded as *Known Limitations 13-14*. This heading is retained
+> only so F-022 has a visible home in the traceability chain; downstream generation must skip it.
 
 ---
 

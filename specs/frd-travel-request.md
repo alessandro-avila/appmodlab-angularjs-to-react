@@ -397,8 +397,10 @@ Seven jQuery call sites manipulate elements by id or tag directly (`controller:7
 | Bootstrap 3 JS | The detail modal is opened imperatively | `controller:246`; `template:321` |
 | `travelPolicy` fixture | F-014's only data source | `api-mock/server.js:257-267` |
 
-**Nothing depends on this module.** It emits no feature-specific events, and no other controller or
-service references `TravelRequestService`.
+**Direction.** Every row above is **upstream** — this module consumes it — with one exception:
+`notification:add` is **downstream**, broadcast by this module (5 sites) and consumed by the single
+listener in `app/app.js:44`. **Nothing else depends on this module:** it emits no other event, and
+no other controller or service references `TravelRequestService`.
 
 ---
 

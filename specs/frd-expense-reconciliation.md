@@ -454,8 +454,10 @@ Six jQuery call sites manipulate elements by id, class or tag (`controller:59`, 
 | AngularJS `currency` filter | The module's only currency formatter | `controller:266` |
 | F-012 Travel Request | `travelRequestId` links a report to a request | `controller:284`; `template:100`; `service:107-111` |
 
-**Nothing depends on this module.** It emits no feature-specific events, and no other controller or
-service references `ExpenseService`.
+**Direction.** Every row above is **upstream** — this module consumes it — with one exception:
+`notification:add` is **downstream**, broadcast by this module (6 sites) and consumed by the single
+listener in `app/app.js:44`. **Nothing else depends on this module:** it emits no other event, and
+no other controller or service references `ExpenseService`.
 
 ---
 

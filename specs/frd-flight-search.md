@@ -300,6 +300,7 @@ guard except the scroll.
 | Notifications (`$rootScope` bus) | Feature | Downstream | Consumes the four `notification:add` broadcasts from this module (`app/app.js:44-50`) |
 | `GET /api/flights`, `POST /api/flights/{id}/book` | External | — | Mock Express API, `api-mock/server.js:328` and `:365` |
 | `GET /api/airports`, `/api/flights/popular`, `/api/flights/{id}` | External | — | Reachable and implemented; no caller in the app |
+| `POST /api/flights` | External | — | Reachable and implemented; no client method declares it (`api-mock/server.js:333`) |
 | Restangular 1.6.1 | External | — | HTTP client; base URL `http://localhost:3000/api` (`app/app.js:14`) |
 | jQuery 2.2.4 + jQuery UI | External | — | Datepickers, overlay fade, validation highlight, scroll animation |
 | Lodash 4.17.4 | External | — | `uniq`, `map`, `minBy`, `maxBy`, `clone`, `filter`, `orderBy`, `get` |
@@ -320,7 +321,7 @@ guard except the scroll.
 | `app/components/flight-search/flight-search.template.html` | Bootstrap 3 template | 1–269 |
 | `app/app.routes.js` | `'flights'` state registration | 32–37 |
 | `app/app.js` | Restangular base URL, token interceptor, auth guard, notification bus | 13–50 |
-| `api-mock/server.js` | `GET /api/flights`, `POST /api/flights/{id}/book` | 328, 365 |
+| `api-mock/server.js` | `GET /api/flights`, `POST /api/flights` (no client caller), `POST /api/flights/{id}/book` | 328, 333, 365 |
 | `test/spec/flight-search.spec.js` | Jasmine spec — 11 tests | 1–248 |
 
 **Not involved, despite proximity.** These were checked and are *not* used by this module:
@@ -464,6 +465,7 @@ Filtering and sorting are Lodash operations inside the controller, not AngularJS
 | `GET /api/airports` | `service:65` | — | No caller |
 | `GET /api/flights/popular` | `service:47` | — | No caller |
 | `GET /api/flights/{id}` | `service:56` | — | No caller |
+| `POST /api/flights` | — | `api-mock/server.js:333` | **No client method exists.** Not merely uncalled — `FlightSearchService` declares no method for this route. See *Known Limitations 12*. |
 
 The search is a **GET** with query parameters (`Restangular.all('flights').getList(params)`).
 
@@ -560,7 +562,18 @@ code does today, which is what the Track A green baseline captures.
 11. **`_.clone` in `applyFilters` is shallow** (`:153`), so `filteredFlights` holds the same objects
     as `flights`. Setting `selectedFlight.booked = true` mutates the object visible in both arrays.
 
-12. **No TODO, FIXME or HACK markers exist in this module.** The file header comments
+12. **A second flight-search route exists that no client method declares.** `POST /api/flights`
+    (`api-mock/server.js:333-336`) is registered behind `authMiddleware` and calls the same
+    `generateFlights` helper as the GET form (`api-mock/server.js:78`), differing only in where the
+    date comes from: the GET form reads `req.query.date` (`:329`), the POST form reads
+    `req.body.departDate` (`:334`). This is a stronger statement than limitation 9 — those three
+    methods exist and are uncalled, whereas here `FlightSearchService` declares no method at all.
+    The B1 extraction records the route and its lack of a caller
+    (`specs/contracts/api/flight-search.yaml:168` with `x-client-callers: []`,
+    `specs/docs/testing/coverage.md:237`) and lists the reason both forms exist as an open unknown
+    (`specs/docs/architecture/overview.md:521`).
+
+13. **No TODO, FIXME or HACK markers exist in this module.** The file header comments
     (`controller:1-5`, `service:1-4`) and six inline comments label patterns as
     "legacy" or "anti-pattern"; they describe style, not defects.
 
