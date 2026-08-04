@@ -36,7 +36,7 @@ Supporting: `playwright-cli` (drives the real browser), `e2e-generation` (POMs).
 
 ## ✅ Prerequisites
 
-- [ ] [Step 03](03-testability-gate.md) approved — Track A recorded in `state.json` and ADR-001
+- [ ] [Step 03](03-testability-gate.md) approved — Track A recorded in `state.json` and ADR-002
 - [ ] `npm start` running: mock API on :3000, app on :8080
 - [ ] Playwright browsers installed (the dev container does this for you)
 
@@ -232,6 +232,36 @@ total, and **this scenario will fail** — surfacing the behaviour change at exa
 someone can decide about it, instead of six months later when a user notices the number moved.
 
 > If a baseline scenario is uncomfortable to write, that is usually a sign it is doing its job.
+
+### The same rule, now applied to two whole seams
+
+[ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md)
+accepted **SEAM-1** (travel policy is published, never enforced) and **SEAM-2** (no approve/reject
+endpoint exists) as *intended behaviour*. So they are not limitations to note in passing — they are
+behaviour the baseline must **assert as passing**, exactly like the `NaN` total:
+
+```gherkin
+@existing-behavior @feature-travel-request
+Scenario: A submitted request stays pending with no way to decide it
+  Given I have submitted a travel request
+  Then the request status is "pending"
+  And the approval chain lists "Mike Chen" as "Manager" with status "pending"
+  And no action is available to approve or reject it
+```
+
+That scenario is the ADR made executable. If someone later builds an approver UI, it fails — and
+the conversation happens at the right moment, with a decision record to point at.
+
+The other three seams are the opposite: **SEAM-3, SEAM-4 and SEAM-5 are defects with a target.**
+The baseline still captures them as-is — a booking that persists nothing, an itinerary that never
+shows it — because Track A snapshots the app as it is. They change later, under a red-green cycle,
+in their own increment.
+
+> **Watch this one.** Q-7 (data is private to its owner) cannot be baselined meaningfully: the
+> fixtures have a **single seeded owner**, so a filtering assertion passes whether or not filtering
+> exists. ADR-001 flags it. Either add a second owner to the fixtures or record explicitly that the
+> isolation scenarios are non-assertive — a green test that cannot fail is worse than no test,
+> because it reads like proof.
 
 ---
 

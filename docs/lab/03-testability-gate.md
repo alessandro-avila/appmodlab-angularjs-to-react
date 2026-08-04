@@ -27,7 +27,7 @@ about.
 | Skill | Purpose |
 |-------|---------|
 | `human-gate` | Presents the checklist, blocks until you decide |
-| `adr` | Writes `specs/adrs/adr-001-testability-gate.md` |
+| `adr` | Writes `specs/adrs/adr-002-testability-gate.md` |
 | `state-management` | Records `testability`, `track`, `testabilityChecklist` in `.spec2cloud/state.json` |
 | `test-runner` | Runs the existing suite so question 6 has evidence |
 
@@ -95,7 +95,7 @@ existence of `index.html`. Drive a browser.
 
 ```
 specs/adrs/
-└── adr-001-testability-gate.md         ← the decision + evidence + alternatives
+└── adr-002-testability-gate.md         ← the decision + evidence + alternatives
 
 .spec2cloud/
 ├── state.json                          ← track: "A", testability: "full"
@@ -174,7 +174,7 @@ recording each discrepancy in `specs/frd-flight-search.md`.
 > 1. `git --no-pager diff --stat lab/02-b2-spec-enable..lab/03-testability-gate`
 > 2. The six answers **with the actual command output** the agent produced
 > 3. Whether it correctly scored question 6 as ✅ despite 11 failures — or argued itself into ❌
-> 4. The full `adr-001-testability-gate.md`
+> 4. The full `adr-002-testability-gate.md`
 > 5. The resulting `.spec2cloud/state.json`
 > 6. Whether Playwright MCP actually drove the browser for question 4, or whether it inferred
 
@@ -188,7 +188,7 @@ recording each discrepancy in `specs/frd-flight-search.md`.
 - [ ] Question 6 is scored ✅ with the 11 failures explained, not ❌
 - [ ] Question 4 was answered by actually driving a browser (screenshot or Playwright trace)
 - [ ] The count matches the track: 6 checks → Track A, not "Hybrid to be safe"
-- [ ] `adr-001-testability-gate.md` lists **alternatives considered** — an ADR with one option
+- [ ] `adr-002-testability-gate.md` lists **alternatives considered** — an ADR with one option
       is a note, not a decision record
 - [ ] `state.json` has `track`, `testability` **and** `testabilityChecklist`
 - [ ] `featureTracks` assigns all five modules to A

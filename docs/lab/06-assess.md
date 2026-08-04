@@ -30,7 +30,7 @@ Still no code changes. Findings and ADRs only.
 
 ## ✅ Prerequisites
 
-- [ ] [Step 05](05-path-selection.md) approved — Modernize recorded in ADR-002 and `state.json`
+- [ ] [Step 05](05-path-selection.md) approved — Modernize recorded in ADR-003 and `state.json`
 - [ ] Green baseline exists for the features you intend to migrate
 - [ ] MCP servers reachable (`context7` in particular — React 19 and TanStack are newer than
       most training cutoffs)
@@ -113,8 +113,8 @@ specs/
 ├── docs/assessment/
 │   └── modernization.md            ← findings, severity, evidence, module scoring
 └── adrs/
-    ├── adr-003-*.md                ← e.g. drop angular-ui-bootstrap
-    ├── adr-004-*.md                ← e.g. externalise API base URL
+    ├── adr-004-*.md                ← e.g. drop angular-ui-bootstrap
+    ├── adr-005-*.md                ← e.g. externalise API base URL
     └── ...
 ```
 
@@ -184,18 +184,23 @@ They matter here because the assessment produces the **migration order**, and a 
 from module complexity alone will faithfully port five screens into a product where you still cannot
 get permission, be approved, or see what you booked.
 
-| Seam | Assessment must decide |
-|------|------------------------|
-| **SEAM-1** policy never enforced | Is enforcement in scope for this migration, or explicitly deferred? |
-| **SEAM-2** no approve/reject endpoint | Building it is **new feature work**, not migration. If in scope it needs its own increment; if not, say so. |
-| **SEAM-3** bookings never persist | The single highest-value seam — it is what makes the app feel real. Fixing it changes the API contract. |
-| **SEAM-4** `approved` counted, never written | Depends on SEAM-2. Sequence them or neither works. |
-| **SEAM-5** spend never links to its request | Its only writer is already on the dead-code list below. Deleting the dead method and implementing the link are opposite decisions — pick one deliberately. |
+**Four of the five are already decided.** [ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md),
+accepted at the B2a gate, dispositioned every seam. The assessment's job is not to reopen them — it
+is to sequence the three that are in scope, and to **not** schedule work for the two that are not.
 
-- [ ] The assessment does not silently schedule a seam as if it were a port. Each is either an
-      increment with a stated scope, or a recorded deferral with a reason.
-- [ ] **Q-1…Q-7 are answered by now, or the seams stay open.** Assessing SEAM-2 without knowing
-      whether a manager is meant to approve (Q-1) produces a recommendation with no basis.
+| Seam | ADR-001 disposition | What the assessment must do |
+|------|--------------------|-----------------------------|
+| **SEAM-1** policy never enforced | **Accepted as-is** (Q-2 = display-only) | Nothing. No rules engine. Reporting it as a gap is re-litigating a closed decision. |
+| **SEAM-2** no approve/reject endpoint | **Accepted as-is** (Q-1 = manager is not an approver) | Nothing. Building it is new feature work and out of scope. |
+| **SEAM-3** bookings never persist | **Defect to fix** (Q-3) | The highest-value item in the migration — it is what makes the app feel real. Needs its own increment; changes the API contract. |
+| **SEAM-4** `approved` counted, never written | **Defect to fix** | Follows SEAM-3's persistence work and Q-4's vocabulary fix. Sequence it after both. |
+| **SEAM-5** spend never links to its request | **Defect to fix, non-blocking** | `linkToTravelRequest` acquires a caller — so it leaves the dead-code list below. Do not delete it. |
+
+- [ ] The assessment **applies** ADR-001 rather than rediscovering the seams. Findings that
+      recommend a policy engine or an approver UI are proposing scope the product owner already declined.
+- [ ] SEAM-3, SEAM-4 and SEAM-5 appear in the migration order with their dependency stated —
+      SEAM-4 after SEAM-3, not beside it.
+
 
 <details>
 <summary><b>Dead code the assessment should also confirm</b></summary>
@@ -204,11 +209,15 @@ Each appears **exactly once** in the repo, at its own definition — B1 verified
 check, and each one removes work from the migration:
 
 - `ApiService` (`api.service.js:9`) — registered, injected nowhere
-- `linkToTravelRequest` (`expense.service.js:107`) — the only writer of
-  `ExpenseReport.travelRequestId`, called by nothing, so the field is `null` in every seed
 - `travelPolicy.preferredHotels` (`server.js:266`) — read by nothing. Also worth noting: its
   values (`Marriott`, `Hilton`, `Hyatt`) match no exact member of `hotelNames`, so had anything
   compared them it would have matched nothing
+
+> **Not on this list any more:** `linkToTravelRequest` (`expense.service.js:107`). It is the only
+> writer of `ExpenseReport.travelRequestId` and today has no caller — but ADR-001 answered Q-5 with
+> *populate the link when a request exists*, so it acquires one. **Deleting it as dead code and
+> implementing SEAM-5 are opposite actions.** An assessment that lists it for removal has not read
+> the ADR.
 
 If the assessment reports any of these as *"needs migrating"*, it did not check whether anything
 calls them.

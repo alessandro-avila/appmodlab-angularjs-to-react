@@ -1,7 +1,7 @@
 # Step 02 · B2 · Spec-Enable
 
 > **Phase** B2 · Spec-Enable &nbsp;|&nbsp; **Branch** [`lab/02-b2-spec-enable`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/02-b2-spec-enable) &nbsp;|&nbsp; **Parent** `lab/01-b1-extract`
-> **Human gates** 🧑‍⚖️ PRD Review · FRD Review · Refinement Review &nbsp;|&nbsp; **Status** 🟡 B2a done, awaiting Q-1…Q-7
+> **Human gates** 🧑‍⚖️ PRD Review ✅ · FRD Review · Refinement Review &nbsp;|&nbsp; **Status** 🟡 B2a approved, B2b next
 
 ---
 
@@ -364,18 +364,56 @@ behaviour"* and *"change it"*:
 Q-8…Q-12 are non-blocking, but **Q-12** (intended datastore, base URL, deployment target) must be
 answered before any cloud-native increment is planned.
 
+### 🧑‍⚖️ The gate: answered, and recorded as a decision
+
+The gate was approved on 2026-08-04. Q-1…Q-7 were answered and — this is the part worth copying —
+written up as **[ADR-001 · Product intent decisions](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md)**
+rather than pasted into a chat reply.
+
+That matters because these are **product decisions, not extraction findings**. They are not
+derivable from the code — which is exactly why they were asked. An ADR makes them auditable,
+attributable and reversible on purpose.
+
+| # | Decision | Effect |
+|---|----------|--------|
+| **Q-1** | Manager is **not** an approver | SEAM-2 **accepted as-is** |
+| **Q-2** | Policy is **display-only** | SEAM-1 **accepted as-is** |
+| **Q-3** | A booking **must** persist to the itinerary | SEAM-3 → **defect to fix** |
+| **Q-4** | The **5 lowercase server values** are canonical | 12 client values → defect to fix |
+| **Q-5** | Link spend to its request **when one exists** | SEAM-5 → defect to fix, non-blocking |
+| **Q-6** | Trip cost is **recomputed server-side** | Both current values are wrong |
+| **Q-7** | Data **is** private to its owner | N-4 moves from *not guaranteed* to *required* |
+
+**The seams split 2 / 3.** SEAM-1 and SEAM-2 become **intended behaviour** — Track A captures them
+as *passing* tests describing what the app does today. SEAM-3, SEAM-4 and SEAM-5 become **target
+behaviour** — captured as-is first, then changed under a red-green cycle in a later increment.
+
+> **Why this is the right shape.** "The approval workflow can never reach a decision" is now a
+> deliberate, documented scope boundary with a named owner — not an oversight someone discovers
+> during the demo. The ADR says so plainly, and states the cost: reversing Q-1 or Q-2 later is
+> **not additive** — F-013, F-014 and every FRD derived from them need regenerating.
+
+The ADR also records two consequences that are easy to miss:
+
+- **Q-7 has no test data.** Per-user filtering cannot be meaningfully exercised against fixtures
+  with a single seeded owner. A second owner must be added, or the isolation scenarios assert nothing.
+- **Q-6 is an API-visible change.** `Trip.totalCost` moves from stored to derived, so any consumer
+  relying on `2450` / `1800` sees different values.
+
 ### 📌 The framework question from step 01 is answered
 
 `currentPhase` **did** advance — `B1-extract` → `B2-spec-enable`. The concern raised at the end of
-[step 01](01-b1-extract.md#-two-findings-for-the-framework) does not reproduce. The gate was
-recorded honestly too: `brownfield-b2a-prd-approved: false`, with a `human-gate result=pending`
-audit entry naming the unanswered questions.
+[step 01](01-b1-extract.md#-two-findings-for-the-framework) does not reproduce. The gate trail is
+honest end to end: `result=pending` while the questions were outstanding, then `result=answered`,
+`adr-created` and `result=approved` — with `currentStep` advancing `prd-generation` →
+`frd-generation` and the prior B1 `gateReview` preserved under `previousGateReview` rather than
+overwritten.
 
 ---
 
 ## 📤 Outcome — B2b / B2c
 
-> ⏳ **Pending** — blocked on Q-1…Q-7.
+> ⏳ **Pending** — unblocked; B2b is next.
 >
 > Paste back:
 > 1. `git --no-pager diff --stat lab/01-b1-extract..lab/02-b2-spec-enable`
@@ -383,21 +421,24 @@ audit entry naming the unanswered questions.
 >    against the 19-row table above
 > 3. How many of the 19 behaviours it caught, and which it missed
 > 4. Whether the six B1 defects reached **Known Limitations**, per FRD
-> 5. What `spec-refinement` found — contradictions are the interesting output here
+> 5. Whether each FRD applied its ADR-001 decision — SEAM-1/2 as intended behaviour, SEAM-3/4/5 as
+>    defects with a target
+> 6. What `spec-refinement` found — contradictions are the interesting output here
 
 ---
 
 ## 🧑‍⚖️ Human gates
 
 ### PRD Review
-> 🔴 **Blast radius: you modernize the wrong product.**
+> 🔴 **Blast radius: you modernize the wrong product.** &nbsp;·&nbsp; ✅ **Approved 2026-08-04**
 
-- [ ] The PRD describes a *travel portal*, not "an AngularJS application"
-- [ ] All seven capabilities are covered, including auth and dashboard
-- [ ] There is a Mermaid workflow diagram
-- [ ] No invented personas, KPIs, OKRs or roadmap
-- [ ] Open Questions exist — a PRD reverse-engineered from code with zero open questions is
-      a PRD that guessed
+- [x] The PRD describes a *travel portal*, not "an AngularJS application"
+- [x] All seven capabilities are covered, including auth and dashboard
+- [x] There is a Mermaid workflow diagram — three, in fact
+- [x] No invented personas, KPIs, OKRs or roadmap — and four candidate personas rejected *with evidence*
+- [x] Open Questions exist — a PRD reverse-engineered from code with zero open questions is
+      a PRD that guessed. **12 raised, 7 blocking, all 7 answered in [ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md).**
+
 
 ### FRD Review
 > 🟠 **Blast radius: features silently change.**
@@ -433,14 +474,19 @@ or the increment plan will schedule a migration that quietly preserves a broken 
 
 | FRD | Must also record |
 |-----|------------------|
-| `frd-travel-request.md` | No approve/reject endpoint exists (**SEAM-2**), and every request receives the same hardcoded pending approver. Policy is published and enforced nowhere (**SEAM-1**). Carries **Q-1** and **Q-2** forward. |
-| `frd-flight-search.md` · `frd-hotel-booking.md` | Booking persists nothing, yet both broadcast `itinerary:refresh` (**SEAM-3**). Carries **Q-3**. |
-| `frd-itinerary.md` | Shows seeded trips only; no booking can reach it (**SEAM-3**, receiving end). |
-| `frd-expense-reconciliation.md` | `travelRequestId` is never populated (**SEAM-5**); `approved` is counted but never written (**SEAM-4**); the statistics route is shadowed by `/:id` and returns 404. Carries **Q-4** (the category vocabularies do not intersect). |
+| `frd-travel-request.md` | No approve/reject endpoint exists (**SEAM-2**), and every request receives the same hardcoded pending approver. Policy is published and enforced nowhere (**SEAM-1**). Per **ADR-001** both are **intended behaviour** — document them as such, not as bugs. |
+| `frd-flight-search.md` · `frd-hotel-booking.md` | Booking persists nothing, yet both broadcast `itinerary:refresh` (**SEAM-3**). Per **ADR-001** this is a **defect with a target**: current behaviour in *Known Limitations*, persistence as the requirement. |
+| `frd-itinerary.md` | Shows seeded trips only; no booking can reach it (**SEAM-3**, receiving end). Trip cost becomes server-derived (**Q-6**) — the client-side overwrite is deleted, not reproduced. |
+| `frd-expense-reconciliation.md` | `travelRequestId` never populated (**SEAM-5**); `approved` counted but never written (**SEAM-4**); the statistics route is shadowed by `/:id` and returns 404. The 5 lowercase server categories are canonical (**Q-4**) — the 12 client values are the defect. |
 
-- [ ] Every FRD touching **Q-1…Q-7** carries the question forward as an explicit open item rather
-      than picking an answer. Silently resolving one writes a product decision into a spec that
-      claims to describe existing behaviour.
+- [ ] Every FRD applies its **[ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md)**
+      decision and cites it. The distinction is the whole point: SEAM-1 and SEAM-2 are behaviour the
+      green baseline must **preserve**; SEAM-3, SEAM-4 and SEAM-5 are behaviour it must **capture,
+      then change**. An FRD that files all five under "Known Limitations" has lost the decision.
+- [ ] **Q-7 (data isolation) is marked as needing a second seeded owner.** ADR-001 flags it: with one
+      owner in the fixtures, per-user filtering cannot be asserted. An FRD that specifies isolation
+      without noting the test data cannot exercise it sets up a green baseline that proves nothing.
+
 
 ### Refinement Review
 - [ ] Max 5 passes, and the report says what changed in each
