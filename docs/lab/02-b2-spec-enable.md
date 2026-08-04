@@ -24,7 +24,7 @@ with no spec now has one.
 | # | Skill | Reads | Writes |
 |---|-------|-------|--------|
 | B2a | `prd-generator` | all of `specs/docs/`, `specs/contracts/api/` | `specs/prd.md` |
-| B2b | `frd-generator` | PRD + extraction + the actual source of each module | `specs/frd-{feature}.md` × 6 |
+| B2b | `frd-generator` | PRD + extraction + the actual source of each module | `specs/frd-{feature}.md` × 7 |
 | B2c | `spec-refinement` | PRD + all FRDs | edits in place, max 5 passes |
 | — | `ddd-modeling` *(optional)* | FRDs + data models | `specs/domain/{proposals,domain-model,database-model}.md` |
 
@@ -94,40 +94,57 @@ this lab follows throughout: **if a line would be equally true of any AngularJS 
 
 ### B2b — FRD, one feature at a time
 
-Run this **six** times, substituting the feature. Start with `flight-search` — it is the richest,
-and it is the only module with existing tests to reconcile.
+The PRD lists **22 features** (`F-001`…`F-022`). The `frd-generator` skill says one FRD per PRD
+feature, which would be 22 documents — eight of them describing P3 dead surface (uncalled routes,
+a stub, an unreachable endpoint).
+
+**Group them into 7 instead, by feature vertical**, because that is the unit you will actually
+migrate: you will port `flight-search/` once, not search-then-booking-then-popular-routes. Each FRD
+names the `F-IDs` it covers, so PRD → FRD traceability survives the grouping.
+
+| FRD | Covers | Source |
+|-----|--------|--------|
+| `frd-authentication.md` | F-001, F-022 | `app/services/auth.service.js`, the inline login controller in `app/app.routes.js`, the `$stateChangeStart` guard in `app/app.js` |
+| `frd-app-shell.md` | F-002, F-003, F-004 | `app/app.js`, `app/app.routes.js`, `app/index.html` — 7 states, the dashboard's inline template, the `notification:add` bus |
+| `frd-flight-search.md` | F-005, F-006, F-018, F-020 | `app/components/flight-search/*`, `'flights'` state, `/api/flights*`, `test/spec/flight-search.spec.js` |
+| `frd-hotel-booking.md` | F-007, F-008, F-021 | `app/components/hotel-booking/*`, `'hotels'` state, `/api/hotels*` |
+| `frd-itinerary.md` | F-009, F-010, F-011, F-019 | `app/components/itinerary/*`, `'itinerary'` state, `/api/trips*`, `/api/itinerary-items*`, plus the `itinerary:refresh` broadcast it listens for |
+| `frd-travel-request.md` | F-012, F-013, F-014 | `app/components/travel-request/*`, `app/directives/approval-status.directive.js`, `'travelRequest'` state, `/api/travel-requests*` |
+| `frd-expense-reconciliation.md` | F-015, F-016, F-017 | `app/components/expense-reconciliation/*`, `app/directives/currency-input.directive.js`, `app/filters/currency.filter.js`, `'expenses'` state, `/api/expense*` |
+
+> Record the deviation. The skill's rule is explicit, and grouping is a defensible departure from it
+> — but only if it is written down. One line in an ADR is enough.
+
+**Start with `flight-search`.** It is the richest module and the only one with existing tests to
+reconcile, so it sets the standard the other six are scored against.
 
 ```text
-Phase B2b. Generate the FRD for flight-search only.
+Generate frd-flight-search.md — it covers F-005, F-006, F-018 and F-020.
 
-Read the real code for this one — app/components/flight-search/*, the currency and
-dateFormat filters, the 'flights' state, and test/spec/flight-search.spec.js.
+Read the real code for this one: app/components/flight-search/*, the 'flights'
+state, and test/spec/flight-search.spec.js.
 
-app/directives/date-picker.directive.js exists but no template uses it. This
-controller initialises jQuery UI datepickers directly. Describe what it does, not
-what the shared directive would have done.
-
-The Current Implementation section is the point of this document, so make it
-forensic: the exact $scope shape, every $watch and what it triggers, every
-$rootScope broadcast and listener by event name, every jQuery selector and effect,
+Current Implementation is the point of this document, so make it forensic — the
+$scope shape, every $watch, every $rootScope broadcast, every jQuery selector,
 the datepicker's date format, every Moment.js call and whether it passes a format
 string, and what the existing tests actually assert.
 
-Describe behaviour as behaviour, not as defects. "Parses the departure date with
-moment() and no format string" is right. "Has a date parsing bug" is a Phase A
-finding and does not belong here yet. Surprising-but-real behaviour goes under
-Known Limitations, phrased neutrally, with the evidence.
+Describe behaviour as behaviour, not as defects. Surprising-but-real behaviour
+goes under Known Limitations, phrased neutrally, with the evidence. And do not
+tidy it up in passing: where the code reads a field the object does not carry,
+the FRD says exactly that.
 
-And do not tidy it up in passing. Where the code reads a field the object does not
-carry, or keeps a total it never recalculates, the FRD says exactly that. Writing
-what the code evidently meant to do is how a real behaviour disappears before
-anyone has decided what to do about it.
+Apply ADR-001 where it is relevant. Show me Current Implementation before moving on.
+```
 
-Show me the Current Implementation section before moving to the next feature.
+Then the remaining six — same prompt, swap the name, the `F-IDs` and the sources from the table:
+
+```text
+Same for frd-hotel-booking.md — F-007, F-008, F-021.
 ```
 
 <details>
-<summary><b>Why the "do not tidy it up" line was added after step 01</b></summary>
+<summary><b>Why "do not tidy it up in passing" is in there</b></summary>
 
 It was not in the original prompt. B1 earned it.
 
@@ -146,27 +163,17 @@ Option 1 is the dangerous one, because it reads as the *better* document.
 </details>
 
 <details>
-<summary><b>The other five features</b></summary>
+<summary><b>Two traps in the source table</b></summary>
 
-Same prompt, swap the feature name and its sources:
+**Do not list `date-picker.directive.js` as a source for any FRD.** B1 verified that
+`gt-date-picker` appears in zero templates. All five screens initialise jQuery UI directly. Naming
+the directive as a source is how an FRD ends up claiming a shared component that nothing shares.
+The same applies to `api.service.js` — registered, injected nowhere.
 
-| Feature | Source files |
-|---------|--------------|
-| `hotel-booking` | `app/components/hotel-booking/*`, `'hotels'` state, `/api/hotels*` |
-| `itinerary` | `app/components/itinerary/*`, `'itinerary'` state, `/api/itinerary*`, plus the `itinerary:refresh` broadcast it listens for |
-| `travel-request` | `app/components/travel-request/*`, `app/directives/approval-status.directive.js`, `'travelRequest'` state, `/api/travel-requests*` |
-| `expense-reconciliation` | `app/components/expense-reconciliation/*`, `app/directives/currency-input.directive.js`, `app/filters/currency.filter.js`, `'expenses'` state, `/api/expenses*` |
-
-Then one for the cross-cutting auth flow — `app/services/auth.service.js`, the inline login
-controller in `app/app.routes.js`, and the `$stateChangeStart` guard in `app/app.js`. It is not a
-UI-Router feature module, but it is a feature, and every other FRD depends on it. **Do not skip
-it** — it is the sixth FRD, and `frd-authentication.md` is where the reload behaviour gets pinned.
-
-> **Do not list `date-picker.directive.js` as a source for any of these.** B1 verified that
-> `gt-date-picker` appears in zero templates. `hotel-booking`, `travel-request` and
-> `expense-reconciliation` each initialise jQuery UI directly, exactly as `flight-search` does.
-> Naming the directive as a source is how an FRD ends up claiming a shared component that nothing
-> shares.
+**`frd-app-shell.md` is the one nobody expects.** It has no feature folder, so it is easy to skip —
+but F-002, F-003 and F-004 are where the notification bus lives, and F-004 is the feature that
+reports success for bookings that persisted nothing. Skip it and SEAM-3's user-visible symptom has
+no home.
 </details>
 
 ### B2c — Refinement
@@ -224,12 +231,15 @@ Stop at the gate.
 ```
 specs/
 ├── prd.md                              ← product from the outside in + Mermaid workflow
+├── adrs/
+│   └── adr-001-product-intent-decisions.md   ← Q-1…Q-7, answered at the B2a gate
 ├── frd-flight-search.md                ← with Current Implementation
 ├── frd-hotel-booking.md
 ├── frd-itinerary.md
 ├── frd-travel-request.md
 ├── frd-expense-reconciliation.md
 ├── frd-authentication.md
+├── frd-app-shell.md                    ← the one with no feature folder
 └── domain/                             ← optional
     ├── proposals.md
     ├── domain-model.md
@@ -443,7 +453,8 @@ overwritten.
 ### FRD Review
 > 🟠 **Blast radius: features silently change.**
 
-- [ ] **Six** FRDs exist — the five feature modules *and* `frd-authentication.md`
+- [ ] **Seven** FRDs exist — the five feature modules, `frd-authentication.md` and `frd-app-shell.md`
+- [ ] Every FRD **names the `F-IDs` it covers**, and all 22 are accounted for exactly once
 - [ ] Every FRD has a **Current Implementation** section with file paths
 - [ ] Score `frd-flight-search.md` against the 19-row table above
 - [ ] The three quirks are documented as *behaviour*, not as bugs:
@@ -462,6 +473,7 @@ FRD reads cleanly and none of these appear, it did not get better — it got qui
 | FRD | Must record |
 |-----|-------------|
 | `frd-authentication.md` | The authenticated check reads `localStorage`; the current-user lookup reads `$rootScope`. They disagree after a reload. |
+| `frd-app-shell.md` | A booking reports success through the notification bus without anything having been persisted (SEAM-3's user-visible symptom). |
 | `frd-hotel-booking.md` | The booking total multiplies `selectedRoom.pricePerNight`, a field room objects do not define. |
 | `frd-itinerary.md` | Stored trip cost and the client-side recomputation disagree. Adding a note replaces the previous one. |
 | `frd-expense-reconciliation.md` | Removing the last expense leaves the previous total in place. `Expense.currency` is stored and read by nothing. |
