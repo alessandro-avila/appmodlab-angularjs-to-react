@@ -2,7 +2,7 @@
   "mode": "brownfield",
   "currentPhase": "B2-spec-enable",
   "currentStep": "frd-generation",
-  "status": "ready",
+  "status": "awaiting-approval",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -24,14 +24,30 @@
     "extractionStatus": "complete",
     "sourceUntouched": true,
     "prdGenerated": true,
-    "frdCount": 0,
+    "frdCount": 6,
     "selectedPaths": [],
     "openQuestions": {
       "total": 12,
       "blockingB2b": [],
-      "blockingDeployment": ["Q-12"],
-      "answered": ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5", "Q-6", "Q-7"],
-      "stillOpen": ["Q-8", "Q-9", "Q-10", "Q-11", "Q-12"],
+      "blockingDeployment": [
+        "Q-12"
+      ],
+      "answered": [
+        "Q-1",
+        "Q-2",
+        "Q-3",
+        "Q-4",
+        "Q-5",
+        "Q-6",
+        "Q-7"
+      ],
+      "stillOpen": [
+        "Q-8",
+        "Q-9",
+        "Q-10",
+        "Q-11",
+        "Q-12"
+      ],
       "raisedWithOwnerAt": "2026-08-04T16:53:06+02:00",
       "answeredAt": "2026-08-04T18:40:00+02:00",
       "decisions": {
@@ -74,7 +90,143 @@
         "status": "accepted",
         "date": "2026-08-04"
       }
-    ]
+    ],
+    "frds": [
+      {
+        "feature_id": "F-005",
+        "also_covers": [
+          "F-006",
+          "F-018",
+          "F-020"
+        ],
+        "path": "specs/frd-flight-search.md",
+        "priority": "P1",
+        "status": "draft",
+        "user_stories_count": 7,
+        "requirements_count": 15,
+        "nfr_count": 4,
+        "known_limitations": 12,
+        "test_coverage": "0% — 11 tests present, 11 failing",
+        "source_code_read": true,
+        "line_citations_verified": 104,
+        "line_citations_wrong": 0,
+        "lab_marking_table_score": "19 of 19",
+        "track_b_sections": "omitted — testability gate has not run"
+      },
+      {
+        "feature_id": "F-007",
+        "also_covers": [
+          "F-008",
+          "F-021"
+        ],
+        "path": "specs/frd-hotel-booking.md",
+        "priority": "P1",
+        "status": "draft",
+        "user_stories_count": 7,
+        "requirements_count": 13,
+        "nfr_count": 5,
+        "known_limitations": 17,
+        "test_coverage": "0% — no test file exists for this module",
+        "source_code_read": true,
+        "line_citations_verified": 157,
+        "line_citations_wrong": 0,
+        "track_b_sections": "omitted — testability gate has not run"
+      },
+      {
+        "feature_id": "F-009",
+        "also_covers": [
+          "F-010",
+          "F-011",
+          "F-019"
+        ],
+        "path": "specs/frd-itinerary.md",
+        "priority": "P1",
+        "status": "draft",
+        "user_stories_count": 9,
+        "requirements_count": 14,
+        "nfr_count": 5,
+        "known_limitations": 21,
+        "test_coverage": "0% — no test file exists for this module",
+        "source_code_read": true,
+        "line_citations_verified": 130,
+        "line_citations_wrong": 0,
+        "track_b_sections": "omitted — testability gate has not run"
+      },
+      {
+        "feature_id": "F-012",
+        "also_covers": [
+          "F-013",
+          "F-014"
+        ],
+        "path": "specs/frd-travel-request.md",
+        "priority": "P1",
+        "status": "draft",
+        "user_stories_count": 10,
+        "requirements_count": 15,
+        "nfr_count": 6,
+        "known_limitations": 22,
+        "test_coverage": "0% — no test file exists for this module",
+        "source_code_read": true,
+        "line_citations_verified": 237,
+        "line_citations_wrong": 0,
+        "track_b_sections": "omitted — testability gate has not run"
+      },
+      {
+        "feature_id": "F-015",
+        "also_covers": [
+          "F-016",
+          "F-017"
+        ],
+        "path": "specs/frd-expense-reconciliation.md",
+        "priority": "P1",
+        "status": "draft",
+        "user_stories_count": 10,
+        "requirements_count": 19,
+        "nfr_count": 6,
+        "known_limitations": 19,
+        "test_coverage": "0% — no test file exists for this module",
+        "source_code_read": true,
+        "line_citations_verified": 312,
+        "line_citations_wrong": 0,
+        "track_b_sections": "omitted — testability gate has not run"
+      },
+      {
+        "feature_id": "F-001",
+        "also_covers": [
+          "F-002",
+          "F-003",
+          "F-004",
+          "F-022"
+        ],
+        "path": "specs/frd-authentication.md",
+        "priority": "P0",
+        "status": "draft",
+        "user_stories_count": 9,
+        "requirements_count": 18,
+        "nfr_count": 6,
+        "known_limitations": 30,
+        "test_coverage": "0% — no spec covers AuthService, the route guard, the interceptor, the notification bus or UserService",
+        "source_code_read": true,
+        "line_citations_verified": 186,
+        "line_citations_wrong": 0,
+        "cross_cutting": true,
+        "track_b_sections": "omitted — testability gate has not run"
+      }
+    ],
+    "frdPlan": {
+      "total": 6,
+      "generated": [
+        "frd-flight-search",
+        "frd-hotel-booking"
+      ],
+      "remaining": [
+        "frd-itinerary",
+        "frd-travel-request",
+        "frd-expense-reconciliation",
+        "frd-authentication"
+      ],
+      "note": "The PRD's 22 features map onto 5 UI-Router feature modules plus cross-cutting authentication, per docs/lab/02-b2-spec-enable.md. One FRD per module, generated one at a time with a human review after each."
+    }
   },
   "testsStatus": {
     "karma-jasmine": {
@@ -136,6 +288,6 @@
       "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
     ]
   },
-  "lastUpdated": "2026-08-04T18:58:30+02:00",
+  "lastUpdated": "2026-08-04T18:44:02Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }
