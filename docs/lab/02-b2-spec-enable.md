@@ -24,7 +24,7 @@ with no spec now has one.
 | # | Skill | Reads | Writes |
 |---|-------|-------|--------|
 | B2a | `prd-generator` | all of `specs/docs/`, `specs/contracts/api/` | `specs/prd.md` |
-| B2b | `frd-generator` | PRD + extraction + the actual source of each module | `specs/frd-{feature}.md` × 5 |
+| B2b | `frd-generator` | PRD + extraction + the actual source of each module | `specs/frd-{feature}.md` × 6 |
 | B2c | `spec-refinement` | PRD + all FRDs | edits in place, max 5 passes |
 | — | `ddd-modeling` *(optional)* | FRDs + data models | `specs/domain/{proposals,domain-model,database-model}.md` |
 
@@ -82,14 +82,18 @@ The PRD is the first consumer of B1. Let it be an honest one.
 
 ### B2b — FRD, one feature at a time
 
-Run this five times, substituting the feature. Start with `flight-search`.
+Run this **six** times, substituting the feature. Start with `flight-search` — it is the richest,
+and it is the only module with existing tests to reconcile.
 
 ```text
 Phase B2b. Generate the FRD for flight-search only.
 
-Read the real code for this one — app/components/flight-search/*, plus the
-date-picker directive, the currency and dateFormat filters, the 'flights' state,
-and test/spec/flight-search.spec.js.
+Read the real code for this one — app/components/flight-search/*, the currency and
+dateFormat filters, the 'flights' state, and test/spec/flight-search.spec.js.
+
+app/directives/date-picker.directive.js exists but no template uses it. This
+controller initialises jQuery UI datepickers directly. Describe what it does, not
+what the shared directive would have done.
 
 The Current Implementation section is the point of this document, so make it
 forensic: the exact $scope shape, every $watch and what it triggers, every
@@ -130,20 +134,27 @@ Option 1 is the dangerous one, because it reads as the *better* document.
 </details>
 
 <details>
-<summary><b>The other four features</b></summary>
+<summary><b>The other five features</b></summary>
 
 Same prompt, swap the feature name and its sources:
 
 | Feature | Source files |
 |---------|--------------|
-| `hotel-booking` | `app/components/hotel-booking/*`, the shared `date-picker.directive.js`, `'hotels'` state, `/api/hotels*` |
+| `hotel-booking` | `app/components/hotel-booking/*`, `'hotels'` state, `/api/hotels*` |
 | `itinerary` | `app/components/itinerary/*`, `'itinerary'` state, `/api/itinerary*`, plus the `itinerary:refresh` broadcast it listens for |
 | `travel-request` | `app/components/travel-request/*`, `app/directives/approval-status.directive.js`, `'travelRequest'` state, `/api/travel-requests*` |
 | `expense-reconciliation` | `app/components/expense-reconciliation/*`, `app/directives/currency-input.directive.js`, `app/filters/currency.filter.js`, `'expenses'` state, `/api/expenses*` |
 
 Then one for the cross-cutting auth flow — `app/services/auth.service.js`, the inline login
 controller in `app/app.routes.js`, and the `$stateChangeStart` guard in `app/app.js`. It is not a
-UI-Router feature module, but it is a feature, and every other FRD depends on it.
+UI-Router feature module, but it is a feature, and every other FRD depends on it. **Do not skip
+it** — it is the sixth FRD, and `frd-authentication.md` is where the reload behaviour gets pinned.
+
+> **Do not list `date-picker.directive.js` as a source for any of these.** B1 verified that
+> `gt-date-picker` appears in zero templates. `hotel-booking`, `travel-request` and
+> `expense-reconciliation` each initialise jQuery UI directly, exactly as `flight-search` does.
+> Naming the directive as a source is how an FRD ends up claiming a shared component that nothing
+> shares.
 </details>
 
 ### B2c — Refinement
@@ -152,12 +163,15 @@ UI-Router feature module, but it is a feature, and every other FRD depends on it
 Phase B2c. Refine the PRD and all FRDs against each other and against the B1
 extraction. Cap it at 5 passes.
 
-I care most about the cross-cutting seams, because that is where five
-independently-written FRDs disagree: the date-picker directive is shared by
-flight-search and hotel-booking, api.service.js is the single Restangular entry
-point, and the $rootScope events (auth:login, notification:add, flight:selected,
-itinerary:refresh) are described in more than one document. Those descriptions
-must match.
+I care most about the cross-cutting seams, because that is where independently
+written FRDs disagree. The $rootScope events - auth:login, notification:add,
+flight:selected, itinerary:refresh - are described in more than one document and
+those descriptions must match, by event name, payload and listener.
+
+Two things you may expect to be shared are not. date-picker.directive.js is used
+by no template, and ApiService is injected nowhere; each controller talks to
+Restangular directly. If any FRD describes either as a shared component, that is a
+contradiction with the extraction - flag it, do not harmonise the FRDs around it.
 
 Also flag anything evaluative that leaked in from B1 — "should", "recommend",
 "modern", "best practice" — and any Current Implementation section that describes
@@ -284,13 +298,28 @@ Gate question 6, and it is the drill for the Track A rule **"fix the test, not t
 ### FRD Review
 > 🟠 **Blast radius: features silently change.**
 
+- [ ] **Six** FRDs exist — the five feature modules *and* `frd-authentication.md`
 - [ ] Every FRD has a **Current Implementation** section with file paths
 - [ ] Score `frd-flight-search.md` against the 19-row table above
 - [ ] The three quirks are documented as *behaviour*, not as bugs:
       `maxPrice` overwrite, the `returnDate` auto-push, the window scroll on select
 - [ ] The test-coverage section states 11 tests / 11 failing **and why**
-- [ ] Shared assets (`date-picker.directive.js`, `api.service.js`) are described identically in
-      every FRD that uses them
+- [ ] **No FRD claims to use `date-picker.directive.js` or `api.service.js`.** B1 verified both are
+      dead: `gt-date-picker` is in no template, `ApiService` is injected nowhere. An FRD that
+      describes either as "the shared component" invented a dependency.
+
+#### The B1 defects are the real marking scheme
+
+These are the six behaviours [step 01](01-b1-extract.md#-what-it-found--the-part-that-actually-matters)
+verified against source. Each belongs in its FRD's **Known Limitations**, stated neutrally. If an
+FRD reads cleanly and none of these appear, it did not get better — it got quieter.
+
+| FRD | Must record |
+|-----|-------------|
+| `frd-authentication.md` | The authenticated check reads `localStorage`; the current-user lookup reads `$rootScope`. They disagree after a reload. |
+| `frd-hotel-booking.md` | The booking total multiplies `selectedRoom.pricePerNight`, a field room objects do not define. |
+| `frd-itinerary.md` | Stored trip cost and the client-side recomputation disagree. Adding a note replaces the previous one. |
+| `frd-expense-reconciliation.md` | Removing the last expense leaves the previous total in place. `Expense.currency` is stored and read by nothing. |
 
 ### Refinement Review
 - [ ] Max 5 passes, and the report says what changed in each
