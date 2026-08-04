@@ -205,6 +205,34 @@ Scenario: Choosing a departure date after the return date moves the return date
 > Neither scenario says "incorrectly", "unfortunately" or "should". They state what happens.
 > Phase A decides whether it is a defect. Phase P decides whether to change it.
 
+### The hard case: when the app produces a broken value
+
+Quirks are easy — they are strange but coherent. This is the one that tests whether you actually
+believe the Track A rule. B1 verified that `hotel-booking.controller.js:231` computes the booking
+total from a field room objects do not carry, so the total is **`NaN`**.
+
+The honest baseline scenario is therefore:
+
+```gherkin
+@existing-behavior @feature-hotel-booking
+Scenario: The booking confirmation shows no usable total
+  Given I have selected a hotel and a room
+  When I confirm the booking
+  Then the confirmation shows a total price of "NaN"
+```
+
+Writing that feels wrong, and the instinct is to "fix the test" to expect a real number. **That
+instinct is backwards.** A green baseline is a snapshot of the app as it is; a scenario asserting
+a correct total would be *red*, and going green would then require changing `app/` — which Track A
+forbids.
+
+It also earns its keep later. Whoever migrates hotel-booking in
+[step 10](10-deliver-inc2-hotel-booking.md) will write the obvious React code, produce a correct
+total, and **this scenario will fail** — surfacing the behaviour change at exactly the moment
+someone can decide about it, instead of six months later when a user notices the number moved.
+
+> If a baseline scenario is uncomfortable to write, that is usually a sign it is doing its job.
+
 ---
 
 ## 📤 Outcome
@@ -237,6 +265,9 @@ Scenario: Choosing a departure date after the return date moves the return date
       is explained in the FRD
 - [ ] No `test.skip()`, no `xit()`, no commented-out assertions
 - [ ] Scenarios use user vocabulary ("the maximum price filter"), not `$scope.filters.maxPrice`
+- [ ] **Broken outputs are asserted as broken.** If a scenario expects a sensible value where the
+      app produces `NaN`, an empty string or a stale number, the baseline is aspirational and the
+      behaviour change it should have caught will now pass silently.
 - [ ] Playwright storage state is reused — if every scenario logs in, the suite will be slow and
       flaky
 

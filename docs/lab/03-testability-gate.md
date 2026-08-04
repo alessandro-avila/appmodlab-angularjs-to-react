@@ -65,6 +65,12 @@ expected to fail 11 of 11. A suite that runs and reports failures is executable 
 passes that check. A suite that cannot launch a browser is not. Work out which this
 is and say so explicitly.
 
+When you drive the UI, reload the page once after logging in and check whether the
+session survives it. B1 found the auth check and the current-user lookup reading
+from different places, so this may not behave the way a login normally does. If a
+test would have to avoid reloading to stay green, that is a testability constraint
+and it belongs in the ADR.
+
 Then propose a track against the thresholds, write the ADR with pass/fail and evidence
 per item plus the alternatives you rejected, and update state.json.
 

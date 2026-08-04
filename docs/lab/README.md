@@ -109,7 +109,7 @@ exists, and why you should read the output rather than clicking approve.
 | # | Step | Phase | Human gate | Status |
 |---|------|-------|-----------|--------|
 | 00 | [spec2cloud init](00-spec2cloud-init.md) | B0 · Onboarding | — | ✅ Verified |
-| 01 | [B1 · Extract](01-b1-extract.md) | B1 · Extract | Extraction Review | ⏳ Pending |
+| 01 | [B1 · Extract](01-b1-extract.md) | B1 · Extract | Extraction Review | ✅ Verified |
 | 02 | [B2 · Spec-Enable](02-b2-spec-enable.md) | B2 · Spec-Enable | PRD / FRD / Refinement Review | ⏳ Pending |
 
 ### The fork in the road
@@ -135,7 +135,9 @@ exists, and why you should read the output rather than clicking approve.
 | 14 | [Cutover](14-cutover.md) | 2 · Deliver | PR Review | ⏳ Pending |
 
 <sub>⏳ Pending = the doc has the prompt and the expected artifacts, but the **Outcome** section is
-waiting for a real run. ✅ Verified = the outcome is recorded from an actual execution on this repo.</sub>
+waiting for a real run. ⚠️ Run recorded — gate open = the run happened and the outcome is written
+up, but the human gate has not been approved yet. ✅ Verified = the outcome is recorded from an
+actual execution on this repo and the gate passed.</sub>
 
 ---
 

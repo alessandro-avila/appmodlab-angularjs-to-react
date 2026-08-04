@@ -102,8 +102,32 @@ moment() and no format string" is right. "Has a date parsing bug" is a Phase A
 finding and does not belong here yet. Surprising-but-real behaviour goes under
 Known Limitations, phrased neutrally, with the evidence.
 
+And do not tidy it up in passing. Where the code reads a field the object does not
+carry, or keeps a total it never recalculates, the FRD says exactly that. Writing
+what the code evidently meant to do is how a real behaviour disappears before
+anyone has decided what to do about it.
+
 Show me the Current Implementation section before moving to the next feature.
 ```
+
+<details>
+<summary><b>Why the "do not tidy it up" line was added after step 01</b></summary>
+
+It was not in the original prompt. B1 earned it.
+
+The extraction found `hotel-booking.controller.js:231` reading `selectedRoom.pricePerNight` —
+a field rooms do not have, so the booking total is `NaN`. An FRD generator reading that line has
+three options, and two of them are wrong:
+
+1. *"Calculates the total from the room's nightly rate"* — describes the intent. The bug vanishes
+   from the spec, and the React rewrite silently fixes it. The migration now carries an undeclared
+   behaviour change.
+2. *"Bug: reads a non-existent field"* — a Phase A judgement, arriving two phases early.
+3. *"Multiplies `selectedRoom.pricePerNight`, which room objects do not define, by the night count"*
+   — correct. Neutral, falsifiable, and it survives into the assessment where the decision belongs.
+
+Option 1 is the dangerous one, because it reads as the *better* document.
+</details>
 
 <details>
 <summary><b>The other four features</b></summary>

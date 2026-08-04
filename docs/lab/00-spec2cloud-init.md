@@ -1,6 +1,7 @@
 # Step 00 · spec2cloud init
 
-> **Phase** B0 · Onboarding &nbsp;|&nbsp; **Branch** [`lab/00-spec2cloud-init`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/00-spec2cloud-init) &nbsp;|&nbsp; **Parent** `main` | **Human gate**: none
+> **Phase** B0 · Onboarding &nbsp;|&nbsp; **Branch** [`lab/00-spec2cloud-init`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/00-spec2cloud-init) &nbsp;|&nbsp; **Parent** `main`
+> **Human gate** none &nbsp;|&nbsp; **Status** ✅ Run complete
 
 ---
 
@@ -86,6 +87,24 @@ specs/docs/.gitkeep
 specs/features/.gitkeep
 specs/tasks/.gitkeep
 ```
+
+### ⚠️ Finding: `.spec2cloud/` was not created
+
+Compare that file tree against the [Expected artifacts](#-expected-artifacts) table above. The row
+promising `.spec2cloud/state.json`, `audit.log` and `models.json` as *"workflow state, committed to
+git"* has **no counterpart on disk**. After `init`, `.spec2cloud/` does not exist at all — the
+commit that landed this step (81 files) contains none of them.
+
+This is worth flagging rather than shrugging at, because `state.json` is what every later step reads
+to know which phase it is in and which gates have been approved. A missing state file at step 00
+looks, at first glance, like the framework is broken.
+
+> ✅ **Answered at [step 01](01-b1-extract.md#-two-findings-for-the-framework).** They *are* created —
+> just not by `init`. The **first orchestrator run** writes them as its opening act, before any
+> extraction skill runs (`audit.log` line 2:
+> `action=init-state ... created .spec2cloud/state.json and .spec2cloud/audit.log`).
+> The documentation describes the right files at the wrong moment. `models.json` was still not
+> present after B1.
 
 <details>
 <summary><b>The 46 skills, by category</b></summary>
