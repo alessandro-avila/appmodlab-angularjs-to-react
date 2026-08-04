@@ -476,7 +476,10 @@ check.
 
 ### Known Limitations
 
-Stated as behaviour, with evidence. No judgement is implied and no fix is proposed here.
+Stated as behaviour, with evidence. No judgement is implied and no fix is proposed here. Where
+ADR-001 has already settled the product intent behind an item, the decision follows in a separate
+**Target behaviour** note; the numbered paragraph above each note continues to describe what the
+code does today, which is what the Track A green baseline captures.
 
 1. **The booking total is `NaN`.** `bookRoom` computes
    `totalPrice: $scope.selectedRoom.pricePerNight * $scope.nightCount * $scope.searchParams.rooms`
@@ -514,9 +517,18 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
    where rooms carry no `amenities` array at all. The booking summary repeats `bedType`
    (`template:215`).
 
-8. **A booking persists nothing.** `POST /api/bookings/hotels` writes to no collection. The
-   controller nevertheless broadcasts `itinerary:refresh` (`:238`) and opens a success modal, so
-   the UI reports a booking that a subsequent `GET /api/trips` will not show.
+8. **A booking persists nothing** — this is **SEAM-3**. `POST /api/bookings/hotels` writes to no
+   collection. The controller nevertheless broadcasts `itinerary:refresh` (`:238`) and opens a
+   success modal, so the UI reports a booking that a subsequent `GET /api/trips` will not show.
+
+   > **Target behaviour — settled by Q-3 of ADR-001**
+   > (`specs/adrs/adr-001-product-intent-decisions.md`). A booking must persist and appear on the
+   > traveller's itinerary, so SEAM-3 is dispositioned a **defect to fix** rather than accepted
+   > behaviour — the ADR calls it "the core product promise". `POST /api/bookings/hotels` is to
+   > write an itinerary item that a subsequent `GET /api/trips` returns, which makes the existing
+   > `itinerary:refresh` broadcast at `:238` correct rather than misleading. The paragraph above
+   > remains the green-baseline description of today's behaviour; the change is made in a later
+   > increment under a red-green cycle, and it raises F-008 above its current P1 rank.
 
 9. **The date range does not affect results.** `GET /api/hotels` reads `checkIn` and `checkOut` and
    passes them to the generator, which does not write them into the returned hotels;
@@ -581,6 +593,11 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
 | F-007 Hotel Search | FR-F007-001 … 009 | P1 |
 | F-008 Hotel Room Selection & Booking | FR-F008-001 … 003 | P1 |
 | F-021 Hotel Details & Reviews | FR-F021-001 | P3 |
+
+Resolved product decisions that bound this FRD: **Q-3** — a booking must create an itinerary item,
+so **SEAM-3** (*bookings persist nothing*, Known Limitation 8) is a **defect to fix** and F-008's
+target behaviour differs from what the code does today
+(`specs/adrs/adr-001-product-intent-decisions.md`).
 
 Extraction artifacts corroborating this FRD: `specs/contracts/api/hotel-booking.yaml`
 (7 operations, 7 `x-discrepancies`), `specs/docs/architecture/components.md`

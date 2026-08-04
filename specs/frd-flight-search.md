@@ -499,7 +499,10 @@ sort branches as actually shaped; `sortBy` toggle; `bookFlight` in full; the `de
 
 ### Known Limitations
 
-Stated as behaviour, with evidence. No judgement is implied and no fix is proposed here.
+Stated as behaviour, with evidence. No judgement is implied and no fix is proposed here. Where
+ADR-001 has already settled the product intent behind an item, the decision follows in a separate
+**Target behaviour** note; the numbered paragraph above each note continues to describe what the
+code does today, which is what the Track A green baseline captures.
 
 1. **`filters.maxPrice` is overwritten on every search.** `searchFlights` assigns
    `$scope.filters.maxPrice = $scope.priceRange.max` (`:117`) after each successful response, so a
@@ -521,11 +524,20 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
    (`api-mock/server.js:367`); the controller reads `booking.confirmationCode` (`:220`), producing
    the notification text `Flight booked successfully! Confirmation: undefined`.
 
-6. **A booking persists nothing.** `POST /api/flights/{id}/book` writes to no collection
-   (`api-mock/server.js:365`). The controller nevertheless broadcasts `itinerary:refresh` (`:221`)
-   and sets `selectedFlight.booked = true` (`:222`), so the UI reports a booking that a subsequent
-   `GET /api/trips` will not show. `booked` lives only on the in-memory flight object and is lost
-   on the next search or state change.
+6. **A booking persists nothing** — this is **SEAM-3**. `POST /api/flights/{id}/book` writes to no
+   collection (`api-mock/server.js:365`). The controller nevertheless broadcasts `itinerary:refresh`
+   (`:221`) and sets `selectedFlight.booked = true` (`:222`), so the UI reports a booking that a
+   subsequent `GET /api/trips` will not show. `booked` lives only on the in-memory flight object and
+   is lost on the next search or state change.
+
+   > **Target behaviour — settled by Q-3 of ADR-001**
+   > (`specs/adrs/adr-001-product-intent-decisions.md`). A booking must persist and appear on the
+   > traveller's itinerary, so SEAM-3 is dispositioned a **defect to fix** rather than accepted
+   > behaviour — the ADR calls it "the core product promise". `POST /api/flights/{id}/book` is to
+   > write an itinerary item that a subsequent `GET /api/trips` returns, which makes the existing
+   > `itinerary:refresh` broadcast at `:221` correct rather than misleading. The paragraph above
+   > remains the green-baseline description of today's behaviour; the change is made in a later
+   > increment under a red-green cycle, and it raises F-006 above its current P1 rank.
 
 7. **Search results are non-deterministic.** Every `GET /api/flights` generates 5–12 flights on the
    fly; nothing is stored. Re-running the same search returns a different result set, and a
@@ -570,6 +582,11 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
 | F-006 Flight Booking | FR-F006-001 | P1 |
 | F-018 Airport Lookup | FR-F018-001 | P2 |
 | F-020 Popular Routes & Flight Details | FR-F020-001 | P2 |
+
+Resolved product decisions that bound this FRD: **Q-3** — a booking must create an itinerary item,
+so **SEAM-3** (*bookings persist nothing*, Known Limitation 6) is a **defect to fix** and F-006's
+target behaviour differs from what the code does today
+(`specs/adrs/adr-001-product-intent-decisions.md`).
 
 Extraction artifacts corroborating this FRD: `specs/contracts/api/flight-search.yaml`
 (6 operations, 5 `x-discrepancies`), `specs/docs/architecture/components.md`

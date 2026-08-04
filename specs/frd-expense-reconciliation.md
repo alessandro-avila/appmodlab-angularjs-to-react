@@ -661,7 +661,10 @@ not by executing it.
 
 ### Known Limitations
 
-Recorded as observed behaviour. No remedy is proposed here.
+Recorded as observed behaviour. No remedy is proposed here. Where ADR-001 has already settled the
+product intent behind an item, the decision follows in a separate **Target behaviour** note; the
+numbered paragraph above each note continues to describe what the code does today, which is what
+the Track A green baseline captures.
 
 1. **The client and server category vocabularies do not intersect.** The dropdown offers twelve
    Title Case values (`controller:28-32`); every stored expense and the statistics breakdown use
@@ -699,12 +702,22 @@ Recorded as observed behaviour. No remedy is proposed here.
    (`controller:193-194`), so both server defaults are always replaced; a body carrying `id`,
    `userId` or `status` would replace those too.
 
-6. **Every report created through the UI is stored as a draft.** The server's default is
+6. **Every report created through the UI is stored as a draft** — this, with limitation 11, is
+   **SEAM-4**. The server's default is
    `'draft'` (`api-mock/server.js:625`) and the client never sends a `status`
    (`_getEmptyReport`, `controller:280-290`). The submit action stamps `submittedAt` and
    `submittedBy` but leaves the status untouched, so a submitted report is indistinguishable from
    a saved draft — and remains deletable, because delete is offered for `draft`
-   (`template:302`).
+   (`template:302`). No status ever becomes `approved`: the statistics handler counts that value
+   (`api-mock/server.js:671`), no seed carries it, and the only route that could set it is the
+   client-supplied `PUT` body, which has no caller (limitation 4).
+
+   > **Target behaviour — SEAM-4 is a defect to fix in ADR-001**
+   > (`specs/adrs/adr-001-product-intent-decisions.md`). The ADR records that this follows from
+   > Q-3's persistence work and Q-4's vocabulary fix rather than from a question of its own: an
+   > expense report must be able to reach a state the statistics handler is already counting. The
+   > paragraph above remains the green-baseline description of today's behaviour; the change is made
+   > in a later increment under a red-green cycle.
 
 7. **A `null` `submittedAt` produces an invalid date and an unbounded comparison.** Seed report
    `exp-2` has `submittedAt: null` (`api-mock/server.js:247`). `service:20` formats it
@@ -762,11 +775,19 @@ Recorded as observed behaviour. No remedy is proposed here.
     components. The module formats currency two other ways instead — `$filter('currency')`
     (`controller:266`) and `'$' +` string concatenation (`service:21`, `:38`).
 
-15. **`travelRequestId` is captured but never validated or resolved.** The form offers a free-text
+15. **`travelRequestId` is captured but never validated or resolved** — this is **SEAM-5**. The form
+    offers a free-text
     input (`template:100`); `_getEmptyReport` defaults it to `''` (`controller:284`). No code
     checks that the id refers to an existing travel request, no template resolves it to a
     destination, and both seed reports carry `travelRequestId: null`
     (`api-mock/server.js:228`, `:245`).
+
+    > **Target behaviour — settled by Q-5 of ADR-001**
+    > (`specs/adrs/adr-001-product-intent-decisions.md`). The link is **optional**: populate
+    > `travelRequestId` when a linked request exists. SEAM-5 is therefore a **defect to fix,
+    > non-blocking** — the field stays nullable and `ExpenseService.linkToTravelRequest`
+    > (`service:107`) acquires a caller. The paragraph above remains the green-baseline description
+    > of today's behaviour.
 
 16. **`daysSinceSubmission` is computed and never rendered.** The service adds it on every list
     load (`service:23`); it appears in no template binding.
@@ -809,8 +830,12 @@ Recorded as observed behaviour. No remedy is proposed here.
 
 Resolved product decisions that bound this FRD: **Q-4** — the five lowercase server values are the
 canonical category vocabulary, so the twelve Title Case client values are the side that diverges.
-**Q-5** — `travelRequestId` is intended to be optional, populated when a linked request exists.
-**Q-7** — every collection is to be scoped to the authenticated user, with no role-based access
+**Q-5** — `travelRequestId` is intended to be optional, populated when a linked request exists, so
+**SEAM-5** (*the link is never populated*, Known Limitation 15) is a **defect to fix,
+non-blocking**. **Q-7** — every collection is to be scoped to the authenticated user, with no
+role-based access. **SEAM-4** (*`approved` is counted but never written*, Known Limitations 6 and
+11) is a **defect to fix** that the ADR derives from Q-3's persistence work and Q-4's vocabulary fix
+rather than from a question of its own
 (`specs/adrs/adr-001-product-intent-decisions.md`).
 
 ---

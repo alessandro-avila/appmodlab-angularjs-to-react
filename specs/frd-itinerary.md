@@ -495,7 +495,10 @@ this module.
 
 ### Known Limitations
 
-Stated as behaviour, with evidence. No judgement is implied and no fix is proposed here.
+Stated as behaviour, with evidence. No judgement is implied and no fix is proposed here. Where
+ADR-001 has already settled the product intent behind an item, the decision follows in a separate
+**Target behaviour** note; the numbered paragraph above each note continues to describe what the
+code does today, which is what the Track A green baseline captures.
 
 1. **The stored trip cost and the client-side recomputation disagree.** The server seeds
    `totalCost: 2450.00` for `trip-1` and `totalCost: 1800.00` for `trip-2`
@@ -503,6 +506,24 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
    `_.sumBy(trip.items, 'cost')` (`service:19`), which is **1330** for `trip-1`
    (450 + 350 + 0 + 50 + 480) and **1160** for `trip-2` (380 + 280 + 500). The trip list
    (`template:66`) therefore never shows the stored figure. Nothing reconciles the two.
+
+   > **Target behaviour — settled by Q-6 of ADR-001**
+   > (`specs/adrs/adr-001-product-intent-decisions.md`). A trip's cost is what the **server**
+   > computes from the trip's items. Neither value the code produces today is authoritative under
+   > that decision — not the seeded `2450` / `1800`, and not the client-side sum. Two consequences
+   > follow for this FRD:
+   >
+   > - **`Trip.totalCost` changes from a stored field to a derived one.** It ceases to be seed data
+   >   that `GET /api/trips` echoes back and becomes a value the handler computes per response.
+   >   `specs/docs/architecture/data-models.md` lists `totalCost` under `Trip`'s stored fields, and
+   >   `specs/contracts/api/itinerary.yaml` will need the same amendment.
+   > - **This is an API-visible behaviour change**, not an internal refactor. Any consumer relying
+   >   on the stored `2450` / `1800` values will observe different numbers after the change, so it
+   >   cannot be treated as backward-compatible. The client-side overwrite at `service:19` becomes
+   >   redundant once the server is authoritative.
+   >
+   > The paragraph above remains the green-baseline description of today's behaviour; the change is
+   > made in a later increment under a red-green cycle.
 
 2. **The two totals in the UI are computed by different rules.** The trip-list figure sums **every**
    item regardless of type (`service:19`); the trip-summary panel sums only items whose `type` is
@@ -588,7 +609,26 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
     applies `Object.assign` unconditionally (`api-mock/server.js:523`); the guard that hides the
     button is client-side only (`template:169`).
 
-21. **No TODO, FIXME or HACK markers exist in this module.** Six inline comments label patterns as
+21. **A refresh triggered by a booking reloads an unchanged collection** — this module sits on the
+    receiving end of **SEAM-3**. It is the sole listener of `itinerary:refresh`
+    (`controller:223-225`), which `flight-search.controller.js:221` and
+    `hotel-booking.controller.js:238` broadcast after a booking. Neither booking handler writes to
+    any collection (`api-mock/server.js:365`, `:445`), and `GET /api/trips` returns the seeded
+    array unmodified (`api-mock/server.js:461-463`), so `loadTrips()` re-renders exactly the two
+    trips the user was already looking at. The event fires, the request is issued, and nothing the
+    user just booked appears.
+
+    > **Target behaviour — settled by Q-3 of ADR-001**
+    > (`specs/adrs/adr-001-product-intent-decisions.md`). A booking must persist and appear on the
+    > traveller's itinerary, so SEAM-3 is dispositioned a **defect to fix** rather than accepted
+    > behaviour — the ADR calls it "the core product promise". Once both booking handlers write an
+    > itinerary item, `GET /api/trips` returns it and this module's existing refresh path delivers
+    > the new booking with no change to the controller. This screen is where that promise is
+    > observable, so F-009 is the verification surface for the SEAM-3 fix as well as a feature in
+    > its own right. The paragraph above remains the green-baseline description of today's
+    > behaviour; the change is made in a later increment under a red-green cycle.
+
+22. **No TODO, FIXME or HACK markers exist in this module.** Six inline comments label patterns as
     "legacy" or "anti-pattern" (`controller:3`, `:14`, `:81`, `:107`, `:128`, `:171`); they
     describe style, not defects.
 
@@ -612,6 +652,14 @@ Stated as behaviour, with evidence. No judgement is implied and no fix is propos
 | F-010 Itinerary Item Annotation | FR-F010-001 | P1 |
 | F-011 Itinerary Item Cancellation | FR-F011-001 | P0 |
 | F-019 Trip Management & Sharing | FR-F019-001 | P2 |
+
+Resolved product decisions that bound this FRD: **Q-3** — a booking must create an itinerary item,
+so **SEAM-3** (*bookings persist nothing*, Known Limitation 21) is a **defect to fix**; this module
+is where that fix becomes observable, because it already reloads on `itinerary:refresh`. **Q-6** —
+the server recomputes a trip's cost from its items, which moves `Trip.totalCost` from a **stored**
+field to a **derived** one and is an **API-visible** change for any consumer relying on the stored
+`2450` / `1800` values (Known Limitation 1)
+(`specs/adrs/adr-001-product-intent-decisions.md`).
 
 Extraction artifacts corroborating this FRD: `specs/contracts/api/itinerary.yaml`,
 `specs/docs/architecture/components.md` (`ItineraryController`, `ItineraryService`),

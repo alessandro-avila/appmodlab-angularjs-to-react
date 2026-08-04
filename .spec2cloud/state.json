@@ -88,7 +88,15 @@
         "path": "specs/adrs/adr-001-product-intent-decisions.md",
         "title": "Product intent decisions for the GlobalTravel portal migration",
         "status": "accepted",
-        "date": "2026-08-04"
+        "date": "2026-08-04",
+        "linked_from_frds": 6,
+        "seams_linked": [
+          "SEAM-1",
+          "SEAM-2",
+          "SEAM-3",
+          "SEAM-4",
+          "SEAM-5"
+        ]
       }
     ],
     "frds": [
@@ -111,7 +119,16 @@
         "line_citations_verified": 104,
         "line_citations_wrong": 0,
         "lab_marking_table_score": "19 of 19",
-        "track_b_sections": "omitted — testability gate has not run"
+        "track_b_sections": "omitted — testability gate has not run",
+        "adr_refs": [
+          "ADR-001"
+        ],
+        "adr_questions": [
+          "Q-3"
+        ],
+        "seams_named": [
+          "SEAM-3"
+        ]
       },
       {
         "feature_id": "F-007",
@@ -130,7 +147,16 @@
         "source_code_read": true,
         "line_citations_verified": 157,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run"
+        "track_b_sections": "omitted — testability gate has not run",
+        "adr_refs": [
+          "ADR-001"
+        ],
+        "adr_questions": [
+          "Q-3"
+        ],
+        "seams_named": [
+          "SEAM-3"
+        ]
       },
       {
         "feature_id": "F-009",
@@ -150,7 +176,17 @@
         "source_code_read": true,
         "line_citations_verified": 130,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run"
+        "track_b_sections": "omitted — testability gate has not run",
+        "adr_refs": [
+          "ADR-001"
+        ],
+        "adr_questions": [
+          "Q-3",
+          "Q-6"
+        ],
+        "seams_named": [
+          "SEAM-3"
+        ]
       },
       {
         "feature_id": "F-012",
@@ -169,7 +205,18 @@
         "source_code_read": true,
         "line_citations_verified": 237,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run"
+        "track_b_sections": "omitted — testability gate has not run",
+        "adr_refs": [
+          "ADR-001"
+        ],
+        "adr_questions": [
+          "Q-1",
+          "Q-2"
+        ],
+        "seams_named": [
+          "SEAM-1",
+          "SEAM-2"
+        ]
       },
       {
         "feature_id": "F-015",
@@ -188,7 +235,19 @@
         "source_code_read": true,
         "line_citations_verified": 312,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run"
+        "track_b_sections": "omitted — testability gate has not run",
+        "adr_refs": [
+          "ADR-001"
+        ],
+        "adr_questions": [
+          "Q-4",
+          "Q-5",
+          "Q-7"
+        ],
+        "seams_named": [
+          "SEAM-4",
+          "SEAM-5"
+        ]
       },
       {
         "feature_id": "F-001",
@@ -210,7 +269,14 @@
         "line_citations_verified": 186,
         "line_citations_wrong": 0,
         "cross_cutting": true,
-        "track_b_sections": "omitted — testability gate has not run"
+        "track_b_sections": "omitted — testability gate has not run",
+        "adr_refs": [
+          "ADR-001"
+        ],
+        "adr_questions": [
+          "Q-7"
+        ],
+        "seams_named": []
       }
     ],
     "frdPlan": {
@@ -288,6 +354,6 @@
       "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
     ]
   },
-  "lastUpdated": "2026-08-04T18:44:02Z",
+  "lastUpdated": "2026-08-04T21:48:38Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }

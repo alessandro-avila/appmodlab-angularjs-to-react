@@ -595,7 +595,10 @@ not by executing it.
 
 ### Known Limitations
 
-Recorded as observed behaviour. No remedy is proposed here.
+Recorded as observed behaviour. No remedy is proposed here. Where ADR-001 has already settled the
+product intent behind an item, the decision follows in a separate **Product decision** note; the
+numbered paragraph above each note continues to describe what the code does today, which is what
+the Track A green baseline captures.
 
 1. **A client-supplied body can override every server-assigned field.** `POST` builds a skeleton
    containing `id`, `userId`, `status`, `createdAt` and `approvals`, then calls
@@ -606,21 +609,38 @@ Recorded as observed behaviour. No remedy is proposed here.
    (`controller:168`), so it includes `id`, `status`, `createdAt`, `approvals` and the six
    client-added display fields, all of which are written back to the store.
 
-2. **The approval chain is a hardcoded literal with one entry.** Every created request receives
-   exactly `{ approver: 'Mike Chen', role: 'Manager', status: 'pending', date: null }`
+2. **The approval chain is a hardcoded literal with one entry** — this, with limitations 3 and 6, is
+   **SEAM-2**. Every created request receives exactly
+   `{ approver: 'Mike Chen', role: 'Manager', status: 'pending', date: null }`
    (`api-mock/server.js:566-568`), regardless of department, cost or traveller. No endpoint exists
    to approve or reject; the only way a status changes is the generic `PUT`.
+
+   > **Product decision — settled by Q-1 of ADR-001**
+   > (`specs/adrs/adr-001-product-intent-decisions.md`). A manager is **not** an approver: the chain
+   > is informational and nobody acts on it. SEAM-2 is therefore **accepted as-is**, not a defect —
+   > the target behaviour is the behaviour described above, and the Track A green baseline captures
+   > it as passing tests. No approve/reject endpoint and no approver UI are in scope, `role` stays a
+   > data field, and F-013 stays P3. The ADR records that reversing this is *not* additive: F-013,
+   > F-014 and every FRD derived from them would need regeneration.
 
 3. **The approval history is never displayed.** `getApprovalHistory` (`service:73-80`) has no
    caller under `app/`, and `approvals` appears in no template in this module. The detail modal
    (`template:321-370`) shows status but not the chain.
 
-4. **Travel policy is published and never applied.** `getPolicyLimits` (`service:86-88`) has no
-   caller. No handler compares a request's `estimatedCosts`, `tripDuration` or dates against
+4. **Travel policy is published and never applied** — this is **SEAM-1**. `getPolicyLimits`
+   (`service:86-88`) has no caller. No handler compares a request's `estimatedCosts`,
+   `tripDuration` or dates against
    `maxFlightCost`, `maxHotelPerNight`, `maxMealPerDay`, `maxTripDuration`, `requiresApproval` or
    `advanceBookingDays` (`api-mock/server.js:257-267`). The `requiresApproval` thresholds
    (`flights: 500`, `hotels: 250`, `total: 1000`) are read by nothing, and the approval chain is
    attached unconditionally rather than when a threshold is crossed.
+
+   > **Product decision — settled by Q-2 of ADR-001**
+   > (`specs/adrs/adr-001-product-intent-decisions.md`). Travel policy is **display-only**: publish
+   > the limits, never compare against them. SEAM-1 is therefore **accepted as-is**, not a defect —
+   > the target behaviour is the behaviour described above, and the Track A green baseline captures
+   > it as passing tests. No rules engine is in scope and F-014 stays a read-only surface. The
+   > `allowedCabinClasses` / `first` contradiction is documented, not resolved.
 
 5. **`gtApprovalStatus` is declared and never used.** The directive registers with
    `restrict: 'E'` (`approval-status.directive.js:13-15`), so it would activate on a
@@ -738,8 +758,11 @@ Recorded as observed behaviour. No remedy is proposed here.
 | F-014 Travel Policy | P3 | FR-F014-001; Known Limitations 4 |
 
 Resolved product decisions that bound this FRD: **Q-1** — a manager is *not* an approver; the chain
-is informational and F-013 stays P3. **Q-2** — travel policy is *display-only*; F-014 is a read-only
-surface and no rules engine is in scope (`specs/adrs/adr-001-product-intent-decisions.md`).
+is informational and F-013 stays P3, so **SEAM-2** (*no approve/reject endpoint*, Known Limitations
+2, 3 and 6) is **accepted as-is** and captured unchanged in the green baseline. **Q-2** — travel
+policy is *display-only*; F-014 is a read-only surface and no rules engine is in scope, so
+**SEAM-1** (*policy published, never enforced*, Known Limitation 4) is likewise **accepted as-is**
+(`specs/adrs/adr-001-product-intent-decisions.md`).
 
 ---
 

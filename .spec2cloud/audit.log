@@ -78,3 +78,14 @@
 2026-08-04T18:44:18Z phase=B2b skill=frd-generator action=skip-detection target=specs/ result=ok detail=0-matches
 2026-08-04T18:44:18Z phase=B2b skill=state-management action=update-state target=.spec2cloud/state.json result=ok detail=frdCount=6 schema-normalised total-citations=1126
 2026-08-04T18:44:18Z phase=B2b skill=frd-generator action=complete-phase target=B2b result=ok detail=6-frds-generated awaiting-human-review
+2026-08-04T21:48:56Z phase=B2b action=adr-link-gap-remediation target=specs/frd-flight-search.md result=ok detail='SEAM-3 named in Known Limitation 6; Q-3 target-behaviour note added; ADR-001 recorded in Traceability'
+2026-08-04T21:48:56Z phase=B2b action=adr-link-gap-remediation target=specs/frd-hotel-booking.md result=ok detail='SEAM-3 named in Known Limitation 8; Q-3 target-behaviour note added; ADR-001 recorded in Traceability'
+2026-08-04T21:48:56Z phase=B2b action=adr-link-gap-remediation target=specs/frd-itinerary.md result=ok detail='SEAM-3 named in new Known Limitation 21; Q-6 note on Known Limitation 1 records Trip.totalCost stored-to-derived as an API-visible change; ADR-001 recorded in Traceability'
+2026-08-04T21:48:56Z phase=B2b action=adr-link-gap-remediation target=specs/frd-travel-request.md result=ok detail='SEAM-1 named in Known Limitation 4 and SEAM-2 in Known Limitation 2; both dispositioned accepted-as-is per Q-2 and Q-1'
+2026-08-04T21:48:56Z phase=B2b action=adr-link-gap-remediation target=specs/frd-expense-reconciliation.md result=ok detail='SEAM-4 named in Known Limitation 6 and SEAM-5 in Known Limitation 15; Q-5 disposition recorded'
+2026-08-04T21:48:56Z phase=B2b action=adr-link-gap-remediation target=specs/frd-authentication.md result=noop detail='no SEAM belongs to this FRD; ADR-001 already cited twice'
+2026-08-04T21:48:56Z phase=B2b action=verify-citations scope=new-claims result=pass detail='6/6 new line citations verified against api-mock/server.js, expense.service.js, flight-search.controller.js, hotel-booking.controller.js; 0 wrong'
+2026-08-04T21:48:56Z phase=B2b action=verify-tone scope=specs/frd-*.md result=pass detail='1 hit, the known false positive broken-down-into at frd-itinerary.md:78; 0 genuine violations'
+2026-08-04T21:48:56Z phase=B2b action=verify-diff scope=specs/ result=pass detail='diff is additive; no Current Implementation prose removed; only preambles, SEAM-labelled headings, Traceability prose and one renumber (itinerary 21 to 22) changed'
+2026-08-04T21:48:56Z phase=B2b action=state-update target=.spec2cloud/state.json result=ok detail='adr_refs, adr_questions and seams_named added to all 6 FRD records; ADR-001 record gains linked_from_frds=6 and seams_linked for SEAM-1..5'
+2026-08-04T21:48:56Z phase=B2b action=coverage-check scope=SEAM-1..SEAM-5 result=pass detail='all five seams now named in the FRD that owns them; all six FRDs reference ADR-001'
