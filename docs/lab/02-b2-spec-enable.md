@@ -1,7 +1,7 @@
 # Step 02 · B2 · Spec-Enable
 
 > **Phase** B2 · Spec-Enable &nbsp;|&nbsp; **Branch** [`lab/02-b2-spec-enable`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/02-b2-spec-enable) &nbsp;|&nbsp; **Parent** `lab/01-b1-extract`
-> **Human gates** 🧑‍⚖️ PRD Review · FRD Review · Refinement Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gates** 🧑‍⚖️ PRD Review · FRD Review · Refinement Review &nbsp;|&nbsp; **Status** 🟡 B2a done, awaiting Q-1…Q-7
 
 ---
 
@@ -54,21 +54,15 @@ Three prompts, three gates. Do **not** collapse them into one.
 ### B2a — PRD
 
 ```text
-Phase B2a. Generate the PRD from the B1 extraction.
+Generate the PRD from the previous extraction.
 
-Work from the extraction artifacts, not from app/ — if B1 got something wrong I want
-to find that out now rather than have it silently corrected.
+Work from the extraction artifacts, not from app/.
 
 The product is GlobalTravel Corp's internal corporate travel portal. Describe it from
 the outside in: who uses it, what job it does for them, what the system guarantees.
-Not modules, not controllers. Open with a Mermaid diagram of the end-to-end travel
-workflow, and cite the extraction artifact behind every claim.
+Open with a Mermaid diagram of the end-to-end travel workflow, and cite the extraction artifact behind every claim.
 
-Nothing aspirational. No roadmap, no personas or KPIs that the code does not evidence,
-no target architecture, no React. Where the product intent is genuinely unclear from
-the code, put it under Open Questions and ask me rather than resolving it yourself.
-
-Stop at the PRD Review gate.
+Where the product intent is genuinely unclear from the code, put it under Open Questions and ask me rather than resolving it yourself.
 ```
 
 <details>
@@ -78,6 +72,24 @@ It is the only line in that prompt doing real work. Let the agent re-read the so
 comes out subtly better than B1 deserved — which feels like a win until [step 03](03-testability-gate.md),
 when you are making a track decision from extraction docs nobody has actually stress-tested.
 The PRD is the first consumer of B1. Let it be an honest one.
+
+In this run it held: the generation metadata records **"Source code read during generation: None"**,
+and the audit log carries a matching `constraint-check`. That is what makes the result a genuine
+test of B1 — everything the PRD found, it found in the extraction.
+</details>
+
+<details>
+<summary><b>What was deliberately <i>left out</i> of this prompt</b></summary>
+
+An earlier draft added "Not modules, not controllers", "Nothing aspirational. No roadmap, no
+personas or KPIs that the code does not evidence, no target architecture, no React", and "Stop at
+the PRD Review gate."
+
+All of it was cut, and the output did not suffer: the PRD invented no roadmap, no KPIs and no
+target architecture, rejected four candidate personas **with evidence**, and stopped at the gate
+with `brownfield-b2a-prd-approved: false`. Those constraints are already in `AGENTS.md` and the
+`prd-generator` skill. Re-stating them costs prompt space and teaches nothing — which is the rule
+this lab follows throughout: **if a line would be equally true of any AngularJS app, delete it.**
 </details>
 
 ### B2b — FRD, one feature at a time
@@ -268,18 +280,110 @@ Gate question 6, and it is the drill for the Track A rule **"fix the test, not t
 
 ---
 
-## 📤 Outcome
+## 📤 Outcome — B2a (PRD)
 
-> ⏳ **Pending** — filled in from the real run.
+`specs/prd.md` — **613 lines**, 22 features, 2 personas, 12 open questions, 3 Mermaid diagrams.
+Committed on [`lab/02-b2-spec-enable`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/02-b2-spec-enable).
+B2b and B2c have not run yet.
+
+The generation metadata records **"Source code read during generation: None"**, with a matching
+`constraint-check` in `.spec2cloud/audit.log`. That is what makes this run a real test of B1:
+everything below was found *in the extraction*, not by re-reading the app.
+
+### 🔍 What it found — the part that actually matters
+
+B1 answered *"what is this?"* and found six behavioural defects, each local to one module. The PRD
+answered *"what does it do?"* and found something B1 structurally could not: **the workflow does not
+join up.** Five product-level seams, each a place where the product implies a transition that no
+code performs.
+
+| Seam | The product implies | The code does | Evidence |
+|------|--------------------|--------------|----------|
+| **SEAM-1** | Travel policy constrains what you can book | Policy is published; nothing compares anything against it, and the client method that fetches it has no caller | `server.js:257-267, :609` |
+| **SEAM-2** | A manager approves or rejects a request | No approve/reject endpoint exists at any method | verified: zero matching routes |
+| **SEAM-3** | You book a flight, then see it on your itinerary | Both booking handlers return a confirmation and write nothing — yet both controllers broadcast `itinerary:refresh` | `server.js:365-372`, `:445` |
+| **SEAM-4** | An expense report gets approved and reimbursed | `approved` is counted by the statistics handler, present in no seed, written by no handler | `server.js:671` |
+| **SEAM-5** | Spend ties back to the request that authorised it | `ExpenseReport.travelRequestId` is `null` in every seed; its only writer has no caller | `expense.service.js:107` |
+
+> This reframes the migration. A port that faithfully reproduces all five screens still produces a
+> product where **you cannot get permission, cannot be approved, and cannot see what you booked.**
+> That is a Phase A/P conversation the increment plan has to make room for — and it is not visible
+> from any single module.
+
+<details>
+<summary><b>Three findings the extraction contained but nobody had surfaced</b></summary>
+
+Each was latent in the B1 artifacts. It took the PRD's product-level reading to notice them, and
+each was re-verified against source before this document recorded it.
+
+**1 · The statistics endpoint is unreachable.** `GET /api/expense-reports/statistics` is registered
+at `server.js:668`, *after* `GET /api/expense-reports/:id` at `:636`. Express matches the
+parameterised route first, so the literal route is dead code and the call returns
+`404 {"error":"Expense report not found"}`. Verified — registration order is exactly as claimed.
+
+**2 · Seed data contains an approval no handler could have produced.** Every new request gets one
+hardcoded `{approver:'Mike Chen', role:'Manager', status:'pending'}` (`server.js:567`). But seed
+record `tr-2` carries **two completed approvals**, including a `VP Finance / VP` approver
+(`server.js:216-217`) — a role and a status the only writing code path cannot generate. Something
+once approved requests, and that something is no longer in the repository.
+
+**3 · The login screen bypasses its own authentication.** The API implements a real credential check
+against a two-user table, and the client calls it with the literal pair
+`AuthService.login('demo@globaltravel.com', 'password')` (`app.routes.js:20`). The login form takes
+no input. Whether the credential form was removed, deferred, or never built is Q-8.
+</details>
+
+### Where the PRD improved on the gate's own expectations
+
+The gate asked for a rubric-based feature list. The PRD **rejected the default rubric and said why**:
+`prd-generator` grades partly by test coverage, and in this repo that dimension carries no signal —
+one spec file, 11 tests, all failing, no coverage tooling. It substituted reachability and
+end-to-end completeness, and stated the rule per band. Adapting a rubric is fine; adapting it
+silently is not.
+
+It also checked for four personas it did **not** find — Administrator, Finance officer, API
+integrator, Operator — and recorded the evidence for each rejection. A reverse-engineered PRD that
+lists only what it found tells you nothing about what it looked for.
+
+### 12 open questions, none resolved by inference
+
+The prompt said to ask rather than resolve, and it did — including declaring, in the document
+itself, that **Q-1…Q-7 block FRD generation**, because each selects between *"preserve this
+behaviour"* and *"change it"*:
+
+| | Question | Why it blocks B2b |
+|---|---|---|
+| **Q-1** | Is a manager an approver? | Decides whether SEAM-2 is a defect or out of scope |
+| **Q-2** | Is travel policy advisory or blocking? | `allowedCabinClasses` omits `first`, which the pricing code prices and the UI offers |
+| **Q-3** | Should a booking create an itinerary item? | Decides whether SEAM-3 is a bug or the intended design |
+| **Q-4** | Which expense category vocabulary is canonical? | 12 Title-Case form values vs 5 lowercase stored values — **zero overlap** |
+| **Q-5** | Should spend link back to its travel request? | SEAM-5 |
+| **Q-6** | What is a trip's cost — stored or computed? | The two disagree for both seeded trips |
+| **Q-7** | Is data private to its owner? | No handler compares `req.user.id`; one seeded owner makes intent unobservable |
+
+Q-8…Q-12 are non-blocking, but **Q-12** (intended datastore, base URL, deployment target) must be
+answered before any cloud-native increment is planned.
+
+### 📌 The framework question from step 01 is answered
+
+`currentPhase` **did** advance — `B1-extract` → `B2-spec-enable`. The concern raised at the end of
+[step 01](01-b1-extract.md#-two-findings-for-the-framework) does not reproduce. The gate was
+recorded honestly too: `brownfield-b2a-prd-approved: false`, with a `human-gate result=pending`
+audit entry naming the unanswered questions.
+
+---
+
+## 📤 Outcome — B2b / B2c
+
+> ⏳ **Pending** — blocked on Q-1…Q-7.
 >
 > Paste back:
 > 1. `git --no-pager diff --stat lab/01-b1-extract..lab/02-b2-spec-enable`
-> 2. The PRD's Open Questions section — what did it refuse to invent?
-> 3. The full **Current Implementation** section of `frd-flight-search.md`, so we can score it
->    against the table above
-> 4. How many of the 19 behaviours it caught, and which it missed
+> 2. The full **Current Implementation** section of `frd-flight-search.md`, so we can score it
+>    against the 19-row table above
+> 3. How many of the 19 behaviours it caught, and which it missed
+> 4. Whether the six B1 defects reached **Known Limitations**, per FRD
 > 5. What `spec-refinement` found — contradictions are the interesting output here
-> 6. Anything you had to correct by hand
 
 ---
 
@@ -320,6 +424,23 @@ FRD reads cleanly and none of these appear, it did not get better — it got qui
 | `frd-hotel-booking.md` | The booking total multiplies `selectedRoom.pricePerNight`, a field room objects do not define. |
 | `frd-itinerary.md` | Stored trip cost and the client-side recomputation disagree. Adding a note replaces the previous one. |
 | `frd-expense-reconciliation.md` | Removing the last expense leaves the previous total in place. `Expense.currency` is stored and read by nothing. |
+
+#### …and now the PRD's seams are too
+
+B2a raised the bar. Each seam crosses a feature boundary, so it cannot live in one FRD's
+**Known Limitations** and be considered handled — the FRD on **both** sides has to acknowledge it,
+or the increment plan will schedule a migration that quietly preserves a broken workflow.
+
+| FRD | Must also record |
+|-----|------------------|
+| `frd-travel-request.md` | No approve/reject endpoint exists (**SEAM-2**), and every request receives the same hardcoded pending approver. Policy is published and enforced nowhere (**SEAM-1**). Carries **Q-1** and **Q-2** forward. |
+| `frd-flight-search.md` · `frd-hotel-booking.md` | Booking persists nothing, yet both broadcast `itinerary:refresh` (**SEAM-3**). Carries **Q-3**. |
+| `frd-itinerary.md` | Shows seeded trips only; no booking can reach it (**SEAM-3**, receiving end). |
+| `frd-expense-reconciliation.md` | `travelRequestId` is never populated (**SEAM-5**); `approved` is counted but never written (**SEAM-4**); the statistics route is shadowed by `/:id` and returns 404. Carries **Q-4** (the category vocabularies do not intersect). |
+
+- [ ] Every FRD touching **Q-1…Q-7** carries the question forward as an explicit open item rather
+      than picking an answer. Silently resolving one writes a product decision into a spec that
+      claims to describe existing behaviour.
 
 ### Refinement Review
 - [ ] Max 5 passes, and the report says what changed in each

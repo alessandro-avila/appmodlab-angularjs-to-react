@@ -173,6 +173,30 @@ unless someone writes it down.
 **None of these is resolved incidentally by moving to React.** That is what separates them from
 findings 1-8, and it is why they each need an ADR or an explicit deferral.
 
+### The workflow seams — a third scheme, and the hardest one
+
+Findings 1-8 are debt. Findings 9-14 are defects inside one module. The five seams the PRD raised in
+[step 02](02-b2-spec-enable.md#-what-it-found--the-part-that-actually-matters) are neither: each is a
+**transition the product implies and no code performs**, spanning two features, so no single module's
+assessment can see it.
+
+They matter here because the assessment produces the **migration order**, and a migration order built
+from module complexity alone will faithfully port five screens into a product where you still cannot
+get permission, be approved, or see what you booked.
+
+| Seam | Assessment must decide |
+|------|------------------------|
+| **SEAM-1** policy never enforced | Is enforcement in scope for this migration, or explicitly deferred? |
+| **SEAM-2** no approve/reject endpoint | Building it is **new feature work**, not migration. If in scope it needs its own increment; if not, say so. |
+| **SEAM-3** bookings never persist | The single highest-value seam — it is what makes the app feel real. Fixing it changes the API contract. |
+| **SEAM-4** `approved` counted, never written | Depends on SEAM-2. Sequence them or neither works. |
+| **SEAM-5** spend never links to its request | Its only writer is already on the dead-code list below. Deleting the dead method and implementing the link are opposite decisions — pick one deliberately. |
+
+- [ ] The assessment does not silently schedule a seam as if it were a port. Each is either an
+      increment with a stated scope, or a recorded deferral with a reason.
+- [ ] **Q-1…Q-7 are answered by now, or the seams stay open.** Assessing SEAM-2 without knowing
+      whether a manager is meant to approve (Q-1) produces a recommendation with no basis.
+
 <details>
 <summary><b>Dead code the assessment should also confirm</b></summary>
 
