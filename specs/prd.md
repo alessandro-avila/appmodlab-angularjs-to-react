@@ -2,7 +2,7 @@
 
 **Product:** GlobalTravel Corp — Corporate Travel Portal (`globaltravel-portal`, v1.6.0)
 **Mode:** Brownfield · Phase B2a · reverse-engineered by the `prd-generator` skill
-**Generated:** 2026-08-04 · **Status:** awaiting human approval
+**Generated:** 2026-08-04 · **Status:** approved at the B2a human gate, 2026-08-04
 
 > **How to read this document.** This PRD was reconstructed from the Phase B1 extraction
 > artifacts, which were themselves extracted from source and approved at the B1 human gate on
@@ -547,14 +547,43 @@ exercise, and every downstream FRD, Gherkin scenario and migration increment inh
 > (FRD generation). Q-8 through Q-12 can be answered later, but Q-12 must be answered before any
 > cloud-native or deployment increment is planned.
 
-> **Status — 2026-08-04.** Q-1 … Q-7 were put to the product owner as an explicit decision request
-> at the close of B2a. **No answer has been received, so all twelve questions remain open and
-> none has been resolved by inference.** This is deliberate: each one selects between "preserve the
-> current behaviour" and "change it", and guessing would silently write a product decision into the
-> FRDs. **B2b (FRD generation) should not begin until Q-1 … Q-7 are answered.** If B2b is started
-> regardless, every FRD touching approvals (Q-1), policy (Q-2), booking persistence (Q-3), expense
-> categories (Q-4), request-to-expense linkage (Q-5), trip cost (Q-6) or data isolation (Q-7) must
-> carry the corresponding question forward as an explicit open item rather than assume an answer.
+> **Status — 2026-08-04, updated.** Q-1 … Q-7 were put to the product owner at the close of B2a and
+> **have been answered** (see *Resolved product decisions* below). Q-8 … Q-12 remain open; Q-12 still
+> blocks any cloud-native or deployment increment.
+
+### Resolved product decisions
+
+Answered by the product owner on 2026-08-04. These are **product decisions, not extraction
+findings** — they are not derivable from the code, which is precisely why they were asked.
+Recorded in `specs/adrs/adr-001-product-intent-decisions.md`.
+
+| # | Question | Decision | Consequence for delivery |
+|---|----------|----------|--------------------------|
+| **Q-1** | Is a manager an approver? | **No** — the approval chain is informational; nobody acts on it. | SEAM-2 is **accepted as-is**. No approve/reject endpoint, no approver UI. `role` stays a data field. F-013 stays P3. Seed `tr-2`'s two completed approvals are documented as fixture data with no producing code path. |
+| **Q-2** | Is travel policy advisory or blocking? | **Display-only** — publish the limits, never compare against them. | SEAM-1 is **accepted as-is**. No rules engine. F-014 stays a read-only surface. The `allowedCabinClasses` / `first` contradiction is documented, not resolved. |
+| **Q-3** | Should a booking create an itinerary item? | **Yes** — a booking must persist and appear on the traveller's itinerary. | SEAM-3 is a **defect to fix**. Both booking handlers must persist; `GET /api/trips` must reflect a new booking. The existing `itinerary:refresh` broadcast becomes correct rather than misleading. Raises F-006 and F-008 above their current P1 rank. |
+| **Q-4** | Which expense category vocabulary is canonical? | **The 5 lowercase server values.** | The 12 Title-Case client values are a **defect to fix**: the expense form must be re-based onto the server vocabulary. Statistics `categoryBreakdown` becomes meaningful. |
+| **Q-5** | Link an expense report to its travel request? | **Optional** — populate `travelRequestId` when a request exists. | SEAM-5 is a **defect to fix, non-blocking**. `ExpenseService.linkToTravelRequest` acquires a caller; the field stays nullable. |
+| **Q-6** | What is a trip's cost? | **Server recomputes from items** — both current values are wrong. | `Trip.totalCost` becomes derived, not stored-and-overwritten. Removes the 2450/1330 and 1800/1160 divergence. The client-side overwrite in `ItineraryController` is deleted rather than reproduced. |
+| **Q-7** | Is data private to its owner? | **Yes** — scope every collection to the authenticated user. | N-4 moves from *not guaranteed* to *required*. Every collection route filters on `req.user.id`; `PUT`/`DELETE` verify ownership. Does **not** introduce role-based access (that would require Q-1 = yes). |
+
+**Net effect on the five seams:** SEAM-1 and SEAM-2 are **accepted** as intended product behaviour
+and will be captured as-is in the Track A green baseline. SEAM-3, SEAM-4 (via Q-3's persistence
+work) and SEAM-5 are **defects to fix** and become target behaviour in the increment plan.
+
+> **Scope note.** Q-1 = no and Q-2 = display-only deliberately keep an approver UI and a policy
+> engine out of scope. If either is later reversed, F-013 / F-014 and every FRD derived from them
+> must be regenerated — they are not additive changes.
+
+### Still open
+
+| # | Question | Blocks |
+|---|----------|--------|
+| Q-8 | Is multi-user login in scope? | Auth FRD detail only |
+| Q-9 | Is multi-currency real? | Expense FRD detail only |
+| Q-10 | Are the 9 unreferenced registrations product surface or dead code? | Migration scope — what to port |
+| Q-11 | What did the failing test suite intend to specify? | Track A baseline authoring |
+| Q-12 | Intended production datastore, API base URL and deployment target? | **Any cloud-native or deployment increment** |
 
 ---
 

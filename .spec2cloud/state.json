@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
   "currentPhase": "B2-spec-enable",
-  "currentStep": "prd-generation",
-  "status": "awaiting-approval",
+  "currentStep": "frd-generation",
+  "status": "ready",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -28,11 +28,30 @@
     "selectedPaths": [],
     "openQuestions": {
       "total": 12,
-      "blockingB2b": ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5", "Q-6", "Q-7"],
+      "blockingB2b": [],
       "blockingDeployment": ["Q-12"],
-      "answered": [],
+      "answered": ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5", "Q-6", "Q-7"],
+      "stillOpen": ["Q-8", "Q-9", "Q-10", "Q-11", "Q-12"],
       "raisedWithOwnerAt": "2026-08-04T16:53:06+02:00",
-      "note": "Q-1..Q-7 were put to the product owner at the close of B2a and are unanswered. None resolved by inference. B2b (FRD generation) should not begin until they are answered."
+      "answeredAt": "2026-08-04T18:40:00+02:00",
+      "decisions": {
+        "Q-1": "no - approval chain is informational; no approve/reject endpoint, no approver UI",
+        "Q-2": "display-only - publish policy limits, never compare against them",
+        "Q-3": "yes - a booking must persist and appear on the itinerary",
+        "Q-4": "server-5 - the 5 lowercase server values are canonical",
+        "Q-5": "optional - populate travelRequestId when a request exists",
+        "Q-6": "recompute - server derives Trip.totalCost from items; both current values are wrong",
+        "Q-7": "yes - scope every collection to the authenticated user; no role-based access"
+      },
+      "seamDisposition": {
+        "SEAM-1": "accepted",
+        "SEAM-2": "accepted",
+        "SEAM-3": "defect-to-fix",
+        "SEAM-4": "defect-to-fix",
+        "SEAM-5": "defect-to-fix"
+      },
+      "adr": "specs/adrs/adr-001-product-intent-decisions.md",
+      "note": "Q-1..Q-7 answered by the product owner 2026-08-04; recorded in prd.md and ADR-001. B2b (FRD generation) is unblocked. Q-8..Q-12 remain open; Q-12 blocks any cloud-native or deployment increment."
     }
   },
   "artifacts": {
@@ -46,7 +65,16 @@
       "diagrams": 3,
       "citations_verified": 333,
       "citations_unresolved": 0
-    }
+    },
+    "adrs": [
+      {
+        "id": "ADR-001",
+        "path": "specs/adrs/adr-001-product-intent-decisions.md",
+        "title": "Product intent decisions for the GlobalTravel portal migration",
+        "status": "accepted",
+        "date": "2026-08-04"
+      }
+    ]
   },
   "testsStatus": {
     "karma-jasmine": {
@@ -74,9 +102,25 @@
   },
   "humanGates": {
     "brownfield-b1-extraction-approved": true,
-    "brownfield-b2a-prd-approved": false
+    "brownfield-b2a-prd-approved": true
   },
   "gateReview": {
+    "gate": "brownfield-b2a-prd",
+    "reviewedOn": "2026-08-04",
+    "decision": "approved",
+    "artifact": "specs/prd.md",
+    "verification": [
+      "3 of 3 Mermaid diagrams parse under mermaid@11 (negative control confirmed the parser rejects a deliberately broken linkStyle, so the pass carries signal)",
+      "linkStyle indices match the dashed broken-seam edges exactly in both flowcharts — 18-23 and 20-23 — verified by enumerating edges in declaration order rather than by eye",
+      "333 of 333 citation key/section pairs resolve against real headings or YAML paths in the extraction artifacts; 6 remaining are intentional wildcards (api:* and the legend example)",
+      "3 wrong citations found and fixed: no-ownership-check does not exist in travel-request.yaml, which uses no-authorization-check",
+      "9 shorthand citations expanded so each stands alone",
+      "seam labels renamed B1-B5 to SEAM-1..SEAM-5 to remove the collision with spec2cloud phase names B0-B3",
+      "git status --porcelain app/ api-mock/ test/ is empty — the PRD was generated from extraction artifacts only, source was never read or touched"
+    ],
+    "openQuestionsOutcome": "Q-1..Q-7 answered by the product owner and recorded in ADR-001; Q-8..Q-12 remain open and do not block B2b"
+  },
+  "previousGateReview": {
     "gate": "brownfield-b1-extraction",
     "reviewedOn": "2026-08-03",
     "decision": "approved",
@@ -92,6 +136,6 @@
       "git diff against app/, api-mock/ and test/ is empty — extraction was read-only"
     ]
   },
-  "lastUpdated": "2026-08-04T16:53:06+02:00",
-  "humanGateApprovedAt": "2026-08-03T19:24:00Z"
+  "lastUpdated": "2026-08-04T18:58:30+02:00",
+  "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }
