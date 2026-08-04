@@ -58,6 +58,11 @@ $('#bookingConfirmationModal').modal('show'). That is jQuery AND bootstrap.js, n
 ui-bootstrap. Replace it with a React modal. Check whether anything else in app/
 still needs bootstrap.js before assuming it can go.
 
+Line 231 computes the booking total from a field the room object does not have, so
+the total is NaN today. Do not silently correct it while porting. Check whether the
+assessment already decided this; if it did, follow that decision and say which one
+it was. If it did not, stop and ask me.
+
 Remove the AngularJS 'hotels' state only after the React route is green, delete
 app/components/hotel-booking/ in the same commit, and touch nothing else.
 
@@ -77,13 +82,22 @@ result, not to write the prompt:
 | `$watch` on `checkIn` → recompute `nightCount` | 45–53 | Moment, no format string |
 | `$watch` on `checkOut` → recompute `nightCount` | 56–59 | |
 | deep `$watch` on `filters` | 63–66 | → `useMemo`, not an effect |
-| jQuery UI datepickers `#hotelCheckIn` / `#hotelCheckOut` | 70–91 | shared directive *and* direct init |
+| jQuery UI datepickers `#hotelCheckIn` / `#hotelCheckOut` | 70–91 | direct init; the shared directive is **never used** — see [step 01](01-b1-extract.md#-what-it-found--the-part-that-actually-matters) |
 | Empty-city validation flashes the field for 3s | 96–101 | `.addClass('has-error').delay(3000).queue()` |
 | Amenity filter — **every** selected amenity must match | 149–153 | `_.every` + `_.includes`, i.e. AND not OR |
 | Sort: price ↑, price ↓, rating ↓, featured-then-rating | 157–170 | four modes |
 | Selecting a hotel fetches rooms, then scrolls to `#hotel-rooms` | 191–210 | 400 ms animation |
+| **`totalPrice` computes to `NaN`** | 231 | reads `selectedRoom.pricePerNight`; rooms carry `price` — **decide before you port it** |
 | Booking → notification + `itinerary:refresh` + **jQuery modal** | 236–241 | `bootstrap.js` dependency |
 | `flight:selected` pre-fills city, check-in, check-out **+3 days** | 266–270 | the cross-module coupling |
+
+> 🔴 **Line 231 is the one to watch.** It is the only line in this module where writing the
+> *obvious* React code changes behaviour. `selectedRoom.price` is what the author meant and it
+> produces a working total — which is precisely the problem: the AngularJS app ships `NaN`, so a
+> faithful port ships `NaN` too. Fixing it is almost certainly right, but it is a **feature
+> change**, it belongs in an ADR from [step 06](06-assess.md), and the green-baseline scenario
+> for booking has to be updated to match. Silently "porting" it to `price` is how a migration
+> acquires undeclared behaviour changes.
 
 ### The dissolution
 
@@ -121,6 +135,8 @@ result, not to write the prompt:
 - [ ] No jQuery, no `bootstrap.js` call, no Moment, no Lodash, no `any` in the new code
 - [ ] Amenity filtering is still **AND**, not OR — easiest silent regression in this module
 - [ ] The featured-then-rating sort still produces the same order
+- [ ] **`totalPrice` at `:231` was handled deliberately** — either reproduced as `NaN` or fixed
+      with an ADR and an updated baseline scenario. Not quietly changed to `price`.
 - [ ] `hotels` state removed from `app/app.routes.js`; `app/components/hotel-booking/` deleted
 - [ ] The other three AngularJS modules are untouched and still work
 - [ ] Patterns match increment 1 — same folder shape, same hook naming, same test style

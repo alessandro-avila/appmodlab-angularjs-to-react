@@ -69,6 +69,13 @@ Three things are genuinely hidden and I want them found, not assumed:
 For every finding: severity, file:line evidence, blast radius, and whether the
 migration resolves it or it needs its own decision.
 
+B1 catalogued a set of behaviours where the code does not do what it appears to do
+— a booking total that computes to NaN, an auth check and a user lookup that read
+from different places. Do not re-derive them and do not re-litigate whether they
+are bugs. For each one decide the only question that matters here: does the React
+version reproduce it or fix it? Fixing is usually right and is never free — a fix
+is a user-visible behaviour change, so it gets an ADR.
+
 Then give me a migration order for the five modules, justified per position. The
 first module should be the one that maximises learning per unit of risk.
 
@@ -123,11 +130,65 @@ Your marking scheme at the gate:
 | 1 | `ui.bootstrap` declared, never used | `app/app.js:10` declares it; `bower.json` pins `angular-ui-bootstrap ~2.5.6`; no `uib-*` directive or `$uibModal` in `app/` | ✅ Dependency simply disappears |
 | 2 | API base URL hardcoded | `app/app.js:14` — `RestangularProvider.setBaseUrl('http://localhost:3000/api')` | ✅ Becomes `import.meta.env.VITE_API_URL` |
 | 3 | jQuery DOM manipulation in controllers | `flight-search.controller.js:104` `.fadeIn(200)`; `:135` `.addClass('has-error').delay(3000).queue()`; `:205` `$('html,body').animate({scrollTop: …})` | ✅ Removed entirely |
-| 4 | Two datepicker mechanisms | `app/directives/date-picker.directive.js` **and** `flight-search.controller.js:69-91` initialising jQuery UI directly in `$timeout` | ✅ Both replaced by a native date input |
+| 4 | The `gtDatePicker` directive is dead; four controllers init jQuery UI directly | `app/directives/date-picker.directive.js` is registered, but `gt-date-picker` appears in **no template**; `$('#…').datepicker(` is called 8 times across `flight-search`, `hotel-booking`, `travel-request` and `expense` controllers | ✅ All replaced by a native date input |
 | 5 | `moment()` without a format string | `flight-search.controller.js:47-48` on `$watch`; also `:107` (that one *does* format on output) | ⚠️ **Requires a decision** — see below |
 | 6 | JWT in `localStorage`, no expiry | `app/services/auth.service.js`, guard at `app/app.js:32` | ❌ **Survives unchanged** — deferred to the Security path |
 | 7 | `bower_components/` committed | repo root | ✅ Deleted at [cutover](14-cutover.md) |
 | 8 | `$rootScope` as an event bus | publishers/subscribers across controllers; `notification:add` handled at `app/app.js:44` | ✅ Becomes an explicit Zustand store |
+
+<details>
+<summary><b>Finding 4 was rewritten after step 01 — and it changed the work</b></summary>
+
+It originally read *"Two datepicker mechanisms"*, citing the directive and one controller, with the
+implied job: **reconcile them**.
+
+B1 established that they are not two competing mechanisms. `gt-date-picker` appears in **zero
+templates** — the directive has never been used by anything. The live mechanism is 8 direct
+`$('#…').datepicker(` calls spread across **four** controllers.
+
+The migration task is not "port the directive". It is "replace 8 call sites and delete the
+directive". Different work, different risk, different increment sizing — and the original phrasing
+would have hidden it behind a reasonable-sounding finding.
+</details>
+
+### The behavioural defects, with ground truth
+
+A second marking scheme, and the more important one. Everything above is *debt* — patterns that are
+dated but work. Everything below is **code that does not do what it appears to do**, verified
+against source in [step 01](01-b1-extract.md#-what-it-found--the-part-that-actually-matters).
+
+The assessment's job here is not to rediscover these. It is to decide, for each one, **whether the
+React version reproduces it or fixes it** — because every "fix" is an undeclared behaviour change
+unless someone writes it down.
+
+| # | Defect | Evidence | The decision it forces |
+|---|--------|----------|------------------------|
+| 9 | Authenticated with no user after reload | `auth.service.js:42` reads the `localStorage` token; `:50` returns in-memory `$rootScope.currentUser` | Does React rehydrate the user from the token, or reproduce the split? Rehydrating is correct **and** is a behaviour change. |
+| 10 | Room booking total is `NaN` | `hotel-booking.controller.js:231` reads `selectedRoom.pricePerNight`; rooms carry `price` (`server.js:131-133`) | Fixing it makes a previously-broken flow work. That is a feature, and it needs to be declared as one. |
+| 11 | Stored vs computed trip cost disagree | `Trip.totalCost` seeded value ≠ client recomputation, for both seeded trips | Which one is authoritative? The answer changes what users see. |
+| 12 | Stale total after emptying a report | `server.js:652` guards recalculation with `expenses.length > 0` | Server-side, so it survives the migration untouched unless someone decides otherwise. |
+| 13 | Itinerary notes overwrite each other | `POST /api/itinerary-items/:id/notes` assigns rather than appends | Plural route, scalar field. Fixing it is an API contract change. |
+| 14 | Currency stored, never honoured | `Expense.currency` read by no code; `totalAmount` sums mixed currencies unconverted | Either implement conversion or state that totals are single-currency. Silence is the one option that is wrong. |
+
+**None of these is resolved incidentally by moving to React.** That is what separates them from
+findings 1-8, and it is why they each need an ADR or an explicit deferral.
+
+<details>
+<summary><b>Dead code the assessment should also confirm</b></summary>
+
+Each appears **exactly once** in the repo, at its own definition — B1 verified this. Cheap to
+check, and each one removes work from the migration:
+
+- `ApiService` (`api.service.js:9`) — registered, injected nowhere
+- `linkToTravelRequest` (`expense.service.js:107`) — the only writer of
+  `ExpenseReport.travelRequestId`, called by nothing, so the field is `null` in every seed
+- `travelPolicy.preferredHotels` (`server.js:266`) — read by nothing. Also worth noting: its
+  values (`Marriott`, `Hilton`, `Hyatt`) match no exact member of `hotelNames`, so had anything
+  compared them it would have matched nothing
+
+If the assessment reports any of these as *"needs migrating"*, it did not check whether anything
+calls them.
+</details>
 
 **Finding 5 is the one that needs an ADR.** Every other finding is resolved incidentally by
 moving to React. Date parsing is different: the React version *could* faithfully reproduce
@@ -221,10 +282,14 @@ legitimate outcome — record it.
 
 - [ ] All five modules scored on all four dimensions
 - [ ] Cross-cutting assets scored separately from the modules
-- [ ] All eight findings addressed with **file:line evidence**, not prose
+- [ ] All eight debt findings addressed with **file:line evidence**, not prose
 - [ ] Finding 1 was *verified*, not assumed — the agent actually searched for `uib-*`
+- [ ] Finding 4 reports the directive as **unused**, not as a second mechanism to reconcile
 - [ ] Finding 5 has an ADR, because it is a behaviour decision and not a free win
 - [ ] Finding 6 is explicitly deferred with a reason, not marked "fixed by migration"
+- [ ] **Each of the six behavioural defects (9-14) has a reproduce-or-fix decision**, and every
+      *fix* has an ADR saying so out loud
+- [ ] Nothing in 9-14 is marked "resolved by migration" — none of them is
 - [ ] The `$rootScope` event map has publishers **and** subscribers for every event
 - [ ] The migration order has a justification per position, not just a list
 - [ ] **`git diff` shows no changes to `app/`, `test/` or `specs/features/`**

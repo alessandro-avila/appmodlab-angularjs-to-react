@@ -1,6 +1,7 @@
 # Step 00 · spec2cloud init
 
-> **Phase** B0 · Onboarding &nbsp;|&nbsp; **Branch** [`lab/00-spec2cloud-init`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/00-spec2cloud-init) &nbsp;|&nbsp; **Parent** `main` | **Human gate**: none
+> **Phase** B0 · Onboarding &nbsp;|&nbsp; **Branch** [`lab/00-spec2cloud-init`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/00-spec2cloud-init) &nbsp;|&nbsp; **Parent** `main`
+> **Human gate** none &nbsp;|&nbsp; **Status** ✅ Run complete
 
 ---
 
