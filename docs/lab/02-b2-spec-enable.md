@@ -174,6 +174,10 @@ The same applies to `api.service.js` — registered, injected nowhere.
 but F-002, F-003 and F-004 are where the notification bus lives, and F-004 is the feature that
 reports success for bookings that persisted nothing. Skip it and SEAM-3's user-visible symptom has
 no home.
+
+*In the real run the generator folded it into `frd-authentication.md` and retitled that document
+"Authentication, Shell & Notifications" — the same `app.js` / `app.routes.js` surface auth already
+owned. Fine as long as the `F-IDs` survive. Check that they did rather than assuming.*
 </details>
 
 ### B2c — Refinement
@@ -239,7 +243,7 @@ specs/
 ├── frd-travel-request.md
 ├── frd-expense-reconciliation.md
 ├── frd-authentication.md
-├── frd-app-shell.md                    ← the one with no feature folder
+├── frd-app-shell.md                    ← or folded into frd-authentication.md
 └── domain/                             ← optional
     ├── proposals.md
     ├── domain-model.md
@@ -421,19 +425,106 @@ overwritten.
 
 ---
 
-## 📤 Outcome — B2b / B2c
+## 📤 Outcome — B2b (FRDs)
 
-> ⏳ **Pending** — unblocked; B2b is next.
+**Commit:** `795dc84` on `lab/02-b2-spec-enable` · **6 FRDs, 3,097 lines** · all 22 `F-IDs` covered
+
+| FRD | Covers | Lines |
+|-----|--------|------:|
+| `frd-authentication.md` — *"Authentication, Shell & Notifications"* | F-001, **F-002, F-003, F-004**, F-022 | 532 |
+| `frd-flight-search.md` | F-005, F-006, F-018, F-020 | 429 |
+| `frd-hotel-booking.md` | F-007, F-008, F-021 | 438 |
+| `frd-itinerary.md` | F-009, F-010, F-011, F-019 | 463 |
+| `frd-travel-request.md` | F-012, F-013, F-014 | 585 |
+| `frd-expense-reconciliation.md` | F-015, F-016, F-017 | 650 |
+
+**Six, not the seven planned.** The generator folded the app-shell group into
+`frd-authentication.md` and retitled it rather than creating a seventh file. That is a defensible
+call — the shell, the route table and the notification bus are all `app.js` / `app.routes.js`
+concerns, and auth already owned the `$stateChangeStart` guard in the same file. It is not a gap:
+F-002, F-003 and F-004 each got their own functional requirements (`FR-F002-001`, `FR-F002-002`,
+`FR-F003-001`, `FR-F004-001`), and the notification bus is documented where the code lives.
+
+Worth noticing anyway. The grouping was an instruction, and the agent silently improved on it. It
+happened to be right here — but "silently improved on it" is also how a feature goes missing.
+Verifying `F-ID` coverage is what makes the difference between catching that and trusting it.
+
+### 🔍 Quality: five gates passed, one gap
+
+**Forensic accuracy — four claims verified against source, all held exactly:**
+
+| Claim | Verified |
+|-------|----------|
+| `POST /api/bookings/hotels` "writes to no collection" | `server.js` — the handler is a pure `res.json({...})` echo. No collection touched. ✅ |
+| `departDate` watch "silently pushes `returnDate` forward by one day" | `flight-search.controller.js:44-52` — `dept.add(1, 'days')`, no user signal. ✅ |
+| `ItineraryService.getTrips` "overwrites `totalCost`" | `itinerary.service.js:19` — `trip.totalCost = trip.items ? _.sumBy(trip.items, 'cost') : 0`. ✅ |
+| Empty-report total is "guarded by `length > 0`" | `server.js` — `if (report.expenses && report.expenses.length > 0)`, so the stale total survives. ✅ |
+
+**The dead-asset trap held.** Every one of the 16 references to `date-picker.directive.js` or
+`api.service.js` explicitly marks it dead — *"appears in zero templates"*, *"injected **nowhere**"*.
+No FRD claimed a shared component that nothing shares. `frd-authentication.md` goes further and
+records `ApiService` as finding #15, with the loader that pulls it in.
+
+**All six B1 defects reached Known Limitations**, each in the right FRD, each phrased as behaviour
+with evidence rather than as a bug.
+
+**No premature judgement.** Zero instances of *should* / *recommend* / *modernise* across 3,097
+lines. Several FRDs volunteer *"No TODO, FIXME or HACK markers exist in this module"* — a useful
+negative result, since absence of markers is otherwise unfalsifiable.
+
+**Test coverage is stated honestly.** `frd-travel-request.md` and `frd-expense-reconciliation.md`
+both open the section with a flat **"None."** — no runner, no file, no hedging. `frd-flight-search.md`
+is the only module with real tests and gets a real table.
+
+### ⚠️ The gap: ADR-001 is applied unevenly
+
+| FRD | ADR-001 refs | Questions applied |
+|-----|-------------:|-------------------|
+| `frd-authentication.md` | 2 | Q-1, Q-7 |
+| `frd-travel-request.md` | 1 | Q-1, Q-2 |
+| `frd-expense-reconciliation.md` | 1 | Q-4, Q-5, Q-7 |
+| `frd-flight-search.md` | **0** | — |
+| `frd-hotel-booking.md` | **0** | — |
+| `frd-itinerary.md` | **0** | — |
+
+**No FRD mentions a single SEAM by name.**
+
+The behaviour is recorded — both booking FRDs state *"A booking persists nothing"* plainly, which is
+exactly right for Current Implementation. What is missing is the **link to the decision already
+taken**. ADR-001 Q-3 settled that a booking *must* create an itinerary item, and classified SEAM-3
+as a defect to fix. Right now that decision lives only in the ADR; the three FRDs a developer would
+actually open to implement it never mention it.
+
+Same for **Q-6** in `frd-itinerary.md` — the FRD correctly documents that `_.sumBy` overwrites the
+seeded `totalCost`, but not that ADR-001 decided the server becomes the source of truth, which is
+an **API-visible change**: `Trip.totalCost` moves stored → derived, and `2450` becomes `1330`.
+
+An orphaned decision is worse than an open question, because an open question still gets asked.
+
+**One prompt closes it:**
+
+```text
+frd-flight-search.md, frd-hotel-booking.md and frd-itinerary.md never reference
+ADR-001, and no FRD names a SEAM.
+
+Add the missing links. Q-3 decided a booking must create an itinerary item, so
+SEAM-3 belongs in all three. Q-6 decided the server recomputes trip cost, so
+frd-itinerary.md needs to record that Trip.totalCost moves from stored to derived
+and that this is an API-visible change.
+
+Keep Current Implementation describing what the code does today. The ADR decision
+is the target behaviour — put it where each FRD already states its limitation, and
+say which ADR question settled it.
+```
+
+---
+
+## 📤 Outcome — B2c (Refinement)
+
+> ⏳ **Pending** — run after the ADR-001 links are added.
 >
-> Paste back:
-> 1. `git --no-pager diff --stat lab/01-b1-extract..lab/02-b2-spec-enable`
-> 2. The full **Current Implementation** section of `frd-flight-search.md`, so we can score it
->    against the 19-row table above
-> 3. How many of the 19 behaviours it caught, and which it missed
-> 4. Whether the six B1 defects reached **Known Limitations**, per FRD
-> 5. Whether each FRD applied its ADR-001 decision — SEAM-1/2 as intended behaviour, SEAM-3/4/5 as
->    defects with a target
-> 6. What `spec-refinement` found — contradictions are the interesting output here
+> Paste back what `spec-refinement` found. Contradictions are the interesting output — the FRDs
+> were written one at a time, so cross-FRD disagreement is exactly what this pass exists to catch.
 
 ---
 
@@ -453,7 +544,9 @@ overwritten.
 ### FRD Review
 > 🟠 **Blast radius: features silently change.**
 
-- [ ] **Seven** FRDs exist — the five feature modules, `frd-authentication.md` and `frd-app-shell.md`
+- [ ] **Six or seven** FRDs exist — the five feature modules plus authentication, with the app shell
+      either standing alone or folded into `frd-authentication.md` *(the run produced six; see the
+      Outcome)*
 - [ ] Every FRD **names the `F-IDs` it covers**, and all 22 are accounted for exactly once
 - [ ] Every FRD has a **Current Implementation** section with file paths
 - [ ] Score `frd-flight-search.md` against the 19-row table above
@@ -473,7 +566,7 @@ FRD reads cleanly and none of these appear, it did not get better — it got qui
 | FRD | Must record |
 |-----|-------------|
 | `frd-authentication.md` | The authenticated check reads `localStorage`; the current-user lookup reads `$rootScope`. They disagree after a reload. |
-| `frd-app-shell.md` | A booking reports success through the notification bus without anything having been persisted (SEAM-3's user-visible symptom). |
+| `frd-app-shell.md` *(or the shell section of `frd-authentication.md`)* | A booking reports success through the notification bus without anything having been persisted (SEAM-3's user-visible symptom). |
 | `frd-hotel-booking.md` | The booking total multiplies `selectedRoom.pricePerNight`, a field room objects do not define. |
 | `frd-itinerary.md` | Stored trip cost and the client-side recomputation disagree. Adding a note replaces the previous one. |
 | `frd-expense-reconciliation.md` | Removing the last expense leaves the previous total in place. `Expense.currency` is stored and read by nothing. |
