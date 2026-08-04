@@ -259,7 +259,9 @@ in their own increment.
 
 > **Watch this one.** Q-7 (data is private to its owner) cannot be baselined meaningfully: the
 > fixtures have a **single seeded owner**, so a filtering assertion passes whether or not filtering
-> exists. ADR-001 flags it. Either add a second owner to the fixtures or record explicitly that the
+> exists. Verified in `api-mock/server.js` — every seeded trip, travel request and expense report
+> carries `userId: 1`; Mike Chen (`2`) exists as a login and owns nothing. ADR-001 flags it, and
+> **no FRD picked it up**. Either add a second owner to the fixtures or record explicitly that the
 > isolation scenarios are non-assertive — a green test that cannot fail is worse than no test,
 > because it reads like proof.
 

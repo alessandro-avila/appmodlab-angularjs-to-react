@@ -427,7 +427,8 @@ overwritten.
 
 ## 📤 Outcome — B2b (FRDs)
 
-**Commit:** `795dc84` on `lab/02-b2-spec-enable` · **6 FRDs, 3,097 lines** · all 22 `F-IDs` covered
+**Commits:** `795dc84` (six FRDs) + `9652210` (ADR-001 links) on `lab/02-b2-spec-enable`
+· **3,097 lines** · all 22 `F-IDs` covered · all five seams dispositioned
 
 | FRD | Covers | Lines |
 |-----|--------|------:|
@@ -449,7 +450,7 @@ Worth noticing anyway. The grouping was an instruction, and the agent silently i
 happened to be right here — but "silently improved on it" is also how a feature goes missing.
 Verifying `F-ID` coverage is what makes the difference between catching that and trusting it.
 
-### 🔍 Quality: five gates passed, one gap
+### 🔍 Quality: five gates passed, one gap — since closed
 
 **Forensic accuracy — four claims verified against source, all held exactly:**
 
@@ -476,32 +477,34 @@ negative result, since absence of markers is otherwise unfalsifiable.
 both open the section with a flat **"None."** — no runner, no file, no hedging. `frd-flight-search.md`
 is the only module with real tests and gets a real table.
 
-### ⚠️ The gap: ADR-001 is applied unevenly
+### ⚠️ The gap: ADR-001 was applied unevenly — now closed
 
-| FRD | ADR-001 refs | Questions applied |
-|-----|-------------:|-------------------|
-| `frd-authentication.md` | 2 | Q-1, Q-7 |
-| `frd-travel-request.md` | 1 | Q-1, Q-2 |
-| `frd-expense-reconciliation.md` | 1 | Q-4, Q-5, Q-7 |
-| `frd-flight-search.md` | **0** | — |
-| `frd-hotel-booking.md` | **0** | — |
-| `frd-itinerary.md` | **0** | — |
+The first pass produced this:
 
-**No FRD mentions a single SEAM by name.**
+| FRD | Cited ADR-001 | Named a SEAM |
+|-----|:---:|:---:|
+| `frd-authentication.md` | by path | — |
+| `frd-travel-request.md` | by path | — |
+| `frd-expense-reconciliation.md` | by path | — |
+| `frd-flight-search.md` | **no** | — |
+| `frd-hotel-booking.md` | **no** | — |
+| `frd-itinerary.md` | **no** | — |
 
-The behaviour is recorded — both booking FRDs state *"A booking persists nothing"* plainly, which is
-exactly right for Current Implementation. What is missing is the **link to the decision already
-taken**. ADR-001 Q-3 settled that a booking *must* create an itinerary item, and classified SEAM-3
-as a defect to fix. Right now that decision lives only in the ADR; the three FRDs a developer would
-actually open to implement it never mention it.
+**Not one FRD named a single SEAM**, and the three booking/itinerary documents — the ones a
+developer opens to implement the fix — never mentioned the ADR at all.
 
-Same for **Q-6** in `frd-itinerary.md` — the FRD correctly documents that `_.sumBy` overwrites the
-seeded `totalCost`, but not that ADR-001 decided the server becomes the source of truth, which is
-an **API-visible change**: `Trip.totalCost` moves stored → derived, and `2450` becomes `1330`.
+The behaviour itself was recorded correctly. Both booking FRDs state *"A booking persists nothing"*
+plainly, which is exactly right for Current Implementation. What was missing was the **link to the
+decision already taken**: ADR-001 Q-3 settled that a booking *must* create an itinerary item and
+classified SEAM-3 as a defect to fix. That decision lived only in the ADR.
+
+Same for **Q-6** in `frd-itinerary.md` — the FRD documented that `_.sumBy` overwrites the seeded
+`totalCost`, but not that ADR-001 made the server the source of truth. That is an **API-visible
+change**: `Trip.totalCost` moves stored → derived, and `2450` becomes `1330`.
 
 An orphaned decision is worse than an open question, because an open question still gets asked.
 
-**One prompt closes it:**
+**The prompt that closed it:**
 
 ```text
 frd-flight-search.md, frd-hotel-booking.md and frd-itinerary.md never reference
@@ -516,6 +519,75 @@ Keep Current Implementation describing what the code does today. The ADR decisio
 is the target behaviour — put it where each FRD already states its limitation, and
 say which ADR question settled it.
 ```
+
+**Result — `9652210`, +240 / −33 across five FRDs:**
+
+| FRD | ADR-001 | Questions | Seams |
+|-----|:---:|---|---|
+| `frd-flight-search.md` | ✅ | Q-3 | SEAM-3 |
+| `frd-hotel-booking.md` | ✅ | Q-3 | SEAM-3 |
+| `frd-itinerary.md` | ✅ | Q-3, **Q-6** | SEAM-3 |
+| `frd-travel-request.md` | ✅ | Q-1, Q-2 | SEAM-1, SEAM-2 |
+| `frd-expense-reconciliation.md` | ✅ | Q-3, Q-4, Q-5, Q-7 | SEAM-4, SEAM-5 |
+| `frd-authentication.md` | by path | Q-1, Q-7, Q-12 | — *(deliberate no-op)* |
+
+All five seams now sit in the FRD that owns them.
+
+### 🔑 The pattern it invented is the reusable part
+
+The FRDs did not absorb the decisions into their prose. They kept the two voices separate:
+
+> **21.** A booking persists nothing — this is **SEAM-3**. `POST /api/bookings/hotels` writes to no
+> collection […]
+>
+> > **Target behaviour — settled by Q-3 of ADR-001**
+> > A booking must create an itinerary item on the traveller's itinerary, so SEAM-3 is
+> > dispositioned a **defect to fix** rather than accepted as-is.
+
+The numbered paragraph stays descriptive — what the code does today, evidence attached. The
+blockquote carries what was decided. A reader can still tell, at a glance, which sentences are
+observation and which are intent — which is the whole reason Current Implementation exists.
+
+Adopt this shape for the remaining phases. Merging the two voices is how a target quietly becomes
+a claim about the current system.
+
+**It also went further than asked.** `frd-itinerary.md` reasons that because the itinerary is the
+sole listener of `itinerary:refresh`, *"this module is where that fix becomes observable"* — making
+F-009 the verification surface for SEAM-3. Nothing in the prompt asked for that. It is the kind of
+inference that only surfaces once the decision and the code sit in the same document.
+
+### 📌 Two smaller notes
+
+**Auth's no-op was reasoned, not skipped.** The audit records
+`result=noop detail='no SEAM belongs to this FRD; ADR-001 already cited twice'`. Defensible — but
+auth now owns F-004, the notification bus, and SEAM-3's *user-visible symptom* is a success toast
+for a booking that persisted nothing. A cross-reference there would close the loop. Not a blocker.
+
+**The audit log format drifted again.** Step 01 normalised 22 lines to one shape; B2b's eleven
+entries use a third (`detail=` rather than `message=`, no bracketed timestamp, no `|` separators).
+The framework documents a format but does not enforce one, so every run invents its own. Harmless
+while a human reads it — but anything that later parses this file has to tolerate three grammars.
+
+### ⛔ One gate still open: Q-7 has no test data
+
+ADR-001 decided that data is private to its owner. No FRD records that the fixtures cannot prove it.
+
+`api-mock/server.js` seeds two users — Sarah Johnson (`1`) and Mike Chen (`2`) — and **every** record
+in trips, travel requests and expense reports carries `userId: 1`. Mike Chen owns nothing.
+
+A green-baseline test asserting *"I see only my own trips"* therefore passes whether the filter
+exists, is broken, or is deleted outright. It is not a weak test; it is a test that **cannot fail**.
+And a test that cannot fail reads, in a coverage report, exactly like proof.
+
+Fix it now — one seeded record owned by user `2` — or the Track A baseline in step 04 inherits a
+false green. This belongs in `frd-authentication.md` (Q-7's owner) and in every FRD whose collection
+is meant to be scoped.
+
+### ⚖️ Verdict
+
+Six FRDs, forensically accurate, all 22 features covered, all five seams dispositioned, and the
+descriptive/decided boundary held. **One gate open** — the Q-7 test-data note. Close it, then
+B2c refinement.
 
 ---
 
@@ -542,20 +614,21 @@ say which ADR question settled it.
 
 
 ### FRD Review
-> 🟠 **Blast radius: features silently change.**
+> 🟠 **Blast radius: features silently change.** &nbsp;·&nbsp; ⏳ **Awaiting approval** — every check
+> below is met; `state.json` is at `status: awaiting-approval`
 
-- [ ] **Six or seven** FRDs exist — the five feature modules plus authentication, with the app shell
-      either standing alone or folded into `frd-authentication.md` *(the run produced six; see the
-      Outcome)*
-- [ ] Every FRD **names the `F-IDs` it covers**, and all 22 are accounted for exactly once
-- [ ] Every FRD has a **Current Implementation** section with file paths
+- [x] **Six or seven** FRDs exist — the five feature modules plus authentication, with the app shell
+      either standing alone or folded into `frd-authentication.md` *(the run produced six)*
+- [x] Every FRD **names the `F-IDs` it covers**, and all 22 are accounted for exactly once
+- [x] Every FRD has a **Current Implementation** section with file paths
 - [ ] Score `frd-flight-search.md` against the 19-row table above
 - [ ] The three quirks are documented as *behaviour*, not as bugs:
       `maxPrice` overwrite, the `returnDate` auto-push, the window scroll on select
 - [ ] The test-coverage section states 11 tests / 11 failing **and why**
-- [ ] **No FRD claims to use `date-picker.directive.js` or `api.service.js`.** B1 verified both are
+- [x] **No FRD claims to use `date-picker.directive.js` or `api.service.js`.** B1 verified both are
       dead: `gt-date-picker` is in no template, `ApiService` is injected nowhere. An FRD that
       describes either as "the shared component" invented a dependency.
+      *All 16 references explicitly mark them dead.*
 
 #### The B1 defects are the real marking scheme
 
@@ -584,13 +657,18 @@ or the increment plan will schedule a migration that quietly preserves a broken 
 | `frd-itinerary.md` | Shows seeded trips only; no booking can reach it (**SEAM-3**, receiving end). Trip cost becomes server-derived (**Q-6**) — the client-side overwrite is deleted, not reproduced. |
 | `frd-expense-reconciliation.md` | `travelRequestId` never populated (**SEAM-5**); `approved` counted but never written (**SEAM-4**); the statistics route is shadowed by `/:id` and returns 404. The 5 lowercase server categories are canonical (**Q-4**) — the 12 client values are the defect. |
 
-- [ ] Every FRD applies its **[ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md)**
+- [x] Every FRD applies its **[ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md)**
       decision and cites it. The distinction is the whole point: SEAM-1 and SEAM-2 are behaviour the
       green baseline must **preserve**; SEAM-3, SEAM-4 and SEAM-5 are behaviour it must **capture,
       then change**. An FRD that files all five under "Known Limitations" has lost the decision.
+      *Took a second pass — the first draft named no seams at all.*
 - [ ] **Q-7 (data isolation) is marked as needing a second seeded owner.** ADR-001 flags it: with one
       owner in the fixtures, per-user filtering cannot be asserted. An FRD that specifies isolation
       without noting the test data cannot exercise it sets up a green baseline that proves nothing.
+      **Not met — no FRD mentions it.** Verified in `api-mock/server.js`: every seeded record across
+      trips, travel requests and expense reports carries `userId: 1`, and only Sarah Johnson (id `1`)
+      owns anything. Mike Chen (id `2`) exists as a login and owns nothing. So a test asserting *"I
+      see only my own trips"* passes identically whether filtering is implemented or deleted.
 
 
 ### Refinement Review
