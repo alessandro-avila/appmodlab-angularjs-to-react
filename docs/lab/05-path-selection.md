@@ -20,7 +20,7 @@ because that is the question people will ask six months from now.
 | Skill | Purpose |
 |-------|---------|
 | `human-gate` | Presents the paths, blocks until you choose |
-| `adr` | Writes `specs/adrs/adr-003-path-selection.md` |
+| `adr` | Writes `specs/adrs/adr-004-path-selection.md` |
 | `state-management` | Records the selected path(s) in `.spec2cloud/state.json` |
 
 No assessment runs yet. That is [step 06](06-assess.md).
@@ -86,7 +86,7 @@ never opened the extraction, and everything downstream inherits that.
 
 ```
 specs/adrs/
-└── adr-003-path-selection.md
+└── adr-004-path-selection.md
 
 .spec2cloud/
 ├── state.json         ← selected path recorded
@@ -139,7 +139,7 @@ smuggled in.
 > Paste back:
 > 1. `git --no-pager diff --stat lab/04-green-baseline..lab/05-path-selection`
 > 2. The agent's verdict per path — did it reason from the extraction or from generalities?
-> 3. The full `adr-003-path-selection.md`
+> 3. The full `adr-004-path-selection.md`
 > 4. Did it push back on Modernize and argue for Rewrite? (A good agent might. Record the
 >    argument either way.)
 > 5. The updated `state.json`

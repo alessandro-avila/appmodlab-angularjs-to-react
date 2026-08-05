@@ -690,7 +690,73 @@ because auth is the one every other feature depends on.
 
 Converged honestly, caught a real omission, and refused to tidy six things that were not its to
 tidy. **The Q-7 test-data gate is still open** — five passes went by and no FRD records that every
-seeded record belongs to one user.
+seeded record belongs to one user. *(See below: ADR-002 changes what closing it requires.)*
+
+---
+
+## 📤 Outcome — ADR-002 (the remaining product questions)
+
+> ✅ **Ran on `lab/02-b2-spec-enable`** — commit
+> [`2602441`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/commit/2602441)
+> · `specs/adrs/adr-002-remaining-product-intent-decisions.md`, 149 lines · PRD and all six FRDs updated.
+
+ADR-001 answered Q-1…Q-7 and unblocked FRD generation. This one clears the rest, framed for a
+time-boxed hackathon: *prefer the answer that removes work without discarding a real capability.*
+
+| # | Question | Decision | What it removes or adds |
+|---|---|---|---|
+| Q-8 | Multi-user login in scope? | **Yes** | **Adds** a real credential form — the API already checks properly |
+| Q-9 | Multi-currency real? | **No** — USD only | Removes the 6-value selector; no rate source exists anywhere |
+| Q-10 | Are the 9 unreferenced registrations product surface? | **Dead code** | Removes 3 directives, 4 filters, `ApiService`, `UserService`, `ui.bootstrap` from the port |
+| Q-11 | What did the failing suite intend? | **Stale — no authority** | Preserved unmodified, but not a migration target |
+| Q-12 | Datastore, base URL, deployment target? | **Out of scope** | Removes Phase 2 Step 4 in its Azure form |
+| Q-B2c | Restructure auth's 13 requirements? | **No** | The auth FRD is rewritten under Q-8 anyway |
+
+**Q-12 is the structural one.** No `azd provision`, no `azd deploy`, no `infra/`, no live smoke
+tests. An increment is done when its tests pass locally. This lab was already scoped that way —
+[step 00](00-spec2cloud-init.md) lists the `azure` MCP server as *"stretch goal only"* and every
+delivery step's gate is a PR review, not a deployment. The ADR **ratifies the existing shape rather
+than changing it**, which is the outcome you want from a scope decision this late.
+
+**Q-B2c is a good refusal.** The B2c open question asked whether to restructure auth's 13 prose
+requirements before `contract-generation` reads them. The answer is no — *because Q-8 rewrites that
+FRD anyway.* Restructuring text you are about to replace is the kind of tidy-looking work that
+consumes a hackathon.
+
+### 🔓 Q-8 quietly makes Q-7 assertable — and nobody noticed
+
+ADR-002 never mentions Q-7. It doesn't have to; the interaction is real anyway, and it changes what
+"close the Q-7 gate" costs. Verified in source:
+
+| | |
+|---|---|
+| `api-mock/server.js:277` | Login matches **any** row in `users` — Mike Chen has always been able to authenticate |
+| `app/app.routes.js:20` | The client sends the literal `demo@globaltravel.com` / `password`, so he never could **through the UI** |
+| `api-mock/server.js:461-463` | `GET /api/trips` returns the whole array, unfiltered |
+
+Q-8 builds the real credential form. The moment it exists, Mike Chen becomes reachable — and he owns
+nothing. So:
+
+> **Log in as Mike Chen → assert zero trips.**
+> Today that returns Sarah's two trips. The assertion **fails**, correctly, for the right reason.
+
+That is a real test with **no new fixtures**. My earlier note here recommended seeding a record for
+user `2`; that turns out to be needed only for the *positive* case ("Mike sees his own trip"). The
+negative case — the one that actually catches a missing ownership filter — needs no new data at all,
+only Q-8.
+
+**Worth carrying into [step 04](04-green-baseline.md):** order the increments so auth lands before
+the isolation scenarios are written, and Q-7 stops being a fixture problem.
+
+### ⏳ Two items still not closed
+
+| Item | Status |
+|---|---|
+| `state.json` reports **37 of 37** `$rootScope` sites; the real count is **35** | ✗ still `37` ×2 — the itemisation beside it is correct and sums to 35 |
+| No FRD records the single-owner fixture constraint | ✗ still unrecorded — but Q-8 reduces it from *blocking* to *sequencing* |
+
+Neither blocks the testability gate. The first is a one-line correction; the second is now a note
+for whoever writes the isolation scenarios.
 
 ---
 
@@ -757,15 +823,13 @@ or the increment plan will schedule a migration that quietly preserves a broken 
       green baseline must **preserve**; SEAM-3, SEAM-4 and SEAM-5 are behaviour it must **capture,
       then change**. An FRD that files all five under "Known Limitations" has lost the decision.
       *Took a second pass — the first draft named no seams at all.*
-- [ ] **Q-7 (data isolation) is marked as needing a second seeded owner.** ADR-001 flags it: with one
-      owner in the fixtures, per-user filtering cannot be asserted. An FRD that specifies isolation
-      without noting the test data cannot exercise it sets up a green baseline that proves nothing.
-      **Still not met after B2c.** Verified in `api-mock/server.js`: every seeded record across
-      trips, travel requests and expense reports carries `userId: 1`, and only Sarah Johnson (id `1`)
-      owns anything. Mike Chen (id `2`) exists as a login and owns nothing. So a test asserting *"I
-      see only my own trips"* passes identically whether filtering is implemented or deleted.
-      The FRDs document the *missing filter* exhaustively — `frd-itinerary.md:605`,
-      `frd-expense-reconciliation.md:411` — but not that the fixtures cannot prove the fix.
+- [x] **Q-7 (data isolation) — reclassified by ADR-002.** ADR-001 flagged that with one seeded owner,
+      per-user filtering cannot be asserted, and no FRD picked it up. **Q-8 (multi-user login in
+      scope) resolves it without fixtures**: once a real credential form exists, log in as Mike Chen
+      and assert *zero* trips — today that returns Sarah's two, so the assertion fails correctly.
+      Verified: `api-mock/server.js:277` matches any user row, `:461-463` returns trips unfiltered.
+      Downgraded from a blocking gap to a **sequencing note** — auth must land before the isolation
+      scenarios are written. Seeding a record for user `2` is needed only for the positive case.
 
 
 ### Refinement Review
@@ -783,8 +847,9 @@ or the increment plan will schedule a migration that quietly preserves a broken 
 - [ ] **Correct the event-site count.** The commit message, audit log and `state.json` all report
       *37 of 37* `$rootScope` sites. The real number is **35** — the itemisation beside it is right
       and sums to 35. Cosmetic, but `state.json` is read by later phases.
-- [ ] **Answer the open question**, and note it has a deadline: `contract-generation` (Phase 2
-      Step 2) reads the Input/Processing/Output structure that 13 of auth's 17 requirements lack.
+- [x] **Answer the open question.** Settled as **Q-B2c** in
+      [ADR-002](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-002-remaining-product-intent-decisions.md):
+      **no** — accept the 13 prose requirements as-is, because Q-8 rewrites that FRD anyway.
 
 ---
 

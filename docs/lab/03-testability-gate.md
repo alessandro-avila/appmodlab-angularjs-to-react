@@ -27,7 +27,7 @@ about.
 | Skill | Purpose |
 |-------|---------|
 | `human-gate` | Presents the checklist, blocks until you decide |
-| `adr` | Writes `specs/adrs/adr-002-testability-gate.md` |
+| `adr` | Writes `specs/adrs/adr-003-testability-gate.md` |
 | `state-management` | Records `testability`, `track`, `testabilityChecklist` in `.spec2cloud/state.json` |
 | `test-runner` | Runs the existing suite so question 6 has evidence |
 
@@ -36,8 +36,17 @@ about.
 ## ✅ Prerequisites
 
 - [ ] [Step 02](02-b2-spec-enable.md) approved at all three gates
-- [ ] PRD + 5–6 FRDs exist and are accurate
+- [ ] PRD + **6** FRDs exist and are accurate
 - [ ] `npm start` is running (mock API :3000 + web :8080)
+
+> **Two of this gate's inputs are already answered.**
+> [ADR-002](02-b2-spec-enable.md#-outcome--adr-002-the-remaining-product-questions) settled **Q-10**
+> (the 9 unreferenced registrations are dead code, not product surface) and **Q-11** (the 11 failing
+> Jasmine tests are *stale* and carry **no authority** over the Track A baseline). Q-11 matters here:
+> it is the written permission to score question 6 ✅ rather than ❌ — see
+> [Question 6 is the interesting one](#question-6-is-the-interesting-one) below.
+> **Q-12** put production deployment out of scope, so nothing downstream of this gate provisions
+> infrastructure.
 
 ---
 
@@ -95,7 +104,7 @@ existence of `index.html`. Drive a browser.
 
 ```
 specs/adrs/
-└── adr-002-testability-gate.md         ← the decision + evidence + alternatives
+└── adr-003-testability-gate.md         ← the decision + evidence + alternatives
 
 .spec2cloud/
 ├── state.json                          ← track: "A", testability: "full"
@@ -174,7 +183,7 @@ recording each discrepancy in `specs/frd-flight-search.md`.
 > 1. `git --no-pager diff --stat lab/02-b2-spec-enable..lab/03-testability-gate`
 > 2. The six answers **with the actual command output** the agent produced
 > 3. Whether it correctly scored question 6 as ✅ despite 11 failures — or argued itself into ❌
-> 4. The full `adr-002-testability-gate.md`
+> 4. The full `adr-003-testability-gate.md`
 > 5. The resulting `.spec2cloud/state.json`
 > 6. Whether Playwright MCP actually drove the browser for question 4, or whether it inferred
 
@@ -188,7 +197,7 @@ recording each discrepancy in `specs/frd-flight-search.md`.
 - [ ] Question 6 is scored ✅ with the 11 failures explained, not ❌
 - [ ] Question 4 was answered by actually driving a browser (screenshot or Playwright trace)
 - [ ] The count matches the track: 6 checks → Track A, not "Hybrid to be safe"
-- [ ] `adr-002-testability-gate.md` lists **alternatives considered** — an ADR with one option
+- [ ] `adr-003-testability-gate.md` lists **alternatives considered** — an ADR with one option
       is a note, not a decision record
 - [ ] `state.json` has `track`, `testability` **and** `testabilityChecklist`
 - [ ] `featureTracks` assigns all five modules to A

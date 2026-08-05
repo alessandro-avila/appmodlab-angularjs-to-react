@@ -30,7 +30,7 @@ Still no code changes. Findings and ADRs only.
 
 ## ✅ Prerequisites
 
-- [ ] [Step 05](05-path-selection.md) approved — Modernize recorded in ADR-003 and `state.json`
+- [ ] [Step 05](05-path-selection.md) approved — Modernize recorded in adr-004 and `state.json`
 - [ ] Green baseline exists for the features you intend to migrate
 - [ ] MCP servers reachable (`context7` in particular — React 19 and TanStack are newer than
       most training cutoffs)
@@ -113,8 +113,8 @@ specs/
 ├── docs/assessment/
 │   └── modernization.md            ← findings, severity, evidence, module scoring
 └── adrs/
-    ├── adr-004-*.md                ← e.g. drop angular-ui-bootstrap
-    ├── adr-005-*.md                ← e.g. externalise API base URL
+    ├── adr-005-*.md                ← e.g. drop angular-ui-bootstrap
+    ├── adr-006-*.md                ← e.g. externalise API base URL
     └── ...
 ```
 

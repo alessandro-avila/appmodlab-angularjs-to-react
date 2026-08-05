@@ -36,7 +36,7 @@ Supporting: `playwright-cli` (drives the real browser), `e2e-generation` (POMs).
 
 ## ✅ Prerequisites
 
-- [ ] [Step 03](03-testability-gate.md) approved — Track A recorded in `state.json` and ADR-002
+- [ ] [Step 03](03-testability-gate.md) approved — Track A recorded in `state.json` and adr-003
 - [ ] `npm start` running: mock API on :3000, app on :8080
 - [ ] Playwright browsers installed (the dev container does this for you)
 
