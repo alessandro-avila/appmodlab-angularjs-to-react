@@ -120,15 +120,17 @@
         "tests/support/world.js",
         "tests/support/hooks.js",
         "tests/pages/flight-search.page.js",
-        "tests/steps/flight-search.steps.js"
+        "tests/steps/flight-search.steps.js",
+        "tests/pages/hotel-booking.page.js",
+        "tests/steps/hotel-booking.steps.js"
       ],
       "appUnmodified": true,
       "appDiffLines": 0,
       "featuresComplete": [
-        "flight-search"
+        "flight-search",
+        "hotel-booking"
       ],
       "featuresRemaining": [
-        "hotel-booking",
         "itinerary",
         "travel-request",
         "expense-reconciliation",
@@ -146,8 +148,33 @@
           "unitTestsDeleted": 0,
           "reconciliations": 7,
           "correctedAssumptions": 6,
+          "gate": "approved"
+        },
+        "hotel-booking": {
+          "featureFile": "specs/features/hotel-booking.feature",
+          "scenarios": 25,
+          "passing": 25,
+          "steps": 189,
+          "stableRuns": 3,
+          "unitTestsBefore": "none - no spec existed for this module",
+          "unitTestsAfter": "none - no spec authored; behaviour captured end-to-end",
+          "unitTestsDeleted": 0,
+          "reconciliations": 0,
+          "correctedAssumptions": 7,
+          "headlineFinding": "ngRepeat:dupes empties the room table, so a hotel booking cannot be completed through the UI",
+          "scenariosBypassingUi": 1,
           "gate": "pending-human-approval"
         }
+      },
+      "fullSuite": {
+        "scenarios": 50,
+        "passing": 50,
+        "steps": 382,
+        "lastRunAt": "2026-08-05T19:44:56Z"
+      },
+      "unitSuite": {
+        "tests": 19,
+        "passing": 19
       }
     }
   },
@@ -425,10 +452,18 @@
   },
   "testsStatus": {
     "karma-jasmine": {
-      "pass": 0,
-      "fail": 11,
-      "total": 11,
-      "exitCode": 1
+      "pass": 19,
+      "fail": 0,
+      "total": 19,
+      "exitCode": 0,
+      "note": "reconciled in B3 Track A; was 0/11 before"
+    },
+    "baseline": {
+      "runner": "cucumber-js",
+      "scenarios": 50,
+      "passing": 50,
+      "failing": 0,
+      "steps": 382
     }
   },
   "verifiedCounts": {
@@ -584,6 +619,6 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-05T16:07:05Z",
+  "lastUpdated": "2026-08-05T19:44:56Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }

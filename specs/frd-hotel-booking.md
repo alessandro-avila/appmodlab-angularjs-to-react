@@ -469,13 +469,58 @@ Of the six keys the template reads from a room, **two exist** (`type`, `maxGuest
 |-----------|-------|-------|----------|
 | Unit | — | 0 | 0% |
 | Integration | — | 0 | 0% |
-| E2E | — | 0 | 0% |
+| Behavioural (Cucumber + Playwright) | `specs/features/hotel-booking.feature`, `tests/steps/hotel-booking.steps.js`, `tests/pages/hotel-booking.page.js` | 25 scenarios / 189 steps | Search, validation, dates and night count, filtering, ordering, room loading, the booking dead end, and the cross-feature pre-fill |
 
-`test/spec/` contains a single file, `flight-search.spec.js`. There is **no test of any kind** for
-this module — no controller test, no service test, no template test.
+> **Changed by Phase B3.** When this FRD was written the module had **no test of any kind**. It now
+> has a Track A green baseline of 25 behavioural scenarios, all passing against the running
+> application. It still has **no unit test**: `test/spec/` contains only `flight-search.spec.js`,
+> and no Jasmine spec was authored for this module — there was no existing suite to reconcile, and
+> the behaviour that matters here is reachable end-to-end.
 
-**Untested paths**: all of them. Every behaviour in this document is unverified by any automated
-check.
+**Untested paths after the baseline**: the `searchHotels` and `getHotelRooms` error branches (the
+mock API has no failure mode to trigger them); `getHotelDetails` and `getReviews`, which have no
+caller; the second-selection scroll described in Known Limitation 11; and the `has-error` highlight
+of Known Limitation 12, which is a 3-second jQuery queue effect.
+
+### Green Baseline (Track A)
+
+`specs/features/hotel-booking.feature` — 25 scenarios, all passing, tagged `@existing-behavior
+@feature-hotel-booking`. Run with `npm run test:baseline` against `npm start`. Verified stable
+across three consecutive runs and one full-suite run alongside flight search (50 scenarios, 382
+steps, all green). **`app/` and `api-mock/` were not modified** — verified with an empty
+`git diff -- app/ api-mock/`.
+
+**The backend cannot be pinned.** `api-mock/server.js:110 generateHotels()` chooses the hotel count
+with `randomInt(6, 15)` and randomises rating, review count, nightly price, amenities and the
+featured flag on every request, with no seed. No scenario asserts a literal hotel count or price.
+The filter scenarios compare the filtered list against the *unfiltered* list rather than requiring
+a non-empty result — with prices drawn from 80–450, a 150 ceiling may legitimately match nothing,
+and an early draft of the price scenario failed for exactly that reason.
+
+Assumptions corrected while making the baseline green — each was a belief carried in from reading
+the code, overturned by running it:
+
+| # | Assumed from the code | Observed in the running application |
+|---|----------------------|-------------------------------------|
+| 1 | The `NaN` total renders as the text `NaN` | It renders as **nothing at all**. AngularJS 1.6.10's `currency` filter returns `''` for any non-finite input, so the booking summary's headline total and the per-room price cell are **blank**, not `NaN`. The user is shown an empty price, which is the more misleading outcome. |
+| 2 | `[ngRepeat:dupes]` degrades the rooms table | It **empties** it. The table renders **zero rows** while the controller holds all five rooms. The heading, the column headers and the panel all appear; the body does not. |
+| 3 | A room can be selected, exposing the `selectedRoom.id === room.id` highlight bug | It cannot. With no rows there is no Select button, `selectedRoom` stays null, and the `ng-if="selectedRoom"` booking summary never appears. **Hotel booking cannot be completed through the interface at all** — Known Limitations 3, 5, 6 and 7 are unreachable by a user and were confirmed by driving the controller directly in a single scenario tagged `@bypasses-ui`. |
+| 4 | The template's `ratingText`, `amenitiesText` and `reviewSummary` are unfilled | They are filled. `HotelBookingService.searchHotels` decorates every hotel after the response arrives (`service:20-26`), so the cards do show `(Excellent - 174 reviews)` and an amenity list. Only `address` and `imageUrl` are genuinely absent — the address line renders empty and the image falls back to a placeholder that 404s. |
+| 5 | The `flight:selected` pre-fill (US-F007-005) works | It can never fire. Flights and hotels are separate ui-router states, so the hotel controller does not exist when `flight-search.controller.js:207` broadcasts, and is constructed fresh afterwards. Selecting a flight to Boston and then opening the hotel screen leaves the city empty and the check-in null. Captured as a scenario. |
+| 6 | The check-in watcher only fills a *missing* check-out | It also **overwrites a check-out the user chose**. Picking check-out 10 August and then check-in 20 August silently yields 20 → 21 August; the user's 10 August is discarded without a message. |
+| 7 | The range sliders bind strings, as untyped inputs do | AngularJS 1.6 has a native `input[range]` handler, so `filters.minRating` and `filters.maxPrice` stay **numbers**. The filter comparisons are numeric, not coerced. |
+
+Two consequences worth carrying into planning:
+
+- **US-F008-002 ("Book a room") is not merely defective — it is unreachable.** The story cannot be
+  demonstrated end-to-end today. Any migration that reimplements the rooms table will *expose*
+  Known Limitations 1, 3, 5, 6 and 7 for the first time, because users will finally reach them.
+- **The `@bypasses-ui` scenario is the only one in this baseline that does not act as a user.** It
+  drives `selectRoom` through the controller because there is no user-facing route to the booking
+  code. It is tagged and named so that it is never mistaken for a demonstrable journey, and it
+  proves three defects at once: the request carries `totalPrice: null` (NaN serialises to null),
+  carries no `roomId`, and the toast reads `Hotel booked! Confirmation: undefined` — while the
+  server still answers `200` with a real `confirmationNumber`.
 
 ### Known Limitations
 
@@ -484,22 +529,29 @@ ADR-001 has already settled the product intent behind an item, the decision foll
 **Target behaviour** note; the numbered paragraph above each note continues to describe what the
 code does today, which is what the Track A green baseline captures.
 
-1. **The booking total is `NaN`.** `bookRoom` computes
+1. **The booking total is `NaN`, and renders as blank.** `bookRoom` computes
    `totalPrice: $scope.selectedRoom.pricePerNight * $scope.nightCount * $scope.searchParams.rooms`
    (`:231`). Room objects from `GET /api/hotels/{id}/rooms` carry `price`, not `pricePerNight`
    (`hotel-booking.yaml` → `HotelRoom`), so the multiplication yields `NaN`. The same expression
    drives the headline total in the booking summary (`template:222`) and the per-room price cell
-   (`template:190`), so both render blank or `NaN`. The handler does not read `totalPrice`, so the
-   value does not affect the response.
+   (`template:190`). **Both render as an empty string, not as the text `NaN`** — AngularJS 1.6.10's
+   `currency` filter returns `''` for any non-finite input (green baseline, corrected assumption 1).
+   The handler does not read `totalPrice`; the request carries it as `null`, because `JSON.stringify`
+   serialises `NaN` that way.
 
-2. **Room objects carry no identifier, and the template keys on one.** The rooms table declares
-   `ng-repeat="room in selectedHotel.rooms track by room.id"` (`template:184`). Every room's `id`
-   is `undefined`, so every tracking key is identical. AngularJS rejects duplicate `track by` keys
-   with `[ngRepeat:dupes]`, which applies whenever the endpoint returns more than one room.
+2. **Room objects carry no identifier, the template keys on one, and the table renders nothing.**
+   The rooms table declares `ng-repeat="room in selectedHotel.rooms track by room.id"`
+   (`template:184`). Every room's `id` is `undefined`, so every tracking key is identical. AngularJS
+   rejects duplicate `track by` keys with `[ngRepeat:dupes]` and **renders zero rows**, while the
+   controller holds all five rooms. The panel, its heading and the column headers appear; the body
+   is empty. **This makes hotel booking unreachable through the interface** — there is no Select
+   button, so `selectedRoom` stays null and the booking summary's `ng-if` never opens (green
+   baseline, corrected assumptions 2 and 3).
 
 3. **Room selection state cannot distinguish rooms.** The selected-row highlight and the button
    label both test `selectedRoom.id === room.id` (`template:185`, `:193`, `:196`). With every `id`
-   undefined, the comparison is true for every row once any room is selected.
+   undefined, the comparison is true for every row once any room is selected. Not observable today
+   — limitation 2 means no row is ever drawn — but it will surface the moment the repeat is fixed.
 
 4. **`roomId` is sent; `roomType` is read.** The client sends `roomId: $scope.selectedRoom.id`
    (`:226`) — itself undefined. The handler echoes `req.body.roomType`
@@ -611,7 +663,9 @@ Extraction artifacts corroborating this FRD: `specs/contracts/api/hotel-booking.
 (`HotelBookingController`, `HotelBookingService`), `specs/docs/testing/coverage.md`
 (no tests for this module), `specs/docs/architecture/overview.md` (`$rootScope` event bus).
 
-> **Track B sections omitted.** The testability gate has not run —
-> `.spec2cloud/state.json` → `brownfield.testability` is `null`. Per the `frd-generator` skill,
-> *Expected Behavior Scenarios*, *Manual Verification Checklist* and *Testability Roadmap* are
-> included only for features assigned to Track B.
+> **Track B sections omitted — the gate has now run.** The testability gate scored 6/6 and assigned
+> the whole application to **Track A** (`specs/adrs/adr-003-testability-gate.md`;
+> `.spec2cloud/state.json` → `brownfield.testability` is `"full"`). *Expected Behavior Scenarios*,
+> *Manual Verification Checklist* and *Testability Roadmap* apply only to Track B features and are
+> therefore not required here. This feature's behaviour is captured executably instead, in
+> `specs/features/hotel-booking.feature`.

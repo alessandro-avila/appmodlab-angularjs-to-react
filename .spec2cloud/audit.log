@@ -161,3 +161,25 @@
 2026-08-05T16:07:31Z | phase=B3 | action=artifact-updated | file=specs/frd-flight-search.md | result=ok | detail="Test Coverage refreshed; Test Reconciliation and Green Baseline sections added"
 2026-08-05T16:07:31Z | phase=B3 | action=state-update | result=ok | detail="phase=B3-track-a-green-baseline, testability gate approved, greenBaseline block added"
 2026-08-05T16:07:31Z | phase=B3 | action=human-gate | gate=green-baseline-flight-search | result=pending | detail="per-feature gate; awaiting review before hotel-booking"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=skill-check result=reused skill=gherkin-generation,test-generation mode=capture-existing note="same Track A A1-A3 sequence as flight-search"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=probe-running-app result=complete note="two throwaway probes driven against localhost:8080; every quirk verified by execution before any scenario was written"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=finding severity=critical result=recorded note="ngRepeat:dupes on 'track by room.id' renders ZERO room rows; booking unreachable through the UI"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=finding result=recorded note="NaN total renders as empty string not 'NaN' - Angular 1.6.10 currency filter returns '' for non-finite"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=finding result=recorded note="flight:selected prefill can never fire - separate ui-router states, controller constructed after broadcast"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=finding result=recorded note="check-in watcher overwrites a user-chosen check-out without notice"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=gherkin-capture result=created artifact=specs/features/hotel-booking.feature scenarios=25 tag=@existing-behavior
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=step-naming result=adjusted note="reworded 2 steps to avoid colliding with approved flight-search steps rather than editing them"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=test-scaffold result=created artifacts=tests/pages/hotel-booking.page.js,tests/steps/hotel-booking.steps.js
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=hooks-extended result=additive note="added hotel page object and a per-scenario request log; no existing hook behaviour changed"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=test-run seq=1 result=46/50 note="2 failures were machine-sleep artifacts (ERR_NETWORK_IO_SUSPENDED); 2 were real test defects"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=test-fix result=applied note="amenity checkbox located by index not label regex; modal awaited through its Bootstrap fade"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=test-fix result=applied note="price/rating/amenity filters compared against the unfiltered set - demanding a non-empty result was flaky against random prices"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=test-run seq=2,3,4 result=25/25 stableRuns=3 duration=~46s
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=regression result=50/50 steps=382 note="flight-search baseline intact alongside hotel-booking"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=unit-suite result=19/19 note="no spec existed for hotel-booking; none authored - nothing to reconcile"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=gate-check name=app-untouched result=pass appDiffLines=0
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=gate-check name=skip-detection result=pass note="no skip/only/pending markers"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=frd-update result=updated artifact=specs/frd-hotel-booking.md note="Test Coverage rewritten, Green Baseline section added with 7 corrected assumptions, limitations 1-3 corrected"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline action=frd-correction result=updated artifacts=specs/frd-flight-search.md,specs/frd-hotel-booking.md note="stale 'testability gate has not run' note replaced - gate ran in B2, Track A, ADR-003"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline action=state-update result=updated note="hotel-booking complete; corrected stale karma-jasmine 0/11 entry to 19/19"
+2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=human-gate result=pending note="per-feature green baseline gate"

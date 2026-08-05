@@ -658,8 +658,9 @@ Extraction artifacts corroborating this FRD: `specs/contracts/api/flight-search.
 (`FlightSearchController`, `FlightSearchService`), `specs/docs/testing/coverage.md`
 (11 tests / 11 failing), `specs/docs/architecture/overview.md` (`$rootScope` event bus).
 
-> **Track B sections omitted.** The testability gate has not run —
-> `.spec2cloud/state.json` → `brownfield.testability` is `null`. Per the `frd-generator` skill,
-> *Expected Behavior Scenarios*, *Manual Verification Checklist* and *Testability Roadmap* are
-> included only for features assigned to Track B. If the gate assigns this feature to Track B,
-> those three sections must be added before the FRD is considered complete.
+> **Track B sections omitted — the gate has now run.** The testability gate scored 6/6 and assigned
+> the whole application to **Track A** (`specs/adrs/adr-003-testability-gate.md`;
+> `.spec2cloud/state.json` → `brownfield.testability` is `"full"`). *Expected Behavior Scenarios*,
+> *Manual Verification Checklist* and *Testability Roadmap* apply only to Track B features and are
+> therefore not required here. This feature's behaviour is captured executably instead, in
+> `specs/features/flight-search.feature`.

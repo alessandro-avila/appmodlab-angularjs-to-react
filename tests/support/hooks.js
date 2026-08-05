@@ -12,6 +12,7 @@ const { BeforeAll, AfterAll, Before, After, Status } = require('@cucumber/cucumb
 const { chromium } = require('playwright');
 const { BASE_URL } = require('./world');
 const FlightSearchPage = require('../pages/flight-search.page');
+const HotelBookingPage = require('../pages/hotel-booking.page');
 
 const AUTH_STATE = path.join(__dirname, '..', '.auth', 'state.json');
 const HEADED = process.env.BASELINE_HEADED === '1';
@@ -48,7 +49,14 @@ Before(async function () {
   this.page.on('console', (msg) => {
     if (msg.type() === 'error') this.consoleErrors.push(msg.text());
   });
+  // Some scenarios need to know what the browser asked the API for — whether a
+  // filter triggered a fresh search, and what a booking actually sent.
+  this.requests = [];
+  this.page.on('request', (req) => {
+    this.requests.push({ method: req.method(), url: req.url(), postData: req.postData() });
+  });
   this.flights = new FlightSearchPage(this.page);
+  this.hotels = new HotelBookingPage(this.page);
 });
 
 After(async function (scenario) {
