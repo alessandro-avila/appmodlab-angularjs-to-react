@@ -265,6 +265,27 @@ in their own increment.
 > isolation scenarios are non-assertive — a green test that cannot fail is worse than no test,
 > because it reads like proof.
 
+### Two constraints the testability gate handed forward
+
+[Step 03](03-testability-gate.md#-outcome) scored the gate by *running* the app, and two of its
+findings are instructions for this step rather than facts about the last one.
+
+**C-1 — never reload inside a journey.** After a genuine page reload the token survives and the
+route guard admits the user, but `$rootScope.currentUser` is `null` and three controllers
+substitute a hardcoded identity — `'Demo User'` in travel-request and expense, `'You'` in
+itinerary. A scenario that reloads mid-flow therefore **stays logged in as nobody**, and every
+assertion on traveller name, submitter or comment author passes regardless of who authenticated.
+That is a false green of exactly the kind this step exists to prevent. Either avoid reloads inside
+a scenario, re-authenticate after one, or assert the fallback string deliberately and say why.
+
+**C-4 — the toast count and the list count legitimately differ.** On a search returning six flights
+priced 230–642 the toast reads "Found 6 flights" and the list renders four. The price slider is
+`step="50"` with a dynamic `min`, so `filters.maxPrice` snaps from 642 down to 630 and silently
+filters out the two dearest results, while the toast broadcasts the *unfiltered* count. Both
+numbers are correct for what they measure. A scenario that asserts them as one number will be
+flaky or wrong — assert them **separately**, and tag the discrepancy so the migration backlog
+inherits it.
+
 ---
 
 ## 📤 Outcome

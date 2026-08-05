@@ -116,7 +116,7 @@ exists, and why you should read the output rather than clicking approve.
 
 | # | Step | Phase | Human gate | Status |
 |---|------|-------|-----------|--------|
-| 03 | [Testability Gate](03-testability-gate.md) | Gate | Testability Gate | ⏳ Pending |
+| 03 | [Testability Gate](03-testability-gate.md) | Gate | Testability Gate | ✅ Verified |
 | 04 | [Green Baseline](04-green-baseline.md) | Track A | Green Baseline | ⏳ Pending |
 | 05 | [Path Selection](05-path-selection.md) | Gate | Path Selection | ⏳ Pending |
 

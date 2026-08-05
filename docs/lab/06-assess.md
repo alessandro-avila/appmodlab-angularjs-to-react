@@ -169,6 +169,14 @@ unless someone writes it down.
 | 12 | Stale total after emptying a report | `server.js:652` guards recalculation with `expenses.length > 0` | Server-side, so it survives the migration untouched unless someone decides otherwise. |
 | 13 | Itinerary notes overwrite each other | `POST /api/itinerary-items/:id/notes` assigns rather than appends | Plural route, scalar field. Fixing it is an API contract change. |
 | 14 | Currency stored, never honoured | `Expense.currency` read by no code; `totalAmount` sums mixed currencies unconverted | Either implement conversion or state that totals are single-currency. Silence is the one option that is wrong. |
+| 15 | Price slider hides the dearest results | `flight-search.template.html:129` hardcodes `step="50"` against a dynamic `min`/`max`; `controller.js:117` assigns the unrepresentable `priceRange.max` to the model | Found by [step 03](03-testability-gate.md#-outcome) *running* the app, not by extraction. A native React range input inherits the same snapping rule — reproducing the markup reproduces the bug. |
+
+Finding 15 was not in the B1 six. The testability gate produced it by driving a browser and
+**looking at the screenshot**: the toast reported six flights above a list rendering four. With
+`min=230` and `step=50` the highest value the control can hold is 630, so `filters.maxPrice` snaps
+down from 642 and the filter at `controller.js:156` drops two results, while the toast broadcasts
+the unfiltered count. Both numbers are correct for what they measure — which is precisely why
+neither a code read nor an accessibility snapshot caught it.
 
 **None of these is resolved incidentally by moving to React.** That is what separates them from
 findings 1-8, and it is why they each need an ADR or an explicit deferral.
