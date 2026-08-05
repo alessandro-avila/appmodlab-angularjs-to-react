@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
   "currentPhase": "B2-spec-enable",
-  "currentStep": "spec-refinement",
+  "currentStep": "testability-gate",
   "status": "awaiting-approval",
   "project": {
     "name": "globaltravel-portal",
@@ -9,10 +9,46 @@
     "repository": "appmodlab-angularjs-to-react"
   },
   "brownfield": {
-    "testability": null,
-    "track": null,
-    "testabilityChecklist": null,
-    "featureTracks": null,
+    "testability": "full",
+    "track": "A",
+    "testabilityChecklist": {
+      "buildsAndStarts": true,
+      "dependenciesReachable": true,
+      "apiExercisable": true,
+      "uiRenderable": true,
+      "devEnvironment": true,
+      "testSuiteExecutable": true
+    },
+    "testabilityGate": {
+      "score": "6/6",
+      "threshold": "5-6 => Track A (full); 3-4 => Hybrid (partial); 0-2 => Track B (none)",
+      "decidedAt": "2026-08-05T10:05:00Z",
+      "adr": "specs/adrs/adr-003-testability-gate.md",
+      "evidence": {
+        "buildsAndStarts": "npm start -> api on :3000 and web on :8080; npm run build -> dist/ 931 files, 18139911 bytes (uglify 91.89kB->40.7kB, cssmin 13.23kB->8.63kB)",
+        "dependenciesReachable": "no external dependency exists - api-mock/server.js requires only express, cors, body-parser, jsonwebtoken; zero db/http-client/secret-env matches; data in in-memory arrays; bower_components vendored (10 packages, 964 tracked files)",
+        "apiExercisable": "GET /api/airports?q=SFO 200; GET /api/trips no-token 401; POST /api/auth/login returns JWT for Sarah Johnson; GET /api/trips with Bearer returns 2 trips (trip-1 totalCost=2450, trip-2 totalCost=1800)",
+        "uiRenderable": "Playwright MCP drove a real browser: /#!/login -> Enter Portal -> /#!/dashboard -> /#!/flights -> search SFO-JFK -> GET /api/flights?... 200 -> 'Found 6 flights' rendered; 0 console errors; screenshot specs/docs/testing/evidence/q4-flight-search-results.png",
+        "devEnvironment": ".devcontainer/devcontainer.json pins node 22 bookworm, CHROME_BIN=/usr/bin/chromium, PLAYWRIGHT_BROWSERS_PATH, --shm-size=1g, forwardPorts 3000/8080/35729/5173/4173; gate additionally executed successfully on a bare Windows host outside the container",
+        "testSuiteExecutable": "npm test launched HeadlessChrome 150.0.0 and reported 'Executed 11 of 11 (11 FAILED)' with assertion-level errors and source lines - the harness executes and reports, which is what the question asks; red is not the same as non-executable, and ADR-002 Q-11 already removed these tests' authority"
+      },
+      "constraints": [
+        "C-1 session identity does not survive reload: authToken persists and the guard (app/app.js:21) admits the user, but app/app.js:40 nulls $rootScope.currentUser and auth.service.js:23 is the only setter, so consumers silently fall back to 'Demo User' (travel-request.controller.js:172-173, expense.controller.js:194) and 'You' (itinerary.controller.js:147). Track A tests must not reload mid-journey, or must re-authenticate, or must assert the fallback deliberately - otherwise a false green",
+        "C-2 the open jQuery UI datepicker (#ui-datepicker-div) intercepts pointer events and blocks the submit button; page objects must dismiss it before submitting",
+        "C-3 round trip is the default and requires a return date, so a departure-only fixture hits validation instead of search",
+        "C-4 the toast count and the rendered list count legitimately disagree: step=50 on the price slider makes 630 the highest representable value when min=230, so filters.maxPrice snaps down from the true max 642 and hides the flights at 638 and 642, while flight-search.controller.js:120 still broadcasts the unfiltered count. Baseline scenarios must assert the two numbers separately"
+      ],
+      "corroboratesQ11": "the shipped controller issues GET /api/flights?... while the failing specs expect POST /api/flights and GET /api/flights/popular; both routes exist server-side, so the tests describe a client redesign that was never written"
+    },
+    "featureTracks": {
+      "authentication": "A",
+      "flight-search": "A",
+      "hotel-booking": "A",
+      "itinerary": "A",
+      "travel-request": "A",
+      "expense-reconciliation": "A"
+    },
+    "featureTracksNote": "All six FRD feature areas are Track A. Five map to app/components/ modules; authentication is service-level (app/services/auth.service.js plus the login route) and is assigned a track because Phase 2 delivery iterates per FRD.",
     "extraction": {
       "codebaseScanner": "specs/docs/technology/stack.md",
       "dependencyInventory": "specs/docs/technology/dependencies.md",
@@ -68,7 +104,7 @@
         "SEAM-4": "defect-to-fix",
         "SEAM-5": "defect-to-fix"
       },
-        "adrs": ["specs/adrs/adr-001-product-intent-decisions.md", "specs/adrs/adr-002-remaining-product-intent-decisions.md"],
+        "adrs": ["specs/adrs/adr-001-product-intent-decisions.md", "specs/adrs/adr-002-remaining-product-intent-decisions.md", "specs/adrs/adr-003-testability-gate.md"],
         "note": "All twelve questions are answered. Q-1..Q-7 by the product owner 2026-08-04 (ADR-001); Q-8..Q-12 at the B2c Refinement Review gate 2026-08-05 (ADR-002). Q-12 was answered by a scope decision - no production deployment for this hackathon - which removes the cloud-native and deployment increments rather than unblocking them. The testability gate is unblocked: its two open inputs were Q-10 and Q-11."
     }
   },
@@ -112,6 +148,20 @@
         "linked_from_frds": 6,
         "scope_boundary": "no production deployment; Phase 2 Step 4 loses its Azure form (no azd provision, no azd deploy, no infra/, no live smoke tests)",
         "verification": "Q-10 consumer counts re-derived mechanically at the gate: 3 directives and 4 filters have 0 consumers each; ApiService and UserService have 0 injections"
+      },
+      {
+        "id": "ADR-003",
+        "path": "specs/adrs/adr-003-testability-gate.md",
+        "title": "Testability gate: the application is fully testable, adopt Track A",
+        "status": "accepted",
+        "date": "2026-08-05",
+        "depends_on": "ADR-002 (Q-11)",
+        "phase": "B2 -> B3",
+        "decision": "6/6 -> testability full, Track A for all six FRD feature areas",
+        "alternatives_rejected": ["Track Hybrid (partial)", "Track B (none)"],
+        "evidence_method": "every answer produced by running the system - two servers, four HTTP calls, a full Playwright browser journey, a production build and the Karma suite; no answer taken from code inspection",
+        "constraints_found": ["C-1 session identity lost on reload", "C-2 datepicker overlay blocks submit", "C-3 round trip requires return date", "C-4 default price filter hides dearest results while the toast counts them"],
+        "self_corrections": 3
       }
     ],
     "frds": [
@@ -134,7 +184,7 @@
         "line_citations_verified": 104,
         "line_citations_wrong": 0,
         "lab_marking_table_score": "19 of 19",
-        "track_b_sections": "omitted — testability gate has not run",
+        "track_b_sections": "not applicable — testability gate scored 6/6, all features are Track A (ADR-003)",
         "adr_refs": [
           "ADR-001",
           "ADR-002"
@@ -163,7 +213,7 @@
         "source_code_read": true,
         "line_citations_verified": 157,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run",
+        "track_b_sections": "not applicable — testability gate scored 6/6, all features are Track A (ADR-003)",
         "adr_refs": [
           "ADR-001",
           "ADR-002"
@@ -193,7 +243,7 @@
         "source_code_read": true,
         "line_citations_verified": 130,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run",
+        "track_b_sections": "not applicable — testability gate scored 6/6, all features are Track A (ADR-003)",
         "adr_refs": [
           "ADR-001",
           "ADR-002"
@@ -223,7 +273,7 @@
         "source_code_read": true,
         "line_citations_verified": 237,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run",
+        "track_b_sections": "not applicable — testability gate scored 6/6, all features are Track A (ADR-003)",
         "adr_refs": [
           "ADR-001",
           "ADR-002"
@@ -254,7 +304,7 @@
         "source_code_read": true,
         "line_citations_verified": 312,
         "line_citations_wrong": 0,
-        "track_b_sections": "omitted — testability gate has not run",
+        "track_b_sections": "not applicable — testability gate scored 6/6, all features are Track A (ADR-003)",
         "adr_refs": [
           "ADR-001",
           "ADR-002"
@@ -289,7 +339,7 @@
         "line_citations_verified": 186,
         "line_citations_wrong": 0,
         "cross_cutting": true,
-        "track_b_sections": "omitted — testability gate has not run",
+        "track_b_sections": "not applicable — testability gate scored 6/6, all features are Track A (ADR-003)",
         "adr_refs": [
           "ADR-001",
           "ADR-002"
@@ -341,7 +391,40 @@
   },
   "humanGates": {
     "brownfield-b1-extraction-approved": true,
-    "brownfield-b2a-prd-approved": true
+    "brownfield-b2a-prd-approved": true,
+    "brownfield-b2c-refinement-approved": true,
+    "brownfield-testability-gate-approved": false
+  },
+  "testabilityGateReview": {
+    "gate": "brownfield-testability-gate",
+    "reviewedOn": "2026-08-05",
+    "decision": "pending-human-approval",
+    "artifact": "specs/adrs/adr-003-testability-gate.md",
+    "score": "6/6",
+    "proposedTrack": "A",
+    "proposedTestability": "full",
+    "evidenceMethod": "every one of the six questions answered from real execution output - npm start, npm run build, four HTTP calls against :3000, a full Playwright browser journey, and npm test - with no answer taken from code inspection",
+    "verification": [
+      "Q1 build: uglify 91.89 kB -> 40.7 kB, cssmin 13.23 kB -> 8.63 kB, dist/ 931 files / 18139911 bytes",
+      "Q2 dependency surface: 4 local requires, 0 matches for db clients / http clients / secret env vars, 964 vendored bower files tracked in git",
+      "Q3 API: 200 public, 401 guarded, JWT issued, 2 trips returned authenticated",
+      "Q4 UI: Playwright drove login -> dashboard -> flights -> search, GET /api/flights?... 200, 'Found 6 flights' rendered, 0 console errors, screenshot captured",
+      "Q5 environment: devcontainer pins node 22 + CHROME_BIN + Playwright browsers + shm-size 1g; gate also passed on a bare Windows host, so two independent paths work",
+      "Q6 suite: HeadlessChrome 150.0.0 launched and reported 'Executed 11 of 11 (11 FAILED)' with per-spec assertion errors and source lines"
+    ],
+    "q6Rationale": "scored PASS deliberately. The question asks whether the suite is executable, not whether it is green. Karma launched a browser, loaded and ran all 11 specs, and reported each individually with file:line assertion errors - that is a test result, not an infrastructure failure. A non-executable suite reports 'Executed 0 of 0' or fails to launch. ADR-002 Q-11 had already removed these tests' authority over the baseline.",
+    "constraintsForTrackA": [
+      "C-1 a reload leaves the app authenticated but anonymous, and consumers substitute 'Demo User' / 'You' - a test that reloads mid-journey can go falsely green",
+      "C-2 the jQuery UI datepicker overlay intercepts the submit click",
+      "C-3 round trip is the default and requires a return date",
+      "C-4 default price filter hides the dearest results while the toast counts them - assert toast count and row count separately"
+    ],
+    "selfCorrections": [
+      "the first reload probe used a hash-to-hash navigation, which does not restart the app; caught by the recorded zero network requests and re-run with location.reload() plus a sentinel, which reversed the result",
+      "the expectation carried from B1 was that a reload would fail visibly; it fails invisibly, which is the more dangerous case for a test suite",
+      "C-4 was found by viewing the captured screenshot, not by reading the accessibility snapshot - the snapshot reported Found 6 flights and the image showed a list headed 4 flights found; confirmed against live scope state and traced to step=50 on the range input"
+    ],
+    "branchNote": "lab/03-testability-gate had been pre-created pointing at main (which carries no specs/), so it was reset onto lab/02-b2-spec-enable at 2602441 before any gate artefact was written; no work was lost and no unique commits were discarded"
   },
   "gateReview": {
     "gate": "brownfield-b2a-prd",
@@ -443,6 +526,6 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-04T22:40:00Z",
+  "lastUpdated": "2026-08-05T10:05:00Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }
