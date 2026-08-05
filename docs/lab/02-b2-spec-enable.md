@@ -298,7 +298,6 @@ Gate question 6, and it is the drill for the Track A rule **"fix the test, not t
 
 `specs/prd.md` — **613 lines**, 22 features, 2 personas, 12 open questions, 3 Mermaid diagrams.
 Committed on [`lab/02-b2-spec-enable`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/02-b2-spec-enable).
-B2b and B2c have not run yet.
 
 The generation metadata records **"Source code read during generation: None"**, with a matching
 `constraint-check` in `.spec2cloud/audit.log`. That is what makes this run a real test of B1:
@@ -586,17 +585,112 @@ is meant to be scoped.
 ### ⚖️ Verdict
 
 Six FRDs, forensically accurate, all 22 features covered, all five seams dispositioned, and the
-descriptive/decided boundary held. **One gate open** — the Q-7 test-data note. Close it, then
-B2c refinement.
+descriptive/decided boundary held. **One gate open** — the Q-7 test-data note.
+[B2c refinement](#-outcome--b2c-refinement) ran next and did not close it.
 
 ---
 
 ## 📤 Outcome — B2c (Refinement)
 
-> ⏳ **Pending** — run after the ADR-001 links are added.
->
-> Paste back what `spec-refinement` found. Contradictions are the interesting output — the FRDs
-> were written one at a time, so cross-FRD disagreement is exactly what this pass exists to catch.
+> ✅ **Ran on `lab/02-b2-spec-enable`** — commit
+> [`cbd060a`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/commit/cbd060a)
+> · five passes run, **converged at pass 3** · +151/−16 across six FRDs, `state.json` and the audit log.
+
+Seven edits, all in passes 1 and 2. Passes 3, 4 and 5 changed nothing — which is the point of a
+convergence cap: you run until the passes stop finding things, and you record that they stopped.
+
+| Pass | Lens | Changed | Found |
+|:---:|---|:---:|---|
+| 1 | product | 4 | 8 missing personas, 1 non-story, 2 malformed acceptance criteria |
+| 2 | technical | 3 | **an entire undocumented route**, 2 dependency tables without direction |
+| 3 | cross-cutting seams | 0 | no defects — 35 event sites already agreed across six FRDs |
+| 4 | residual | 0 | dead-asset trap not sprung; language scans clean |
+| 5 | final | 0 | citations verified; skip-detection 0 matches |
+
+### 🎯 The catch that justifies the pass
+
+`POST /api/flights` (`api-mock/server.js:333`). B1 had extracted it — it appears **seven times across
+four extraction artifacts**. `frd-flight-search.md` documented neither it nor its two siblings
+correctly, listing two flight routes where the source has five.
+
+It is a near-duplicate of the `GET` above it, and the divergence is the interesting part:
+
+| | line | reads |
+|---|---|---|
+| `GET /api/flights` | 328 | `req.query.origin`, `.destination`, **`.date`**, `.cabinClass` |
+| `POST /api/flights` | 333 | `req.body.origin`, `.destination`, **`.departDate`**, `.cabinClass` |
+
+Same handler shape, same `generateFlights` call, **different parameter name for the date**. A
+migration that consolidates these two into one React data hook has to notice that — and would not
+have, because the FRD driving that work did not know the second route existed.
+
+This is exactly the failure mode refinement exists to catch: not a disagreement *between* documents,
+but a silent omission that leaves one document narrower than the extraction it came from.
+
+### 🧾 Six contradictions — listed, not resolved
+
+The more valuable output. Each is a real inconsistency the pass **declined to harmonise**, with the
+reason recorded:
+
+| # | Contradiction | Why it was left |
+|:--:|---|---|
+| 1 | `frd-authentication.md` structures **4 of 17** requirements as Input/Processing/Output/Error; the other five FRDs are **100%** | Restructuring 13 requirements risks inventing behaviour the code never states |
+| 2 | Three acceptance-criterion formats coexist | All three parse as GIVEN/WHEN/THEN — normalising is cosmetic churn |
+| 3 | Two event-table column conventions | Both complete and correct |
+| 4 | Three dependency-table conventions | Direction added in prose instead of rewriting tables |
+| 5 | `data-models.md:676` says `Trip.totalCost` intent is "not determinable"; ADR-001 Q-6 has since settled it | **The B1 artifact was deliberately not edited** — extraction records what the code said; the decision belongs in the FRD |
+| 6 | No FRD has an Edge Cases section | The `frd-generator` format defines none; the refinement checklist assumes one |
+
+Number 5 is the one to notice. The obvious move — go back and "fix" the extraction now that the
+answer is known — is precisely the move that destroys the audit trail. B1 recorded that the code
+does not say; ADR-001 recorded what was decided. Both remain true, and they are kept in separate
+documents. Contradiction 6 is a genuine defect in the framework, not in the specs: two of its own
+components disagree about the output format.
+
+### ✅ Verified against source
+
+| Claim | Result |
+|---|:---:|
+| `POST /api/flights` at `:333`, absent from FRD, present in B1 | ✅ 7 hits across 4 artifacts |
+| 36 of 36 Express routes now documented | ✅ 36 exactly |
+| 51 personas across 51 derivable stories | ✅ 51 personas, 52 headings — delta is `US-F022-001` |
+| `frd-authentication.md` 4/17 structured, others 100% | ✅ 4/17 · 19/19 · 14/14 · 13/13 · 13/13 · 15/15 |
+| Both acceptance criteria were genuinely malformed | ✅ neither had a `WHEN` clause; one packed 4 behaviours into a line |
+| **35** `$rootScope` event sites, not the reported 37 | ❌ **arithmetic slip** |
+
+The event-site count is wrong in the commit message, the audit log and `state.json`. The
+*itemisation* beside it — `notification:add` 24+1, `auth:login` 1+3, `auth:logout` 1+0,
+`flight:selected` 1+1, `itinerary:refresh` 2+1 — is correct, matches source exactly, and sums to
+**35**. So the verification was sound and only the headline is wrong. Worth correcting because
+`state.json` is read by later phases; not worth re-running the pass over.
+
+### 🧠 The non-story is the smartest edit
+
+`US-F022-001` (profile read/update) had a heading but no reachable behaviour — `UserService` is
+injected nowhere. Deleting it would break the F-022 traceability link. Keeping it would produce a
+Gherkin scenario asserting nothing. It did neither:
+
+> **Not a user story. Generates no Gherkin scenario.** No behaviour is reachable, so nothing can be
+> asserted. […] This heading is retained only so F-022 has a visible home in the traceability chain;
+> **downstream generation must skip it.**
+
+An instruction to a later phase, written into the artifact that phase will read. That is how you
+stop a dead feature from quietly becoming a passing test.
+
+### ❓ One open question for you
+
+> Should the 13 unstructured `frd-authentication.md` requirements be restructured into
+> Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?
+
+Real, and it has a deadline. `contract-generation` reads that structure to derive request/response
+shapes. Leave them prose and auth's contract gets thinner than the other five — which matters,
+because auth is the one every other feature depends on.
+
+### ⚖️ Verdict
+
+Converged honestly, caught a real omission, and refused to tidy six things that were not its to
+tidy. **The Q-7 test-data gate is still open** — five passes went by and no FRD records that every
+seeded record belongs to one user.
 
 ---
 
@@ -622,9 +716,10 @@ B2c refinement.
 - [x] Every FRD **names the `F-IDs` it covers**, and all 22 are accounted for exactly once
 - [x] Every FRD has a **Current Implementation** section with file paths
 - [ ] Score `frd-flight-search.md` against the 19-row table above
-- [ ] The three quirks are documented as *behaviour*, not as bugs:
+- [x] The three quirks are documented as *behaviour*, not as bugs:
       `maxPrice` overwrite, the `returnDate` auto-push, the window scroll on select
-- [ ] The test-coverage section states 11 tests / 11 failing **and why**
+- [x] The test-coverage section states 11 tests / 11 failing **and why**
+      *(0% effective, and it names three distinct failure causes)*
 - [x] **No FRD claims to use `date-picker.directive.js` or `api.service.js`.** B1 verified both are
       dead: `gt-date-picker` is in no template, `ApiService` is injected nowhere. An FRD that
       describes either as "the shared component" invented a dependency.
@@ -665,16 +760,31 @@ or the increment plan will schedule a migration that quietly preserves a broken 
 - [ ] **Q-7 (data isolation) is marked as needing a second seeded owner.** ADR-001 flags it: with one
       owner in the fixtures, per-user filtering cannot be asserted. An FRD that specifies isolation
       without noting the test data cannot exercise it sets up a green baseline that proves nothing.
-      **Not met — no FRD mentions it.** Verified in `api-mock/server.js`: every seeded record across
+      **Still not met after B2c.** Verified in `api-mock/server.js`: every seeded record across
       trips, travel requests and expense reports carries `userId: 1`, and only Sarah Johnson (id `1`)
       owns anything. Mike Chen (id `2`) exists as a login and owns nothing. So a test asserting *"I
       see only my own trips"* passes identically whether filtering is implemented or deleted.
+      The FRDs document the *missing filter* exhaustively — `frd-itinerary.md:605`,
+      `frd-expense-reconciliation.md:411` — but not that the fixtures cannot prove the fix.
 
 
 ### Refinement Review
-- [ ] Max 5 passes, and the report says what changed in each
-- [ ] Contradictions are listed, not silently resolved
-- [ ] No "should" / "recommend" / "modern" survived
+> 🟡 **Blast radius: contradictions get harmonised into a lie.** &nbsp;·&nbsp; ⏳ **Awaiting approval**
+
+- [x] Max 5 passes, and the report says what changed in each
+      *(5 run, converged at 3; passes 3–5 changed nothing and said so)*
+- [x] Contradictions are listed, not silently resolved *(6 listed, each with a stated reason)*
+- [x] No "should" / "recommend" / "modern" survived
+      *(30 raw hits, all false positives — `propert*`, the `recommended` sort value, quoted test
+      names, and quoted source comments)*
+- [x] **The B1 extraction was not retro-edited.** ADR-001 Q-6 answered a question `data-models.md`
+      records as "not determinable from source". The tempting fix is to go back and update the
+      extraction. It was left alone, and the decision recorded in `frd-itinerary.md` instead.
+- [ ] **Correct the event-site count.** The commit message, audit log and `state.json` all report
+      *37 of 37* `$rootScope` sites. The real number is **35** — the itemisation beside it is right
+      and sums to 35. Cosmetic, but `state.json` is read by later phases.
+- [ ] **Answer the open question**, and note it has a deadline: `contract-generation` (Phase 2
+      Step 2) reads the Input/Processing/Output structure that 13 of auth's 17 requirements lack.
 
 ---
 
