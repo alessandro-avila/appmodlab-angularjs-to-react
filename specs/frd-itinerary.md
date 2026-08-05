@@ -660,7 +660,11 @@ is where that fix becomes observable, because it already reloads on `itinerary:r
 the server recomputes a trip's cost from its items, which moves `Trip.totalCost` from a **stored**
 field to a **derived** one and is an **API-visible** change for any consumer relying on the stored
 `2450` / `1800` values (Known Limitation 1)
-(`specs/adrs/adr-001-product-intent-decisions.md`).
+(`specs/adrs/adr-001-product-intent-decisions.md`). **Q-10** — the unreferenced registrations this
+FRD lists as dead (`gtDatePicker`, `ApiService`) are **dead code and are not ported**. **Q-11** —
+the existing Jasmine suite is **stale and carries no authority**; this module has no tests of its
+own, so its Track A baseline is authored entirely from observed behaviour
+(`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
 
 Extraction artifacts corroborating this FRD: `specs/contracts/api/itinerary.yaml`,
 `specs/docs/architecture/components.md` (`ItineraryController`, `ItineraryService`),

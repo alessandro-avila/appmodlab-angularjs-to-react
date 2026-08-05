@@ -764,7 +764,11 @@ is informational and F-013 stays P3, so **SEAM-2** (*no approve/reject endpoint*
 2, 3 and 6) is **accepted as-is** and captured unchanged in the green baseline. **Q-2** — travel
 policy is *display-only*; F-014 is a read-only surface and no rules engine is in scope, so
 **SEAM-1** (*policy published, never enforced*, Known Limitation 4) is likewise **accepted as-is**
-(`specs/adrs/adr-001-product-intent-decisions.md`).
+(`specs/adrs/adr-001-product-intent-decisions.md`). **Q-10** — the unreferenced registrations this
+FRD lists as dead (`gtDatePicker`, `gtApprovalStatus`, `ApiService`) are **dead code and are not
+ported**. **Q-11** — the existing Jasmine suite is **stale and carries no authority**; this module
+has no tests of its own, so its Track A baseline is authored entirely from observed behaviour
+(`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
 
 ---
 

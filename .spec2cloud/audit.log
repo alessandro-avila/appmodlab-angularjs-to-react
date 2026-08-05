@@ -102,3 +102,20 @@
 2026-08-04T22:40:00Z | phase=B2c | action=tone-scan | result=pass | hits=1 | detail=known false positive frd-itinerary.md:78 "broken down into"
 2026-08-04T22:40:00Z | phase=B2c | action=contradictions-listed | count=6 | detail=listed not resolved per brownfield rule
 2026-08-04T22:40:00Z | phase=B2c | action=spec-refinement-complete | result=converged-at-pass-3 | passes_run=5 | open_questions=1 | next=refinement-review-human-gate
+2026-08-05T09:45:00Z | phase=B2c | action=open-questions-answered | questions=Q-8,Q-9,Q-10,Q-11,Q-12,Q-B2c | decider=product-owner | adr=ADR-002
+2026-08-05T09:45:00Z | phase=B2c | action=adr-created | id=ADR-002 | path=specs/adrs/adr-002-remaining-product-intent-decisions.md | status=accepted | extends=ADR-001
+2026-08-05T09:45:00Z | phase=B2c | action=decision-Q-8 | result=yes | detail=multi-user login in scope; build the real credential form, API already checks credentials at api-mock/server.js:273-290
+2026-08-05T09:45:00Z | phase=B2c | action=decision-Q-9 | result=no | detail=single currency USD; six-value selector removed; no rate source exists in the repository
+2026-08-05T09:45:00Z | phase=B2c | action=decision-Q-10 | result=dead-code | detail=3 directives, 4 filters, ApiService, UserService, ui.bootstrap not ported; 0 consumers each re-verified mechanically at the gate
+2026-08-05T09:45:00Z | phase=B2c | action=decision-Q-11 | result=stale | detail=11 failing tests carry no authority; Track A baseline authored from observed behaviour; tests preserved unmodified
+2026-08-05T09:45:00Z | phase=B2c | action=decision-Q-12 | result=out-of-scope | detail=no production deployment this hackathon; Phase 2 Step 4 loses its Azure form; mock Express API remains the datastore
+2026-08-05T09:45:00Z | phase=B2c | action=decision-Q-B2c | result=accept-as-is | detail=13 unstructured auth requirements not restructured; the auth FRD is revised under Q-8 anyway so restructuring first would be rework
+2026-08-05T09:45:00Z | phase=B2c | action=q10-verification | result=confirmed | detail=gtApprovalStatus 0, gtCurrencyInput 0, gtDatePicker 0 templates; usdCurrency, gtDateFormat, gtTimeAgo, gtDuration 0 uses; ApiService, UserService 0 injections
+2026-08-05T09:45:00Z | phase=B2c | action=adr-002-linked-into-frds | count=6 | detail=Q-8 and Q-12 to authentication, Q-9 to expense, Q-10 and Q-11 to all six
+2026-08-05T09:45:00Z | phase=B2c | action=prd-updated | detail=Still open section replaced by Resolved at the B2c gate; status note marked final; no product question remains open
+2026-08-05T09:45:00Z | phase=B2c | action=stale-reference-corrected | detail=frd-authentication traceability claimed Q-12 unresolved and blocking deployment; now records the out-of-scope decision
+2026-08-05T09:45:00Z | phase=B2c | action=citation-correction | detail=credential check cited as server.js:275-290, corrected to :273-290 with the match at :277
+2026-08-05T09:45:00Z | phase=B2c | action=tone-scan | result=pass | hits=3 | detail=all pre-existing and previously accepted (itinerary:78, prd:546, prd:569); 2 new hits introduced and rephrased before commit
+2026-08-05T09:45:00Z | phase=B2c | action=skip-detection-scan | result=clean | matches=0
+2026-08-05T09:45:00Z | phase=B2c | action=source-untouched-check | result=clean | detail=git status on app/, api-mock/, test/ is empty
+2026-08-05T09:45:00Z | phase=B2c | action=testability-gate-unblocked | detail=its two open inputs were Q-10 and Q-11, both now settled

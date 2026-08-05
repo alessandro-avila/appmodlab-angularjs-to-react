@@ -691,6 +691,14 @@ the Track A green baseline captures.
    (`controller:266`). A line entered in EUR is added to the same total as one in USD and is
    displayed with a dollar sign.
 
+   > **Target behaviour — settled by Q-9 of ADR-002.** Multi-currency is **not** real and is not
+   > built: the migration is single-currency (USD) and the six-value selector is removed. No rate
+   > source exists anywhere in the repository, so the selector is an affordance over a capability
+   > that was never implemented. Removing it eliminates the cross-currency summation defect rather
+   > than porting it. `currency` remains on the wire as a field, so this is **API-visible** for any
+   > consumer that set a non-USD value
+   > (`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
+
 4. **`totalAmount` is recomputed on update but not on create.** `POST` accepts a client-supplied
    `expenses` array and leaves `totalAmount` at whatever the body carries, or `0`
    (`api-mock/server.js:621-635`). Only `PUT` recomputes it from the array, and only when the
@@ -838,7 +846,14 @@ non-blocking**. **Q-7** — every collection is to be scoped to the authenticate
 role-based access. **SEAM-4** (*`approved` is counted but never written*, Known Limitations 6 and
 11) is a **defect to fix** that the ADR derives from Q-3's persistence work and Q-4's vocabulary fix
 rather than from a question of its own
-(`specs/adrs/adr-001-product-intent-decisions.md`).
+(`specs/adrs/adr-001-product-intent-decisions.md`). **Q-9** — multi-currency is not real; the
+migration is single-currency (USD) and the six-value selector is removed (Known Limitation 3).
+**Q-10** — the unreferenced registrations this FRD lists as dead (`gtCurrencyInput`, `usdCurrency`,
+`gtDatePicker`, `ApiService`) are **dead code and are not ported**, with one exception:
+`ExpenseService.linkToTravelRequest` acquires a caller under Q-5 and **must** be ported. **Q-11** —
+the existing Jasmine suite is **stale and carries no authority**; this module has no tests of its
+own, so its Track A baseline is authored entirely from observed behaviour
+(`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
 
 ---
 

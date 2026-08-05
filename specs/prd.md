@@ -547,9 +547,11 @@ exercise, and every downstream FRD, Gherkin scenario and migration increment inh
 > (FRD generation). Q-8 through Q-12 can be answered later, but Q-12 must be answered before any
 > cloud-native or deployment increment is planned.
 
-> **Status — 2026-08-04, updated.** Q-1 … Q-7 were put to the product owner at the close of B2a and
-> **have been answered** (see *Resolved product decisions* below). Q-8 … Q-12 remain open; Q-12 still
-> blocks any cloud-native or deployment increment.
+> **Status — 2026-08-05, final.** Q-1 … Q-7 were answered at the close of B2a and recorded in
+> ADR-001. **Q-8 … Q-12 have since been answered** at the B2c Refinement Review gate and recorded
+> in `specs/adrs/adr-002-remaining-product-intent-decisions.md`. **No product question remains
+> open.** Q-12 was answered by a scope decision — production deployment is out of scope for this
+> hackathon — which removes the cloud-native and deployment increments rather than unblocking them.
 
 ### Resolved product decisions
 
@@ -575,15 +577,28 @@ work) and SEAM-5 are **defects to fix** and become target behaviour in the incre
 > engine out of scope. If either is later reversed, F-013 / F-014 and every FRD derived from them
 > must be regenerated — they are not additive changes.
 
-### Still open
+### Resolved at the B2c gate — Q-8 … Q-12
 
-| # | Question | Blocks |
-|---|----------|--------|
-| Q-8 | Is multi-user login in scope? | Auth FRD detail only |
-| Q-9 | Is multi-currency real? | Expense FRD detail only |
-| Q-10 | Are the 9 unreferenced registrations product surface or dead code? | Migration scope — what to port |
-| Q-11 | What did the failing test suite intend to specify? | Track A baseline authoring |
-| Q-12 | Intended production datastore, API base URL and deployment target? | **Any cloud-native or deployment increment** |
+Answered by the product owner on 2026-08-05 and recorded in
+`specs/adrs/adr-002-remaining-product-intent-decisions.md`. As with Q-1 … Q-7, these are **product
+decisions, not extraction findings**.
+
+| # | Question | Decision | Consequence for delivery |
+|---|----------|----------|--------------------------|
+| **Q-8** | Is multi-user login in scope? | **Yes** — build the real credential form. | The gap is entirely client-side: the API already checks credentials against a two-user table. F-001 gains target behaviour (form, validation, error states) with **no current implementation to capture as a baseline** — its acceptance criteria must separate captured from target behaviour. |
+| **Q-9** | Is multi-currency real? | **No** — single currency (USD); remove the 6-value selector. | `currency` stays on the wire but the client stops offering alternatives. Removes cross-currency summation, which produced totals that mix currencies without conversion. API-visible for any consumer that set a non-USD value. |
+| **Q-10** | Are the 9 unreferenced registrations product surface or dead code? | **Dead code** — do not port. | 3 directives, 4 filters, `ApiService`, `UserService` and `ui.bootstrap` are excluded from the React migration, together with 24 of the 25 uncalled service methods. The exception is `ExpenseService.linkToTravelRequest`, which acquires a caller under Q-5. Re-verified mechanically at the gate: 0 consumers each. |
+| **Q-11** | What did the failing test suite intend to specify? | **Stale** — no authority over the baseline. | The Track A green baseline is authored from observed behaviour of the running application. The 11 failing tests are **preserved unmodified** (existing tests are sacred) but do not define the baseline, and their failure does not block the gate. |
+| **Q-12** | Production datastore, API base URL and deployment target? | **Out of scope** — no production deployment for this hackathon. | The project targets the AngularJS → React migration exercised locally. `api-mock/server.js` and its in-memory fixtures remain the datastore. **Phase 2 Step 4 loses its Azure form**: no `azd provision`, no `azd deploy`, no `infra/`, no live smoke tests. An increment is done when all tests pass locally. |
+
+**Net effect on scope.** Q-8 is the only decision that *adds* product surface. Q-9, Q-10 and Q-12
+each remove some. Q-11 removes a false constraint on the baseline. No question remains open, and
+the testability gate — whose two open inputs were Q-10 and Q-11 — is unblocked.
+
+> **Reversal cost.** Q-12 is the expensive one to reverse: restoring deployment requires a
+> cloud-native assessment that has not been run, plus a new ADR. Q-10 is irreversible in practice —
+> once the port omits a directive, restoring it means re-implementing rather than translating,
+> though the AngularJS originals remain in git history.
 
 ---
 

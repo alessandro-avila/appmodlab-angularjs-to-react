@@ -600,7 +600,11 @@ code does today, which is what the Track A green baseline captures.
 Resolved product decisions that bound this FRD: **Q-3** — a booking must create an itinerary item,
 so **SEAM-3** (*bookings persist nothing*, Known Limitation 8) is a **defect to fix** and F-008's
 target behaviour differs from what the code does today
-(`specs/adrs/adr-001-product-intent-decisions.md`).
+(`specs/adrs/adr-001-product-intent-decisions.md`). **Q-10** — the unreferenced registrations this
+FRD lists as dead (`gtDatePicker`, `ApiService`) are **dead code and are not ported**. **Q-11** —
+the existing Jasmine suite is **stale and carries no authority**; this module has no tests of its
+own, so its Track A baseline is authored entirely from observed behaviour
+(`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
 
 Extraction artifacts corroborating this FRD: `specs/contracts/api/hotel-booking.yaml`
 (7 operations, 7 `x-discrepancies`), `specs/docs/architecture/components.md`

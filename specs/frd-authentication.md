@@ -573,6 +573,15 @@ Stated as behaviour, not as defects. Each is falsifiable against the cited lines
    elements (`app/app.routes.js:15`). The second seeded user (`api-mock/server.js:44`) cannot be
    selected from the UI.
 
+   > **Target behaviour — settled by Q-8 of ADR-002.** Multi-user login **is** in scope: the
+   > migration builds a real credential form. The gap is entirely client-side — the API already
+   > checks credentials against the two-user table (`api-mock/server.js:273-290`, the match at `:277`),
+> so no server work
+   > follows. This is the one decision in ADR-002 that *adds* product surface, and it adds it where
+   > there is **no current behaviour to capture as a Track A baseline**: the form, its validation and
+   > its error states are target-only. F-001's acceptance criteria must keep the two separated
+   > (`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
+
 7. **`login()` declares no `.catch`.** A 401 from `api-mock/server.js:280` rejects the promise; the
    `.then` in the login controller (`app/app.routes.js:21-23`) does not run, `$state.go('dashboard')`
    is skipped and the user remains on the login screen with no message. Because the credentials are
@@ -711,12 +720,15 @@ Stated as behaviour, not as defects. Each is falsifiable against the cited lines
 Resolved product decisions that bound this FRD: **Q-1** — a manager is not an approver, so the
 signed `role` claim having no consumer is intended, not missing. **Q-7** — every collection is to be
 scoped to the authenticated user, which makes `req.user` the intended filter key at every guarded
-handler (`specs/adrs/adr-001-product-intent-decisions.md`).
+handler (`specs/adrs/adr-001-product-intent-decisions.md`). **Q-8** — multi-user login is in scope,
+so the literal credentials (Known Limitation 6) become a real form. **Q-12** — production deployment
+is **out of scope** for this hackathon, so the two hardcoded `http://localhost:3000` literals
+(`app/app.js:14`, `app/services/auth.service.js:18`) and the literal `JWT_SECRET`
+(`api-mock/server.js:13`) are **accepted for the duration** rather than externalised; the mock
+Express API remains the datastore
+(`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
 
-Open questions that touch this FRD: **Q-12** (production datastore, API base URL, deployment
-target) is unresolved and blocks any deployment increment; the two hardcoded `http://localhost:3000`
-literals (`app/app.js:14`, `app/services/auth.service.js:18`) and the literal `JWT_SECRET`
-(`api-mock/server.js:13`) are all downstream of it.
+No product question that touches this FRD remains open.
 
 ---
 

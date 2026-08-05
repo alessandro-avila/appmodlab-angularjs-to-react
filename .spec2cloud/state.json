@@ -29,9 +29,7 @@
     "openQuestions": {
       "total": 12,
       "blockingB2b": [],
-      "blockingDeployment": [
-        "Q-12"
-      ],
+        "blockingDeployment": [],
       "answered": [
         "Q-1",
         "Q-2",
@@ -39,15 +37,14 @@
         "Q-4",
         "Q-5",
         "Q-6",
-        "Q-7"
-      ],
-      "stillOpen": [
+        "Q-7",
         "Q-8",
         "Q-9",
         "Q-10",
         "Q-11",
         "Q-12"
       ],
+      "stillOpen": [],
       "raisedWithOwnerAt": "2026-08-04T16:53:06+02:00",
       "answeredAt": "2026-08-04T18:40:00+02:00",
       "decisions": {
@@ -57,7 +54,12 @@
         "Q-4": "server-5 - the 5 lowercase server values are canonical",
         "Q-5": "optional - populate travelRequestId when a request exists",
         "Q-6": "recompute - server derives Trip.totalCost from items; both current values are wrong",
-        "Q-7": "yes - scope every collection to the authenticated user; no role-based access"
+          "Q-7": "yes - scope every collection to the authenticated user; no role-based access",
+          "Q-8": "yes - multi-user login is in scope; build the real credential form, the API already checks credentials",
+          "Q-9": "no - single currency (USD); remove the six-value selector, no rate source exists",
+          "Q-10": "dead code - do not port the 3 directives, 4 filters, ApiService, UserService or ui.bootstrap; 0 consumers each, re-verified at the B2c gate",
+          "Q-11": "stale - the 11 failing tests carry no authority; the Track A baseline is authored from observed behaviour. Tests preserved unmodified",
+          "Q-12": "out of scope - no production deployment for this hackathon; the mock Express API remains the datastore and Phase 2 Step 4 loses its Azure form"
       },
       "seamDisposition": {
         "SEAM-1": "accepted",
@@ -66,8 +68,8 @@
         "SEAM-4": "defect-to-fix",
         "SEAM-5": "defect-to-fix"
       },
-      "adr": "specs/adrs/adr-001-product-intent-decisions.md",
-      "note": "Q-1..Q-7 answered by the product owner 2026-08-04; recorded in prd.md and ADR-001. B2b (FRD generation) is unblocked. Q-8..Q-12 remain open; Q-12 blocks any cloud-native or deployment increment."
+        "adrs": ["specs/adrs/adr-001-product-intent-decisions.md", "specs/adrs/adr-002-remaining-product-intent-decisions.md"],
+        "note": "All twelve questions are answered. Q-1..Q-7 by the product owner 2026-08-04 (ADR-001); Q-8..Q-12 at the B2c Refinement Review gate 2026-08-05 (ADR-002). Q-12 was answered by a scope decision - no production deployment for this hackathon - which removes the cloud-native and deployment increments rather than unblocking them. The testability gate is unblocked: its two open inputs were Q-10 and Q-11."
     }
   },
   "artifacts": {
@@ -97,6 +99,19 @@
           "SEAM-4",
           "SEAM-5"
         ]
+      },
+      {
+        "id": "ADR-002",
+        "path": "specs/adrs/adr-002-remaining-product-intent-decisions.md",
+        "title": "Remaining product intent decisions and the migration scope boundary",
+        "status": "accepted",
+        "date": "2026-08-05",
+        "extends": "ADR-001",
+        "phase": "B2c",
+        "questions_settled": ["Q-8", "Q-9", "Q-10", "Q-11", "Q-12", "Q-B2c"],
+        "linked_from_frds": 6,
+        "scope_boundary": "no production deployment; Phase 2 Step 4 loses its Azure form (no azd provision, no azd deploy, no infra/, no live smoke tests)",
+        "verification": "Q-10 consumer counts re-derived mechanically at the gate: 3 directives and 4 filters have 0 consumers each; ApiService and UserService have 0 injections"
       }
     ],
     "frds": [
@@ -121,7 +136,8 @@
         "lab_marking_table_score": "19 of 19",
         "track_b_sections": "omitted — testability gate has not run",
         "adr_refs": [
-          "ADR-001"
+          "ADR-001",
+          "ADR-002"
         ],
         "adr_questions": [
           "Q-3"
@@ -149,7 +165,8 @@
         "line_citations_wrong": 0,
         "track_b_sections": "omitted — testability gate has not run",
         "adr_refs": [
-          "ADR-001"
+          "ADR-001",
+          "ADR-002"
         ],
         "adr_questions": [
           "Q-3"
@@ -178,7 +195,8 @@
         "line_citations_wrong": 0,
         "track_b_sections": "omitted — testability gate has not run",
         "adr_refs": [
-          "ADR-001"
+          "ADR-001",
+          "ADR-002"
         ],
         "adr_questions": [
           "Q-3",
@@ -207,7 +225,8 @@
         "line_citations_wrong": 0,
         "track_b_sections": "omitted — testability gate has not run",
         "adr_refs": [
-          "ADR-001"
+          "ADR-001",
+          "ADR-002"
         ],
         "adr_questions": [
           "Q-1",
@@ -237,7 +256,8 @@
         "line_citations_wrong": 0,
         "track_b_sections": "omitted — testability gate has not run",
         "adr_refs": [
-          "ADR-001"
+          "ADR-001",
+          "ADR-002"
         ],
         "adr_questions": [
           "Q-4",
@@ -271,7 +291,8 @@
         "cross_cutting": true,
         "track_b_sections": "omitted — testability gate has not run",
         "adr_refs": [
-          "ADR-001"
+          "ADR-001",
+          "ADR-002"
         ],
         "adr_questions": [
           "Q-7"

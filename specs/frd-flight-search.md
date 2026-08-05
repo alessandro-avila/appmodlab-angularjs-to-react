@@ -599,7 +599,13 @@ code does today, which is what the Track A green baseline captures.
 Resolved product decisions that bound this FRD: **Q-3** — a booking must create an itinerary item,
 so **SEAM-3** (*bookings persist nothing*, Known Limitation 6) is a **defect to fix** and F-006's
 target behaviour differs from what the code does today
-(`specs/adrs/adr-001-product-intent-decisions.md`).
+(`specs/adrs/adr-001-product-intent-decisions.md`). **Q-10** — the unreferenced registrations this
+FRD lists as dead (`gtDatePicker`, `ApiService`) are **dead code and are not ported**. **Q-11** —
+the 11 failing tests in `test/spec/flight-search.spec.js` are **stale and carry no authority**: the
+Track A baseline is authored from observed behaviour, and the four assertions describing
+`popularRoutes`, a `POST` flight search and a `{ airlines, priceRange }` filter shape are not
+targets. The tests are preserved unmodified
+(`specs/adrs/adr-002-remaining-product-intent-decisions.md`).
 
 Extraction artifacts corroborating this FRD: `specs/contracts/api/flight-search.yaml`
 (6 operations, 5 `x-discrepancies`), `specs/docs/architecture/components.md`
