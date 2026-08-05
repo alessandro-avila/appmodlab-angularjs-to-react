@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
-  "currentPhase": "B2-spec-enable",
-  "currentStep": "testability-gate",
+  "currentPhase": "B3-track-a-green-baseline",
+  "currentStep": "green-baseline",
   "status": "awaiting-approval",
   "project": {
     "name": "globaltravel-portal",
@@ -65,7 +65,7 @@
     "openQuestions": {
       "total": 12,
       "blockingB2b": [],
-        "blockingDeployment": [],
+      "blockingDeployment": [],
       "answered": [
         "Q-1",
         "Q-2",
@@ -90,12 +90,12 @@
         "Q-4": "server-5 - the 5 lowercase server values are canonical",
         "Q-5": "optional - populate travelRequestId when a request exists",
         "Q-6": "recompute - server derives Trip.totalCost from items; both current values are wrong",
-          "Q-7": "yes - scope every collection to the authenticated user; no role-based access",
-          "Q-8": "yes - multi-user login is in scope; build the real credential form, the API already checks credentials",
-          "Q-9": "no - single currency (USD); remove the six-value selector, no rate source exists",
-          "Q-10": "dead code - do not port the 3 directives, 4 filters, ApiService, UserService or ui.bootstrap; 0 consumers each, re-verified at the B2c gate",
-          "Q-11": "stale - the 11 failing tests carry no authority; the Track A baseline is authored from observed behaviour. Tests preserved unmodified",
-          "Q-12": "out of scope - no production deployment for this hackathon; the mock Express API remains the datastore and Phase 2 Step 4 loses its Azure form"
+        "Q-7": "yes - scope every collection to the authenticated user; no role-based access",
+        "Q-8": "yes - multi-user login is in scope; build the real credential form, the API already checks credentials",
+        "Q-9": "no - single currency (USD); remove the six-value selector, no rate source exists",
+        "Q-10": "dead code - do not port the 3 directives, 4 filters, ApiService, UserService or ui.bootstrap; 0 consumers each, re-verified at the B2c gate",
+        "Q-11": "stale - the 11 failing tests carry no authority; the Track A baseline is authored from observed behaviour. Tests preserved unmodified",
+        "Q-12": "out of scope - no production deployment for this hackathon; the mock Express API remains the datastore and Phase 2 Step 4 loses its Azure form"
       },
       "seamDisposition": {
         "SEAM-1": "accepted",
@@ -104,8 +104,51 @@
         "SEAM-4": "defect-to-fix",
         "SEAM-5": "defect-to-fix"
       },
-        "adrs": ["specs/adrs/adr-001-product-intent-decisions.md", "specs/adrs/adr-002-remaining-product-intent-decisions.md", "specs/adrs/adr-003-testability-gate.md"],
-        "note": "All twelve questions are answered. Q-1..Q-7 by the product owner 2026-08-04 (ADR-001); Q-8..Q-12 at the B2c Refinement Review gate 2026-08-05 (ADR-002). Q-12 was answered by a scope decision - no production deployment for this hackathon - which removes the cloud-native and deployment increments rather than unblocking them. The testability gate is unblocked: its two open inputs were Q-10 and Q-11."
+      "adrs": [
+        "specs/adrs/adr-001-product-intent-decisions.md",
+        "specs/adrs/adr-002-remaining-product-intent-decisions.md",
+        "specs/adrs/adr-003-testability-gate.md"
+      ],
+      "note": "All twelve questions are answered. Q-1..Q-7 by the product owner 2026-08-04 (ADR-001); Q-8..Q-12 at the B2c Refinement Review gate 2026-08-05 (ADR-002). Q-12 was answered by a scope decision - no production deployment for this hackathon - which removes the cloud-native and deployment increments rather than unblocking them. The testability gate is unblocked: its two open inputs were Q-10 and Q-11."
+    },
+    "greenBaseline": {
+      "startedAt": "2026-08-05T16:07:05Z",
+      "runner": "cucumber-js 13.2.0 + playwright 1.63.0-alpha (chromium)",
+      "command": "npm run test:baseline",
+      "harness": [
+        "cucumber.js",
+        "tests/support/world.js",
+        "tests/support/hooks.js",
+        "tests/pages/flight-search.page.js",
+        "tests/steps/flight-search.steps.js"
+      ],
+      "appUnmodified": true,
+      "appDiffLines": 0,
+      "featuresComplete": [
+        "flight-search"
+      ],
+      "featuresRemaining": [
+        "hotel-booking",
+        "itinerary",
+        "travel-request",
+        "expense-reconciliation",
+        "authentication"
+      ],
+      "features": {
+        "flight-search": {
+          "featureFile": "specs/features/flight-search.feature",
+          "scenarios": 25,
+          "passing": 25,
+          "steps": 193,
+          "stableRuns": 2,
+          "unitTestsBefore": "11 tests, 0 passing",
+          "unitTestsAfter": "19 tests, 19 passing",
+          "unitTestsDeleted": 0,
+          "reconciliations": 7,
+          "correctedAssumptions": 6,
+          "gate": "pending-human-approval"
+        }
+      }
     }
   },
   "artifacts": {
@@ -144,7 +187,14 @@
         "date": "2026-08-05",
         "extends": "ADR-001",
         "phase": "B2c",
-        "questions_settled": ["Q-8", "Q-9", "Q-10", "Q-11", "Q-12", "Q-B2c"],
+        "questions_settled": [
+          "Q-8",
+          "Q-9",
+          "Q-10",
+          "Q-11",
+          "Q-12",
+          "Q-B2c"
+        ],
         "linked_from_frds": 6,
         "scope_boundary": "no production deployment; Phase 2 Step 4 loses its Azure form (no azd provision, no azd deploy, no infra/, no live smoke tests)",
         "verification": "Q-10 consumer counts re-derived mechanically at the gate: 3 directives and 4 filters have 0 consumers each; ApiService and UserService have 0 injections"
@@ -158,9 +208,17 @@
         "depends_on": "ADR-002 (Q-11)",
         "phase": "B2 -> B3",
         "decision": "6/6 -> testability full, Track A for all six FRD feature areas",
-        "alternatives_rejected": ["Track Hybrid (partial)", "Track B (none)"],
+        "alternatives_rejected": [
+          "Track Hybrid (partial)",
+          "Track B (none)"
+        ],
         "evidence_method": "every answer produced by running the system - two servers, four HTTP calls, a full Playwright browser journey, a production build and the Karma suite; no answer taken from code inspection",
-        "constraints_found": ["C-1 session identity lost on reload", "C-2 datepicker overlay blocks submit", "C-3 round trip requires return date", "C-4 default price filter hides dearest results while the toast counts them"],
+        "constraints_found": [
+          "C-1 session identity lost on reload",
+          "C-2 datepicker overlay blocks submit",
+          "C-3 round trip requires return date",
+          "C-4 default price filter hides dearest results while the toast counts them"
+        ],
         "self_corrections": 3
       }
     ],
@@ -393,7 +451,7 @@
     "brownfield-b1-extraction-approved": true,
     "brownfield-b2a-prd-approved": true,
     "brownfield-b2c-refinement-approved": true,
-    "brownfield-testability-gate-approved": false
+    "brownfield-testability-gate-approved": true
   },
   "testabilityGateReview": {
     "gate": "brownfield-testability-gate",
@@ -526,6 +584,6 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-05T10:05:00Z",
+  "lastUpdated": "2026-08-05T16:07:05Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
 }

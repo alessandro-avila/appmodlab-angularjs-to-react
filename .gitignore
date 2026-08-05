@@ -31,3 +31,6 @@ coverage/
 .playwright-mcp/
 playwright-report/
 test-results/
+
+# Playwright storage state captured at test start
+tests/.auth/

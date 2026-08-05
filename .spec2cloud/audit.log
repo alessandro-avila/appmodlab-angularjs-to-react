@@ -139,3 +139,25 @@
 2026-08-05T09:54:00Z | phase=testability-gate | action=human-gate | result=awaiting-approval | gate=brownfield-testability-gate | detail=stopped at the gate; no Gherkin generation started
 2026-08-05T09:55:00Z | phase=testability-gate | action=constraint-found | id=C-4 | result=defect-candidate | detail=toast reports 6 flights while the list renders 4; step=50 on the price range input makes 630 the highest representable value when min=230, so filters.maxPrice snaps down from the true max 642 (flight-search.controller.js:116-117, template:127-129) and hides the flights at 638 and 642, while controller:120 broadcasts the unfiltered count
 2026-08-05T09:55:15Z | phase=testability-gate | action=self-correction | detail=C-4 was found by viewing the captured screenshot rather than the accessibility snapshot; the snapshot alone reported Found 6 flights and would have passed unexamined
+2026-08-05T16:07:31Z | phase=B3 | action=gate-approved | gate=brownfield-testability-gate | result=approved | detail="user approved Track A and instructed to run all Track A steps"
+2026-08-05T16:07:31Z | phase=B3 | action=phase-transition | from=B2-spec-enable | to=B3-track-a-green-baseline | result=ok
+2026-08-05T16:07:31Z | phase=B3 | action=skill-check | skill=gherkin-generation | mode=capture-existing | result=applied | detail="feature=flight-search"
+2026-08-05T16:07:31Z | phase=B3 | action=harness-install | result=ok | detail="@playwright/test 1.63.0-alpha, @cucumber/cucumber 13.2.0, chromium browser"
+2026-08-05T16:07:31Z | phase=B3 | action=verify-behaviour | result=ok | detail="4 lab-claimed quirks re-verified against running app; lab wording for maxPrice quirk found incorrect, app taken as truth"
+2026-08-05T16:07:31Z | phase=B3 | action=artifact-created | file=specs/features/flight-search.feature | result=ok | detail="25 scenarios, @existing-behavior @feature-flight-search"
+2026-08-05T16:07:31Z | phase=B3 | action=artifact-created | file=cucumber.js,tests/support/world.js,tests/support/hooks.js,tests/pages/flight-search.page.js,tests/steps/flight-search.steps.js | result=ok
+2026-08-05T16:07:31Z | phase=B3 | action=test-run | suite=green-baseline | run=1 | result=fail | detail="17/22 scenarios passed; 5 failures, all test-side misunderstandings"
+2026-08-05T16:07:31Z | phase=B3 | action=correction | topic=date-display | result=applied | detail="assumed 08/25/2026; app renders raw JS Date string via ng-model"
+2026-08-05T16:07:31Z | phase=B3 | action=correction | topic=details-date-format | result=applied | detail="assumed mm/dd/yyyy; app renders 'Wed, Aug 5, 2026' and only in the details panel"
+2026-08-05T16:07:31Z | phase=B3 | action=correction | topic=maxprice-slider-floor | result=applied | detail="slider min is bound to priceRange.min so the filter cannot go below the cheapest flight"
+2026-08-05T16:07:31Z | phase=B3 | action=correction | topic=sort-button-name | result=applied | detail="'Price ' carries a trailing space from its icon; exact accessible-name match fails"
+2026-08-05T16:07:31Z | phase=B3 | action=correction | topic=calendar-overlap | result=applied | detail="cause is Bootstrap .list-group-item.active z-index 2 over datepicker z-index 1; only the SELECTED row covers the calendar"
+2026-08-05T16:07:31Z | phase=B3 | action=finding | topic=missing-flight-number | result=recorded | detail="generateFlights() never sets flightNumber; details heading renders 'Airline -'"
+2026-08-05T16:07:31Z | phase=B3 | action=test-run | suite=green-baseline | run=final | result=pass | detail="25 scenarios, 193 steps, all passing"
+2026-08-05T16:07:31Z | phase=B3 | action=test-run | suite=green-baseline | run=stability | result=pass | detail="25/25 repeated against unseeded random backend"
+2026-08-05T16:07:31Z | phase=B3 | action=test-reconciliation | file=test/spec/flight-search.spec.js | result=pass | detail="11 tests 0 passing -> 19 tests 19 passing; 7 reconciliations; 0 tests deleted; no app change"
+2026-08-05T16:07:31Z | phase=B3 | action=verify | check=app-unmodified | result=pass | detail="git diff -- app/ api-mock/ produced 0 lines"
+2026-08-05T16:07:31Z | phase=B3 | action=verify | check=skip-detection | result=pass | detail="no test.skip/xit/.only/@wip found in tests, specs/features or test"
+2026-08-05T16:07:31Z | phase=B3 | action=artifact-updated | file=specs/frd-flight-search.md | result=ok | detail="Test Coverage refreshed; Test Reconciliation and Green Baseline sections added"
+2026-08-05T16:07:31Z | phase=B3 | action=state-update | result=ok | detail="phase=B3-track-a-green-baseline, testability gate approved, greenBaseline block added"
+2026-08-05T16:07:31Z | phase=B3 | action=human-gate | gate=green-baseline-flight-search | result=pending | detail="per-feature gate; awaiting review before hotel-booking"

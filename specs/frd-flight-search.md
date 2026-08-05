@@ -473,31 +473,77 @@ The search is a **GET** with query parameters (`Restangular.all('flights').getLi
 
 | Test Type | File | Tests | Passing | Coverage |
 |-----------|------|-------|---------|----------|
-| Unit (Jasmine/Karma) | `test/spec/flight-search.spec.js` | 11 | **0** | 0% effective |
-| Integration | — | 0 | — | 0% |
+| Unit (Jasmine/Karma) | `test/spec/flight-search.spec.js` | 19 | **19** | reconciled — see below |
+| BDD green baseline (Cucumber + Playwright) | `specs/features/flight-search.feature` | 25 scenarios | **25** | behaviour captured against the running app |
 | E2E | — | 0 | — | 0% |
 
-**All 11 tests fail.** They fail for three distinct reasons. The FRD records the discrepancy; the
-spec file is evidence and is not modified at B2.
+> **State at B2 (superseded).** When this FRD was written the unit suite stood at **11 tests, 0
+> passing**. Phase B3 Track A reconciled it against the running application. The original
+> discrepancy analysis is preserved in **Test Reconciliation** below, which now also records what
+> each wrong assumption was replaced with.
 
-| # | Reason | Tests affected | The test expects | The controller actually does |
-|---|--------|----------------|------------------|------------------------------|
-| 1 | `$httpBackend.flush()` with nothing pending | **all 11** | A pending `GET /api/flights/popular` to flush, primed by `whenGET` in `beforeEach` (`spec:27-30`) and flushed immediately after `createController()` | Never calls `/api/flights/popular`. `FlightSearchService.getPopularRoutes` exists (`service:46`) but has no caller. With no pending request, `flush()` throws. |
-| 2 | `$scope.popularRoutes` does not exist | 1 (`should load popular routes on init`, `spec:73-80`) | `$scope.popularRoutes` defined, `length === 2` | The property is never assigned anywhere in the application. |
-| 3 | `$scope.filters` contract mismatch | 2 (`should filter by airline` `spec:177-193`; `should filter by number of stops` `spec:195-212`) | `{ airlines: [], stops: null, priceRange: { min, max } }` | `{ maxPrice, stops, airline, departTimeRange }`. `applyFilters` reads none of the three properties the tests set. |
+**Untested paths after reconciliation**: `bookFlight` error branch; the `auth:login` listener;
+`$destroy` deregistration; `searchAirports`, `getFlightDetails` and `getPopularRoutes` on the
+service (no caller); the jQuery `fadeIn`/`fadeOut`/`animate` effects and the `has-error` highlight
+(exercised in the browser but not asserted); `formatDuration` / `formatTime` / `formatDate` in
+isolation.
 
-Two further mismatches are present in the same file and would surface once reason 1 is resolved:
+### Test Reconciliation
 
-- `spec:140` and `spec:159` declare `$httpBackend.expectPOST(/\/api\/flights/)`, but
-  `FlightSearchService.search` issues a **GET**. The unmet expectation would also fail
-  `verifyNoOutstandingExpectation()` in `afterEach` (`spec:34`).
-- `createController()` invokes `initDatepickers()`, but its body is inside `$timeout(fn, 0)` and the
-  spec never calls `$timeout.flush()`, so the jQuery UI calls do not execute under test.
+Phase B3 Track A ran the existing unit suite against the application and rewrote it to describe what
+the application does. **`app/` and `api-mock/` were not modified** — verified with an empty
+`git diff -- app/ api-mock/`. No test was deleted; the suite grew from 11 tests to 19 because
+several corrected assumptions were worth recording as tests of their own.
 
-**Untested paths**: `validateSearch` return-date branch; `applyFilters` price, departure-time and
-sort branches as actually shaped; `sortBy` toggle; `bookFlight` in full; the `departDate` and
-`tripType` watches; the `auth:login` listener; `$destroy` deregistration; every jQuery effect;
-`formatDuration` / `formatTime` / `formatDate`; the whole of `FlightSearchService`.
+| # | The test assumed | The application actually does | Resolution |
+|---|------------------|-------------------------------|------------|
+| 1 | A request is issued on init, so `$httpBackend.flush()` has something to release (**all 11 tests**) | Startup is entirely local; nothing is fetched until the employee searches | Removed the unused `whenGET(/api/flights/popular)` prime and every post-`createController()` `flush()`. Added `should not request anything on init`. |
+| 2 | `$scope.popularRoutes` holds two suggested routes | No such property exists and nothing renders one; `FlightSearchService.getPopularRoutes()` has no caller | Rewrote `should load popular routes on init` as `should not offer popular routes`, asserting the property is undefined. **No `getPopularRoutes()` call was added to the controller.** |
+| 3 | Searching issues `POST /api/flights` | `FlightSearchService.search` uses Restangular `getList`, i.e. `GET /api/flights?…` | Changed both `expectPOST` declarations to `expectGET`. |
+| 4 | Filters are `{ airlines: [], stops: null, priceRange: { min, max } }` | Filters are `{ maxPrice, stops, airline, departTimeRange }`; `applyFilters` reads none of the assumed properties | Rewrote both Filters fixtures to the real shape. Added `should initialize the filters the screen actually offers` and `should treat the stop filter as an upper bound`. |
+| 5 | A search submits with origin, destination and a departure date only | The form defaults to `tripType: 'roundtrip'`, which is refused without a return date | Added a return date to the three search tests. Added `should refuse a round trip without a return date`. |
+| 6 | The first press of **Price** sorts ascending | The list is already `sortField: 'price'`, `sortReverse: false`, so the first press *reverses* it | Rewrote the toggle test to assert the initial state first, then the reversal. |
+| 7 | `spyOn($rootScope, '$broadcast')` is a safe way to observe `flight:selected` | ui-router broadcasts through the same channel and reads `.defaultPrevented` off the return value, so the stub breaks the next digest with `TypeError` | Replaced the spy with a real `$rootScope.$on('flight:selected', …)` listener. |
+
+Reconciliation 7 is worth singling out: it is not a mismatch between test and application at all, but
+a test technique that cannot work in this application because the root scope is a shared event bus
+(see **`$rootScope` events** above). It is the clearest single piece of evidence for the coupling
+that ADR-001 records.
+
+### Green Baseline (Track A)
+
+`specs/features/flight-search.feature` — 25 scenarios, all passing, tagged `@existing-behavior
+@feature-flight-search`. Run with `npm run test:baseline` against `npm start`.
+
+**The backend cannot be pinned.** `api-mock/server.js:78 generateFlights()` chooses the flight count
+with `randomInt(5, 12)` and randomises airline, times, duration, stop count and price on every
+request, with no seed. Two identical searches return different result sets. No scenario therefore
+asserts a literal flight count or price; every assertion is relational (ordering, membership,
+bounds) or structural. This constraint is stated in the feature file header so that a later reader
+does not "tighten" the scenarios into flakiness.
+
+Assumptions corrected while making the baseline green — each was a belief carried in from reading
+the code, overturned by running it:
+
+| # | Assumed from the code | Observed in the running application |
+|---|----------------------|-------------------------------------|
+| 1 | A chosen date displays as `08/25/2026` | The field shows a raw JavaScript date string — `Tue Aug 25 2026 00:00:00 GMT+0200 (Central European Summer Time)`. The datepicker writes its formatted text, then Angular's `ng-model` re-renders `String(Date)` over it. Captured as its own scenario. |
+| 2 | The maximum-price filter can be dragged below the cheapest flight | The slider's `min` is bound to `priceRange.min`, so its floor **is** the cheapest flight. Asking for `0` settles at the cheapest price, and at least one flight always survives the filter. |
+| 3 | The result rows carry the flight date | The date appears only in the details panel, once a flight is selected, formatted `Wed, Aug 5, 2026`. |
+| 4 | Results show a flight number | `generateFlights()` never sets `flightNumber` (`server.js:91-97`). The row's flight-number line is blank and the details heading renders `"JetBlue Airways -"` with nothing after the dash. Captured as a scenario. |
+| 5 | Once results are on screen the calendar is unusable | Only partly. A plain result row has `z-index: auto` and stays *behind* the calendar (`z-index: 1`). It is the **selected** row that rises: Bootstrap gives `.list-group-item.active` `z-index: 2`, which paints over the calendar and swallows clicks on the days behind it. The first attempt at this scenario passed under one browser and failed under another until the cause was pinned down. |
+| 6 | The searched departure date reaches the results | `server.js:329` reads `req.query.date` while the client sends `departDate`, so the parameter is ignored and every flight carries **today's** date. Searching `12/15/2026` returns flights dated today. |
+
+Limitation 5 also explains a test-design choice: the Page Object selects calendar days with a
+dispatched click rather than a real pointer click, because the overlap would otherwise block
+unrelated scenarios. The overlap itself is asserted on its own terms in
+*The flight I selected covers the date calendar*.
+
+Two behaviours already recorded in **Known Limitations** are now pinned by passing scenarios rather
+than prose: the maximum-price reset (limitation 1) and the notification/list count divergence
+(constraint C-4 in ADR-003, where the toast counts every flight found while the list shows only
+those at or below the price ceiling).
+
 
 ### Known Limitations
 
