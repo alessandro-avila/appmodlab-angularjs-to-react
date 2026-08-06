@@ -238,10 +238,11 @@
           "headlineFinding": "the route guard tests for the presence of a token, never its validity - a token the server rejects opens every screen, and the resulting 401 is rendered as an empty account (\"No trips yet\", \"CREATE YOUR FIRST REPORT\") with no mention anywhere that the session is the problem",
           "secondFinding": "sign-out is unreachable - AuthService.logout has no caller, no control on any of the six screens, and $rootScope has zero auth:logout listeners at all times; the event is dead in both directions",
           "thirdFinding": "C-1 proven by execution - signing in live then reloading nulls currentUser while the token survives, and zero requests are issued during the reload, so GET /api/auth/me is never called",
-          "scenariosBypassingUi": 11,
+          "scenariosBypassingUi": 15,
           "harnessChange": "tests/support/hooks.js now omits storageState when a scenario is tagged @unauthenticated, so authentication can arrive as a stranger; additive, all 184 pre-existing scenarios re-run unaffected",
           "fixtureRestore": "none required - no authentication scenario mutates server state",
-          "gate": "pending-human-approval"
+          "gate": "pending-human-approval",
+          "scenariosBypassingUiNote": "server auth surface only; the login button is hardwired to the employee, so the manager account and every 401 path are reachable through the API alone"
         }
       },
       "fullSuite": {
