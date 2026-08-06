@@ -732,7 +732,89 @@ No product question that touches this FRD remains open.
 
 ---
 
-> **Track B sections omitted deliberately.** `brownfield.testability` is still `null` in
-> `.spec2cloud/state.json`; the testability gate has not run. Manual verification checklists and
-> `@documentation-only` scenarios are added only if the gate selects Track B or Hybrid for this
-> feature.
+> **Track A — green baseline captured.** The testability gate scored 6/6 and selected Track A for
+> every feature (`specs/adrs/adr-003-testability-gate.md`). This FRD's behaviour is pinned by
+> `specs/features/authentication.feature` — 51 executable scenarios, all passing against the
+> unmodified 2016 application. Track B artefacts (manual checklists, `@documentation-only`
+> scenarios) are therefore not produced for this feature.
+
+---
+
+## Green Baseline (Track A)
+
+**Feature file:** `specs/features/authentication.feature` — 40 written scenarios, **51 after
+outline expansion**, **327 steps, all green** against unmodified `app/` and `api-mock/`.
+**Harness:** `tests/pages/auth.page.js`, `tests/steps/auth.steps.js`.
+
+Authentication has no component directory; it is assembled from `app/services/auth.service.js`, the
+guard in `app/app.js`, the inline login state in `app/app.routes.js` and the server routes in
+`api-mock/server.js`. The scenarios are grouped to match: arriving without a session, signing in,
+the absence of any way out, identity loss on reload, the presence-only guard, and the server's own
+auth surface.
+
+### Harness note — arriving as a stranger
+
+Every other feature runs from a shared signed-in `storageState`. Authentication needs to arrive with
+no session, so `tests/support/hooks.js` now reads the scenario's tags and omits `storageState` when
+`@unauthenticated` is present. The change is additive; all 184 pre-existing scenarios are unaffected
+and were re-run to confirm it.
+
+### Confirmed by execution
+
+| # | Limitation | Execution evidence |
+|---|-----------|--------------------|
+| 1 | Identity does not survive a reload (C-1) | Signed in live as `Sarah Johnson`, reloaded: `$rootScope.currentUser` → `null`, `localStorage` still holds `authToken`, page stays on `/dashboard`, and **zero requests are issued during the reload** — `GET /api/auth/me` is never called |
+| 6 | Credentials are literals | The single `POST /api/auth/login` carries exactly `{"email":"demo@globaltravel.com","password":"password"}`; the login view contains **0 input, select or textarea elements** and exactly one button, `Enter Portal` |
+| — | The guard is real | ui-router 0.4.3 still emits `$stateChangeStart`; with no token, all six protected states — `dashboard`, `flights`, `hotels`, `itinerary`, `travel-request`, `expenses` — redirect to `#!/login`, as does an unrouted address via `otherwise('/login')` |
+| — | The guard checks presence only | `isAuthenticated()` is `!!localStorage.getItem('authToken')`. A planted token of `not-a-real-jwt` opens `/expenses` and `/itinerary` in full |
+| — | Session teardown is unreachable | No screen among all six contains the string "log out" or "sign out"; the dashboard contains **zero buttons**; `$rootScope.$$listeners['auth:logout']` is **0 on every screen** |
+
+### Corrected by execution
+
+Two statements in this FRD were written from reading and are wrong in detail. Both are corrected in
+place above; recorded here so the correction is not lost.
+
+1. **The `auth:login` listener count.** The FRD notes three listeners
+   (`flight-search.controller.js:245`, `travel-request.controller.js:299`,
+   `expense.controller.js:330`). All three are registered on `$rootScope` **but each deregisters on
+   its controller's `$destroy`**, so the live count is **exactly 1 at a time** — never 3 — and **0
+   before any feature state has been entered**. The scenario asserts "something is listening",
+   which is the assertable form.
+2. **`getCurrentUser()` in the stored-session harness.** Because identity is only ever set by the
+   *act* of signing in, and the shared harness restores a token rather than repeating the sign-in,
+   **`$rootScope.currentUser` is `null` in all 184 scenarios of the other five features**. Those
+   features' baselines therefore record the `'Demo User'` / `'You'` fallback as their normal
+   attribution — which is exactly what a real user sees after their first page refresh. The three
+   reload scenarios here sign in for real so that the "before" state is genuine.
+
+### Behaviour that must be decided, not ported
+
+| Observed | Why it cannot simply be carried over |
+|----------|--------------------------------------|
+| A rejected session renders as an empty account | With a token the server refuses, `/itinerary` shows **"No trips yet — Book a flight or hotel to get started!"** and `/expenses` shows **"CREATE YOUR FIRST REPORT"**. The page never contains the words *session*, *sign in*, *expired* or *unauthorized*. There is no 401 interceptor, so a user whose token expires is shown what looks like **data loss**. React needs a deliberate 401 policy |
+| No way to sign out | `AuthService.logout` has no caller, no control and no listener. Q-8 makes login multi-user, which makes sign-out mandatory — this is **net-new behaviour**, not a port |
+| Signing in while signed in | `/login` carries no guard, so a signed-in user can return to it; pressing **Enter Portal** again silently **replaces** the stored token |
+| The navbar advertises protected areas to strangers | All five module links render on the login screen before any session exists |
+| Losing the token mid-visit | The current page stays fully rendered; only the **next** state change bounces to `/login`, because the guard runs on transition only |
+| Every account sees the same data | The manager (`manager@globaltravel.com`, id 2) authenticates successfully and `GET /api/trips` returns **byte-identical** results to the employee's. No handler filters on `req.user`. Q-7 requires per-user scoping — this is **net-new**, and no baseline scenario can assert ownership isolation today |
+
+### Server auth surface, as measured
+
+| Call | Result |
+|------|--------|
+| `POST /api/auth/login` built-in credentials | `200`, body keys exactly `["token","user"]` |
+| Token shape | 3-part JWT; claims `id, email, name, role, iat, exp`; **`exp - iat = 86400`** (24 h) |
+| Wrong password / unknown email / empty body | `401 {"error":"Invalid credentials"}` — **byte-identical for all three**, so no account enumeration |
+| `GET /api/auth/me` with a valid token | `200`, names the bearer |
+| `GET /api/auth/me` garbage / empty / absent header | `401 "Invalid token"` / `401 "Unauthorized"` / `401` |
+| `POST /api/auth/logout` **without a token** | `200 {"message":"Logged out successfully"}` — unauthenticated and stateless; nothing is invalidated |
+| `/api/trips`, `/api/travel-requests`, `/api/expense-reports`, `/api/flights/search` | `401` for a garbage token **and** for no token, uniformly |
+| `GET /api/airports` | **`200` with no token — the only public endpoint** |
+
+### Not captured
+
+- **Token expiry in the browser.** The 24-hour lifetime is asserted from the decoded claim; waiting
+  out a real expiry is not feasible in a baseline run. The *consequence* of an unusable token is
+  covered instead, by planting one the server rejects.
+- **A second concurrent user in the UI.** The login button is hardwired to the employee, so the
+  manager can only be reached through the API. Covered at the server layer only.

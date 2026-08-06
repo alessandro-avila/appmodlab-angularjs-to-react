@@ -128,7 +128,9 @@
         "tests/pages/travel-request.page.js",
         "tests/steps/travel-request.steps.js",
         "tests/pages/expense.page.js",
-        "tests/steps/expense.steps.js"
+        "tests/steps/expense.steps.js",
+        "tests/pages/auth.page.js",
+        "tests/steps/auth.steps.js"
       ],
       "appUnmodified": true,
       "appDiffLines": 0,
@@ -137,11 +139,10 @@
         "hotel-booking",
         "itinerary",
         "travel-request",
-        "expense-reconciliation"
-      ],
-      "featuresRemaining": [
+        "expense-reconciliation",
         "authentication"
       ],
+      "featuresRemaining": [],
       "features": {
         "flight-search": {
           "featureFile": "specs/features/flight-search.feature",
@@ -222,18 +223,39 @@
           "scenariosBypassingUi": 0,
           "fixtureRestore": "every @feature-expense-reconciliation scenario deletes all reports and rebuilds exp-1 and exp-2 from the exact server.js bodies, before and after; submit appends and delete removes permanently",
           "gate": "pending-human-approval"
+        },
+        "authentication": {
+          "featureFile": "specs/features/authentication.feature",
+          "scenarios": 51,
+          "passing": 51,
+          "steps": 327,
+          "stableRuns": 2,
+          "unitTestsBefore": "none - no spec existed for AuthService, the route guard or the interceptor",
+          "unitTestsAfter": "none - no spec authored; behaviour captured end-to-end",
+          "unitTestsDeleted": 0,
+          "reconciliations": 0,
+          "correctedAssumptions": 2,
+          "headlineFinding": "the route guard tests for the presence of a token, never its validity - a token the server rejects opens every screen, and the resulting 401 is rendered as an empty account (\"No trips yet\", \"CREATE YOUR FIRST REPORT\") with no mention anywhere that the session is the problem",
+          "secondFinding": "sign-out is unreachable - AuthService.logout has no caller, no control on any of the six screens, and $rootScope has zero auth:logout listeners at all times; the event is dead in both directions",
+          "thirdFinding": "C-1 proven by execution - signing in live then reloading nulls currentUser while the token survives, and zero requests are issued during the reload, so GET /api/auth/me is never called",
+          "scenariosBypassingUi": 11,
+          "harnessChange": "tests/support/hooks.js now omits storageState when a scenario is tagged @unauthenticated, so authentication can arrive as a stranger; additive, all 184 pre-existing scenarios re-run unaffected",
+          "fixtureRestore": "none required - no authentication scenario mutates server state",
+          "gate": "pending-human-approval"
         }
       },
       "fullSuite": {
-        "scenarios": 184,
-        "passing": 184,
-        "steps": 1617,
-        "lastRunAt": "2026-08-06T08:31:00Z"
+        "scenarios": 235,
+        "passing": 235,
+        "steps": 1944,
+        "lastRunAt": "2026-08-06T11:42:00Z"
       },
       "unitSuite": {
         "tests": 19,
         "passing": 19
-      }
+      },
+      "completedAt": "2026-08-06T11:42:00Z",
+      "status": "all six features captured; awaiting consolidated Track A human gate"
     }
   },
   "artifacts": {

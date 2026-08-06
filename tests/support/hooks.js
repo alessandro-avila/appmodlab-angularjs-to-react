@@ -44,9 +44,13 @@ AfterAll(async function () {
   if (browser) await browser.close();
 });
 
-Before(async function () {
+Before(async function ({ pickle }) {
+  // Authentication scenarios need to arrive as a stranger, so they opt out of
+  // the shared signed-in state with @unauthenticated. Every other scenario is
+  // unaffected.
+  const anonymous = (pickle.tags || []).some((t) => t.name === '@unauthenticated');
   this.context = await browser.newContext({
-    storageState: AUTH_STATE,
+    ...(anonymous ? {} : { storageState: AUTH_STATE }),
     viewport: { width: 1280, height: 720 }
   });
   this.page = await this.context.newPage();
@@ -277,3 +281,5 @@ After(async function (scenario) {
   }
   if (this.context) await this.context.close();
 });
+
+module.exports = { getAuthToken: () => authToken };
