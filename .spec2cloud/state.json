@@ -124,17 +124,19 @@
         "tests/pages/hotel-booking.page.js",
         "tests/steps/hotel-booking.steps.js",
         "tests/pages/itinerary.page.js",
-        "tests/steps/itinerary.steps.js"
+        "tests/steps/itinerary.steps.js",
+        "tests/pages/travel-request.page.js",
+        "tests/steps/travel-request.steps.js"
       ],
       "appUnmodified": true,
       "appDiffLines": 0,
       "featuresComplete": [
         "flight-search",
         "hotel-booking",
-        "itinerary"
+        "itinerary",
+        "travel-request"
       ],
       "featuresRemaining": [
-        "travel-request",
         "expense-reconciliation",
         "authentication"
       ],
@@ -181,14 +183,31 @@
           "headlineFinding": "AngularJS scope shadowing makes both the status filter and Add Note completely non-functional; two of seven user stories do not work at all",
           "scenariosBypassingUi": 3,
           "fixtureRestore": "@mutates-fixture scenarios restore item-4 through the app API before and after; the mock API mutates a module-level array",
+          "gate": "approved"
+        },
+        "travel-request": {
+          "featureFile": "specs/features/travel-request.feature",
+          "scenarios": 45,
+          "passing": 45,
+          "steps": 431,
+          "stableRuns": 2,
+          "unitTestsBefore": "none - no spec existed for this module",
+          "unitTestsAfter": "none - no spec authored; behaviour captured end-to-end",
+          "unitTestsDeleted": 0,
+          "reconciliations": 0,
+          "correctedAssumptions": 7,
+          "headlineFinding": "the search box is inert - a TypeError on req.travelerName escapes the digest, so filteredRequests is never reassigned and typing has no effect at all",
+          "secondFinding": "third occurrence of the ng-if scope-shadowing defect class - the validation alert cannot be dismissed",
+          "scenariosBypassingUi": 0,
+          "fixtureRestore": "every @feature-travel-request scenario deletes and rebuilds tr-1 and tr-2 before and after; PUT merges with Object.assign and cannot remove the travelerName an edit adds, so patching back is impossible",
           "gate": "pending-human-approval"
         }
       },
       "fullSuite": {
-        "scenarios": 82,
-        "passing": 82,
-        "steps": 611,
-        "lastRunAt": "2026-08-06T06:52:00Z"
+        "scenarios": 127,
+        "passing": 127,
+        "steps": 1042,
+        "lastRunAt": "2026-08-06T07:41:00Z"
       },
       "unitSuite": {
         "tests": 19,
@@ -639,5 +658,5 @@
   },
   "lastUpdated": "2026-08-05T19:44:56Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-06T06:55:00Z"
+  "updatedAt": "2026-08-06T07:45:00Z"
 }

@@ -14,6 +14,7 @@ const { BASE_URL } = require('./world');
 const FlightSearchPage = require('../pages/flight-search.page');
 const HotelBookingPage = require('../pages/hotel-booking.page');
 const ItineraryPage = require('../pages/itinerary.page');
+const TravelRequestPage = require('../pages/travel-request.page');
 
 const AUTH_STATE = path.join(__dirname, '..', '.auth', 'state.json');
 const HEADED = process.env.BASELINE_HEADED === '1';
@@ -61,6 +62,7 @@ Before(async function () {
   this.flights = new FlightSearchPage(this.page);
   this.hotels = new HotelBookingPage(this.page);
   this.itinerary = new ItineraryPage(this.page);
+  this.travelRequests = new TravelRequestPage(this.page);
 });
 
 /**
@@ -74,7 +76,65 @@ Before(async function () {
  */
 const FIXTURE_DEFAULTS = [{ id: 'item-4', status: 'pending' }];
 
-async function restoreFixture() {
+/**
+ * Travel requests live in the same kind of mutable array, and three things
+ * leak: a submitted request is appended for good, editing a seeded one
+ * overwrites it in place, and — because the API merges with Object.assign — an
+ * edit can add a field (travelerName) that the seed never had and that no
+ * later PUT can remove. So the seeded requests are not patched back, they are
+ * deleted and rebuilt from the exact bodies in api-mock/server.js.
+ *
+ * The POST route merges the request body over its defaults, so it will honour
+ * an id supplied here. That is used for SETUP ONLY — no scenario relies on it.
+ */
+const REQUEST_DEFAULTS = [
+  {
+    id: 'tr-1',
+    userId: 1,
+    destination: 'London, UK',
+    departDate: '2024-05-01',
+    returnDate: '2024-05-05',
+    purpose: 'Client onboarding meetings',
+    department: 'Engineering',
+    justification: 'Need to meet with new enterprise client for product integration.',
+    estimatedCosts: { flights: 1200, hotels: 800, meals: 300, transport: 150, other: 50 },
+    totalEstimate: 2500,
+    travelers: [{ name: 'Sarah Johnson', email: 'demo@globaltravel.com' }],
+    needsVisa: false,
+    needsInsurance: true,
+    status: 'pending',
+    createdAt: '2024-02-15T10:30:00Z',
+    approvals: [{ approver: 'Mike Chen', role: 'Manager', status: 'pending', date: null }]
+  },
+  {
+    id: 'tr-2',
+    userId: 1,
+    destination: 'Tokyo, Japan',
+    departDate: '2024-06-10',
+    returnDate: '2024-06-17',
+    purpose: 'Partner conference and site visit',
+    department: 'Engineering',
+    justification: 'Annual partner conference attendance required by agreement.',
+    estimatedCosts: { flights: 2000, hotels: 1400, meals: 500, transport: 300, other: 200 },
+    totalEstimate: 4400,
+    travelers: [
+      { name: 'Sarah Johnson', email: 'demo@globaltravel.com' },
+      { name: 'Alex Rivera', email: 'alex@globaltravel.com' }
+    ],
+    needsVisa: true,
+    needsInsurance: true,
+    status: 'approved',
+    createdAt: '2024-01-20T14:00:00Z',
+    approvals: [
+      { approver: 'Mike Chen', role: 'Manager', status: 'approved', date: '2024-01-22T09:15:00Z' },
+      { approver: 'VP Finance', role: 'VP', status: 'approved', date: '2024-01-25T11:30:00Z' }
+    ]
+  }
+];
+
+const API_ROOT = 'http://localhost:3000/api';
+
+async function restoreItineraryFixture() {
   for (const item of FIXTURE_DEFAULTS) {
     const res = await fetch(`http://localhost:3000/api/itinerary-items/${item.id}`, {
       method: 'PUT',
@@ -86,6 +146,50 @@ async function restoreFixture() {
     }
   }
 }
+
+async function restoreRequestFixture(headers) {
+  const res = await fetch(`${API_ROOT}/travel-requests`, { headers });
+  if (!res.ok) throw new Error(`could not read travel requests: HTTP ${res.status}`);
+  const current = await res.json();
+
+  for (const request of current) {
+    const gone = await fetch(`${API_ROOT}/travel-requests/${request.id}`, {
+      method: 'DELETE',
+      headers
+    });
+    if (!gone.ok) throw new Error(`could not remove ${request.id}: HTTP ${gone.status}`);
+  }
+
+  for (const request of REQUEST_DEFAULTS) {
+    const made = await fetch(`${API_ROOT}/travel-requests`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(request)
+    });
+    if (!made.ok) throw new Error(`could not rebuild ${request.id}: HTTP ${made.status}`);
+  }
+}
+
+async function restoreFixture() {
+  await restoreItineraryFixture();
+  await restoreRequests();
+}
+
+/**
+ * Rebuilt for EVERY travel-request scenario, not just the ones that write.
+ * Read-only scenarios assert on the seeded values, so they need the fixture as
+ * clean as the ones that mutate it — the lesson already learned on the
+ * itinerary, where an untagged scenario starved a later one.
+ */
+async function restoreRequests() {
+  await restoreRequestFixture({
+    'Content-Type': 'application/json',
+    Authorization: ['Bearer', authToken].join(' ')
+  });
+}
+
+Before({ tags: '@feature-travel-request' }, restoreRequests);
+After({ tags: '@feature-travel-request' }, restoreRequests);
 
 Before({ tags: '@mutates-fixture' }, restoreFixture);
 After({ tags: '@mutates-fixture' }, restoreFixture);

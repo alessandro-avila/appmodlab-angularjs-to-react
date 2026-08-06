@@ -590,10 +590,58 @@ dereferences `undefined` for them — see *Known Limitations* 8.
 
 ### Test Coverage
 
-**None.** There is no test file for this module anywhere in the repository, no test runner
-configured, and no assertion of any behaviour described above
-(`specs/docs/testing/coverage.md`). Every statement in this FRD was verified by reading source,
-not by executing it.
+**Before the green baseline: none.** There was no test file for this module anywhere in the
+repository, no test runner configured, and no assertion of any behaviour described above
+(`specs/docs/testing/coverage.md`). Every statement in the sections above this one was verified by
+reading source, not by executing it.
+
+**After the green baseline: 45 executable scenarios**, all passing against the unmodified
+application — see the next section.
+
+| Artefact | Path |
+|---|---|
+| Gherkin | `specs/features/travel-request.feature` (45 scenarios, `@existing-behavior @feature-travel-request`) |
+| Page object | `tests/pages/travel-request.page.js` |
+| Step definitions | `tests/steps/travel-request.steps.js` |
+| Fixture rebuild | `tests/support/hooks.js` (`REQUEST_DEFAULTS`, `restoreRequestFixture`) |
+
+### Green Baseline (Track A)
+
+Captured under ADR-003 (testability gate → Track A). The scenarios describe what the application
+**does today**; nothing under `app/` or `api-mock/` was modified to make them pass
+(`git diff -- app/ api-mock/` is empty).
+
+Executing the module corrected seven claims that had been made from source reading alone. In each
+case the *code* reading was right and the *consequence* was wrong.
+
+| # | Read from source | Proved by execution |
+|---|---|---|
+| 1 | Search "throws on the third dereference" (limitation 8) | The throw escapes the `$digest` entirely, so `filteredRequests` is **never reassigned**. The list does not change, no error reaches the user, and the typed text stays in the box. Search is not partly broken — it is inert. |
+| 2 | A status filter set before a search would be re-evaluated | It survives untouched, because the failed digest leaves the previous `filteredRequests` in place. Filtering to Pending and then searching still shows exactly the Pending row. |
+| 3 | A cancelled request "is not removed until the next filter change" (limitation 12) | Confirmed — and the screen contradicts itself while it lasts. The tiles are recomputed on every digest, so the Pending tile reads **0** while the Pending-filtered table still shows the cancelled row. |
+| 4 | The status filter buttons behave like the itinerary's | They **work**. The filter row sits *outside* `ng-if="requests.length > 0"`, so its assignments land on the controller scope. The itinerary's identical-looking filter is dead only because it sits *inside* an `ng-if`. Placement, not the directive, decides. |
+| 5 | The form is inside an `ng-if` and so should shadow too | It does not. Every `ng-model` in the form is dotted (`newRequest.destination`), so it resolves up the prototype chain to the controller's object. Non-dotted models are the hazard, not `ng-if` alone. |
+| 6 | The error alert is a plain Bootstrap dismissable alert | Its close button is **dead** — a third instance of the shadowing defect. See new limitation 23. |
+| 7 | `travelerName` is "supplied by the client" (limitation 9) | In a **restored** browser session it is supplied by nobody: `$rootScope.currentUser` is `null`, so every request raised after a reload is filed under the literal `'Demo User'`. See new limitation 24. |
+
+**Consequences for the migration**
+
+- **The search box is new work, not a port.** There is no working behaviour to preserve. Whatever
+  React does here will be the first search this feature has ever had, and it needs a specification
+  of its own — including what a request without a traveller name should match.
+- **Three modules now show the same `ng-if` scope-shadowing defect** (itinerary status filter,
+  itinerary note box, this module's error alert). React has no scope chain, so all three *start
+  working* on migration. Each is a behaviour change that has to be specified deliberately rather
+  than discovered in production.
+- **The fixture cannot be patched back, only rebuilt.** Editing a seeded request adds
+  `travelerName` to a record that never had one, and `PUT`'s `Object.assign` has no way to remove a
+  key. The harness therefore deletes and recreates both seeded requests around every scenario
+  (`tests/support/hooks.js`). Any future migration test data needs the same treatment.
+
+**Not captured.** The same-day trip case (limitation 15) and the never-removed `has-error` class
+(limitation 13) are described from source only; neither was exercised. `DELETE
+/api/travel-requests/{id}` (limitation 19) is unreachable from the UI and is exercised only by the
+harness's own fixture rebuild, never by a scenario.
 
 ### Known Limitations
 
@@ -660,12 +708,19 @@ the Track A green baseline captures.
    returns the entire array without filtering by `req.user.id`
    (`api-mock/server.js:556-558`), so every authenticated user sees every user's requests.
 
-8. **Search dereferences fields the seed records do not have.** The text filter reads
-   `req.destination`, `req.purpose` and `req.travelerName` and calls `.toLowerCase()` on each
-   (`controller:120-122`). Seed records carry no `travelerName`
+8. **Search dereferences fields the seed records do not have, and is therefore inert.** The text
+   filter reads `req.destination`, `req.purpose` and `req.travelerName` and calls `.toLowerCase()`
+   on each (`controller:120-122`). Seed records carry no `travelerName`
    (`api-mock/server.js:176-195`, `:196-219`), so typing in the search box while seed records are
-   present throws on the third dereference. The status filter is unaffected because it never
-   touches those fields.
+   present throws on the third dereference.
+
+   > **Verified by the green baseline.** The consequence is worse than "it throws". The `TypeError`
+   > propagates out of `applyFilters`, out of the `$watchGroup` listener and out of the `$digest`,
+   > so the assignment on `controller:126` never runs and `filteredRequests` keeps its previous
+   > value. The user sees the text they typed, an unchanged table and no error. Any query string
+   > does this, matching or not. A status filter chosen beforehand also survives intact, because
+   > the last good `filteredRequests` is still in place. The status filter is unaffected because it
+   > never touches those fields.
 
 9. **Traveller identity is supplied by the client.** `travelerName` and `travelerEmail` are taken
    from `$rootScope.currentUser` and fall back to the literals `'Demo User'` and
@@ -684,11 +739,22 @@ the Track A green baseline captures.
     `label-default` (`controller:259`), so a cancelled request renders correctly — but only under
     the "All" filter, and it is counted only in the `all` tile.
 
+    > **Verified by the green baseline.** After cancelling the one pending request the tiles read
+    > Total 2, Pending 0, Approved 1, Rejected 0 — the request is still counted in the total and
+    > nowhere else, and no filter button will bring it back on its own.
+
 12. **A cancelled request stays in a filtered view until the filter changes.** `cancelRequest`
     mutates `request.status` in place (`controller:235`) and does not call `applyFilters()`.
     Because `_.clone` is shallow (`controller:111`), the badge updates immediately, but the row is
     not removed from a `pending`-filtered list until the next `searchQuery` or `filterStatus`
     change fires the `$watchGroup`.
+
+    > **Verified by the green baseline**, with an added consequence. The tiles are recomputed on
+    > every digest (`getStatusCounts()` is called from the template), so for as long as the stale
+    > row is on screen the page contradicts itself: the Pending tile reads **0** while the
+    > Pending-filtered table still lists the cancelled request, with its badge already reading
+    > `cancelled`. The row also loses its Edit and Cancel buttons at that moment, because those are
+    > gated on `status === 'pending'` (`template:290-296`).
 
 13. **The error highlight is added and never removed.** `has-error` is applied to
     `#destinationField` when the destination is missing (`controller:204`). No code path removes
@@ -740,6 +806,57 @@ the Track A green baseline captures.
     "legacy" or "anti-pattern" (`controller:3`, `:14`, `:37`, `:69`, `:137`, `:203`, `:245`); they
     describe style, not defects.
 
+The remaining limitations were **discovered by executing the module** during the Track A green
+baseline. None of them is visible from source reading alone.
+
+23. **The validation error cannot be dismissed.** The alert carries a close button bound to
+    `ng-click="errorMessage = ''"` (`template:19`), but the alert itself is wrapped in
+    `ng-if="errorMessage"` (`template:17`). `ng-if` creates a child scope, so the assignment
+    defines a *new* `errorMessage` on that child and shadows the controller's. `ng-if` evaluates
+    its expression against the parent, which is still truthy, so the alert stays on screen and the
+    complaint stays in `$scope.errorMessage`. Observed scope ids: controller `3`, alert `27`; after
+    the click the child holds `''` and the controller still holds `'Destination is required.'`.
+
+    This is the third occurrence of the same defect — the itinerary status filter and the itinerary
+    note box are the other two (`specs/frd-itinerary.md`, limitations 23 and 24). It is a defect
+    *class* in this codebase, not three unrelated bugs.
+
+    By contrast, the filter row and search box on this page are **outside** the `ng-if`, and every
+    `ng-model` inside the request form is **dotted** (`newRequest.destination`), so both resolve to
+    the controller's scope and work correctly. Placement and dotted paths are what separate the
+    working controls from the broken ones.
+
+24. **A request raised in a restored browser session is filed under "Demo User".**
+    `$rootScope.currentUser` is populated during login and never persisted — `localStorage` holds
+    only `authToken`. After a reload the token still authenticates the user, but the in-memory
+    identity is `null`, so `controller:172-173` takes its fallback branch and stamps
+    `travelerName: 'Demo User'` / `travelerEmail: 'demo@globaltravel.com'` onto the request. The
+    server records the real `userId` from the JWT at the same time, so the stored record names one
+    person and identifies another. (Same root cause as `specs/frd-itinerary.md` limitation 25,
+    where restored sessions credit every note to "You".)
+
+25. **The form never asks who is travelling.** `_getEmptyRequest` seeds
+    `travelers: [{ name: '', email: '' }]` (`controller:276`) and no field in the form binds to it,
+    so every created request stores exactly one nameless, addressless traveller — while
+    `travelerName` is stamped separately from the session. The feature therefore carries two
+    parallel and inconsistent answers to "who is going", and the seeded records have only the
+    first, which is why search fails against them (limitation 8).
+
+26. **A backwards date range produces a negative duration that is hidden rather than reported.**
+    The date watches compute `tripDuration` with no lower bound (`controller:52-53`, `:59-60`); a
+    10 September → 5 September range yields `-5`. The badge is gated on
+    `ng-if="newRequest.tripDuration > 0"` (`template:78`), so nothing is shown at all. The user
+    gets no hint that the range is wrong until they submit and validation rejects it
+    (`controller:211`).
+
+27. **An edited request can never be returned to its seeded shape.** `PUT` merges with
+    `Object.assign` (`api-mock/server.js:588`), which can add a key but not remove one. Editing a
+    seeded request writes `travelerName` onto a record that never had it (limitations 1 and 16),
+    and no later `PUT` can take it away — the only way back is `DELETE` followed by a fresh `POST`.
+    This is why the green baseline rebuilds both seeded requests around every scenario rather than
+    patching them (`tests/support/hooks.js`), and it is a constraint any migration test fixture
+    will inherit.
+
 ### Integration Points
 
 | Point | Mechanism | Other side |
@@ -772,7 +889,8 @@ has no tests of its own, so its Track A baseline is authored entirely from obser
 
 ---
 
-> **Track B sections omitted deliberately.** `brownfield.testability` is still `null` in
-> `.spec2cloud/state.json`; the testability gate has not run. Manual verification checklists and
-> `@documentation-only` scenarios are added only if the gate selects Track B or Hybrid for this
-> feature.
+> **Track B sections omitted deliberately.** The testability gate scored 6/6 and selected **Track A**
+> for the whole application (`specs/adrs/adr-003-testability-gate.md`;
+> `brownfield.testability: "full"` in `.spec2cloud/state.json`). This feature is therefore covered
+> by the executable green baseline recorded above, not by manual verification checklists or
+> `@documentation-only` scenarios.
