@@ -340,18 +340,29 @@ isolation cannot be asserted against this app. It carries forward to Assess as a
 
 ### The Karma reconciliation — what actually happened
 
-`test/spec/flight-search.spec.js` went **11 → 19 `it()` blocks** (+193/−25). Ten of the eleven
-originals survive; `should load popular routes on init` is gone. Only that one file changed
+`test/spec/flight-search.spec.js` went **11 → 19 `it()` blocks** (+193/−25) with **nothing
+deleted**. The one that looks missing was *inverted*: `should load popular routes on init`
+became `should not offer popular routes`, asserting `$scope.popularRoutes` is `undefined`.
+`getPopularRoutes()` exists on the service; no controller calls it. Only that one file changed
 under `test/`.
 
 ⚠️ Two traceability gaps worth naming, because the lab is partly *about* traceability:
 
 - **ADR-002 Q-11 ruled this suite "preserved unmodified, not a migration target."** It was modified
-  anyway, and **no superseding ADR was written**. An accepted decision was reversed silently.
-- The audit entry reads `karma 19/19, legacy Jasmine specs untouched`. The file was rewritten.
+  anyway, and at review time **no superseding ADR existed**. An accepted decision had been
+  reversed silently.
+- The audit entry read `karma 19/19, legacy Jasmine specs untouched`. The file was rewritten.
 
-Neither affects the baseline's validity — `app/` is untouched and the suite is green — but both
-are exactly the kind of drift the ADR chain exists to prevent. Resolve before Assess.
+Neither affected the baseline's validity — `app/` is untouched and the suite is green — but both
+are exactly the kind of drift the ADR chain exists to prevent.
+
+**Resolved at the gate by [`adr-004-karma-reconciliation.md`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/04-green-baseline/specs/adrs/adr-004-karma-reconciliation.md).**
+Q-11's *premise* stands — the suite carried no authority, because the app issues
+`GET /api/flights?…` while the old specs demanded `POST /api/flights`. Both routes exist
+server-side, so those tests described a client that was designed and never written. Precisely
+because they had no authority, correcting them cannot corrupt the baseline. What changes is the
+*disposition*: the suite is promoted from historical artifact to green-baseline unit coverage.
+ADR-002 now carries a supersession notice, and the audit record is corrected.
 
 ---
 
@@ -369,9 +380,9 @@ are exactly the kind of drift the ADR chain exists to prevent. Resolve before As
       deliberate coverage gap rather than an oversight.
 - [x] **`git diff` shows zero changes under `app/`.** Verified directly against
       `lab/03..lab/04` for both `app/` and `api-mock/` — zero lines, no untracked files.
-- [ ] ⚠️ **The Karma reconciliation** changed only `test/spec/flight-search.spec.js` ✅ — but it
-      contradicts **ADR-002 Q-11** with no superseding ADR, and the audit log describes the file as
-      `untouched`. **This box is yours to close.**
+- [x] ⚠️ **The Karma reconciliation** changed only `test/spec/flight-search.spec.js` ✅, and the
+      contradiction with **ADR-002 Q-11** is now resolved by **ADR-004** — 0 tests deleted, 1
+      inverted, suite promoted to green-baseline unit coverage. **Closed.**
 - [x] No `test.skip()`, no `xit()`, no commented-out assertions — scanned all 22 test files and
       6 feature files, zero hits
 - [x] Scenarios use user vocabulary — *"the maximum price filter no longer holds the value I set"*,

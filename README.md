@@ -10,7 +10,7 @@
 
 AngularJS reached **end of life in January 2022** ([link to the blog](https://blog.angular.dev/discontinued-long-term-support-for-angularjs-cc066b82e65a)).
 
-Your mission is to modernize it into **React 19 + TypeScript**, *without* the "big bang rewrite that never ships". You will do it the way real modernization programmes should be run: **understand first, specify second, test third, change last** - using the [**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) as the framework and GitHub Copilot as the engine.
+Your mission is to modernize it into **React 19 + JavaScript**, *without* the "big bang rewrite that never ships". You will do it the way real modernization programmes should be run: **understand first, specify second, test third, change last** - using the [**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) as the framework and GitHub Copilot as the engine.
 
 ---
 
@@ -223,9 +223,9 @@ The agent **stops and waits** at each of these. Nothing is approved by default.
 ## 🎯 THE TARGET STACK
 
 ```
-React 19 + TypeScript (strict)
+React 19 + JavaScript (ES modules)
     ├── ⚡ Vite 6            build + dev server (HMR that actually works)
-    ├── 🧭 TanStack Router   type-safe routing        ← replaces UI-Router
+    ├── 🧭 TanStack Router   file-based routing       ← replaces UI-Router
     ├── 🔄 TanStack Query    server state + caching   ← replaces Restangular
     ├── 🐻 Zustand           client state             ← replaces $rootScope
     ├── 🧪 Vitest + Testing Library   unit/component tests   ← replaces Karma + Jasmine
@@ -459,7 +459,7 @@ Then, in Copilot CLI or Copilot Chat, the orchestrator in `AGENTS.md` activates 
 
 ```
 Analyze this codebase and start the spec2cloud brownfield workflow.
-This is an AngularJS 1.6 app. Target is React 19 + TypeScript.
+This is an AngularJS 1.6 app. Target is React 19 + JavaScript.
 ```
 
 ➡️ **From here, follow [`docs/lab/`](docs/lab/README.md) step by step** — starting with
@@ -597,7 +597,7 @@ appmodlab-angularjs-to-react/
 - [ ] Testability Gate answered, track chosen, **ADR written**
 - [ ] Gherkin `@existing-behavior` scenarios for at least one module
 - [ ] Green baseline: the scenarios pass **against the legacy app**
-- [ ] At least one module migrated to React 19 + TypeScript, tests still green
+- [ ] At least one module migrated to React 19 + JavaScript, tests still green
 - [ ] PR opened with the spec + tests + code in the same changeset
 
 **Stretch**

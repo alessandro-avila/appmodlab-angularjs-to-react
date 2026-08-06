@@ -61,8 +61,8 @@ The spec for this increment is specs/features/flight-search.feature. Every
 done. I am not going to restate the behaviour here — if the baseline is missing
 something, that is a bug in step A1 and I want to find it now.
 
-What must be gone: jQuery, jQuery UI, Moment.js, Lodash, Restangular, $rootScope,
-and any `any`. The datepicker becomes a native date input, the scroll animation
+What must be gone: jQuery, jQuery UI, Moment.js, Lodash, Restangular, and $rootScope.
+The datepicker becomes a native date input, the scroll animation
 becomes scrollIntoView, currency becomes Intl.NumberFormat, dates go through
 date-fns with an explicit parse format, and data fetching goes through the query
 hooks from increment 0.
@@ -109,16 +109,16 @@ not touch.
 
 ```
 src/
-├── routes/flights.tsx                      ← real route now, not a placeholder
+├── routes/flights.jsx                      ← real route now, not a placeholder
 └── features/flight-search/
-    ├── FlightSearchPage.tsx
-    ├── SearchForm.tsx                      ← replaces the searchParams block
-    ├── FilterPanel.tsx                     ← replaces filters + deep watch
-    ├── ResultsTable.tsx                    ← replaces the ng-repeat + sort
-    ├── FlightDetails.tsx                   ← scrollIntoView target
-    ├── use-flight-search.ts                ← TanStack Query hook
-    ├── filters.ts                          ← pure functions, unit-testable
-    └── *.test.tsx / *.test.ts
+    ├── FlightSearchPage.jsx
+    ├── SearchForm.jsx                      ← replaces the searchParams block
+    ├── FilterPanel.jsx                     ← replaces filters + deep watch
+    ├── ResultsTable.jsx                    ← replaces the ng-repeat + sort
+    ├── FlightDetails.jsx                   ← scrollIntoView target
+    ├── use-flight-search.js                ← TanStack Query hook
+    ├── filters.js                          ← pure functions, unit-testable
+    └── *.test.jsx / *.test.js
 
 specs/
 ├── features/flight-search.feature          ← delta applied, still tagged
@@ -134,8 +134,8 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 
 | Legacy | Where it goes | Note |
 |--------|---------------|------|
-| `flight-search.controller.js` | split across components + `filters.ts` | 258 lines of controller become several small units |
-| `flight-search.service.js` | `use-flight-search.ts` | Restangular → TanStack Query |
+| `flight-search.controller.js` | split across components + `filters.js` | 258 lines of controller become several small units |
+| `flight-search.service.js` | `use-flight-search.js` | Restangular → TanStack Query |
 | `flight-search.template.html` | JSX across the components | |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |
@@ -192,9 +192,9 @@ digest cycle in React, badly.
 > you will get four more times. Be harder on this PR than on any other.
 
 - [ ] All `@existing-behavior` scenarios pass — for **every** module, not just flights
-- [ ] The only modified scenario is the date-parsing one, and adr-010 explains it
+- [ ] The only modified scenario is the date-parsing one, and adr-011 explains it
 - [ ] `grep -rn "jquery\|jQuery\|moment\|lodash\|restangular" src/` → nothing
-- [ ] `grep -rn ": any\|as any\|@ts-expect-error\|@ts-ignore" src/` → nothing
+- [ ] `npx eslint src/` returns clean, and the flight response is validated before it is rendered
 - [ ] The `maxPrice` reset still happens on every search — **surprising behaviour preserved**
 - [ ] Time buckets are still 6–12 / 12–18 / 18–6
 - [ ] Sorting still toggles direction on repeated header clicks
@@ -235,7 +235,7 @@ are separate, deliberate, and documented.**
 are different UX. The `@existing-behavior` scenario that types `08/15/2026` will fail against a
 native input expecting `2026-08-15`.
 
-That is not a regression — it is the adr-010 delta showing up in a place the plan may not have
+That is not a regression — it is the adr-011 delta showing up in a place the plan may not have
 anticipated. Update the scenario, note it in the ADR, move on. What you must **not** do is add a
 jQuery UI shim to make the old scenario pass.
 </details>
@@ -256,10 +256,10 @@ It also passes the tests, which is why it needs to be caught in review rather th
 </details>
 
 <details>
-<summary><b>One giant <code>FlightSearchPage.tsx</code></b></summary>
+<summary><b>One giant <code>FlightSearchPage.jsx</code></b></summary>
 
 258 lines of controller ported to 400 lines of component is a translation, not a migration. The
-filter logic in particular should end up in `filters.ts` as pure functions — testable without
+filter logic in particular should end up in `filters.js` as pure functions — testable without
 rendering anything, which makes the Vitest suite fast and the time-bucket edge cases (what is
 `18–6` at 23:00?) actually pinnable.
 </details>
