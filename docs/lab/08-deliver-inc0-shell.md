@@ -164,7 +164,7 @@ package.json                        ← new scripts ADDED, legacy scripts UNTOUC
 | `$rootScope.$broadcast('auth:login', user)` | store update; subscribers become selectors |
 | `$rootScope.$broadcast('auth:logout')` | store update |
 | `isAuthenticated()` → `!!localStorage.getItem('authToken')` | same predicate |
-| `$rootScope.$on('$stateChangeStart')` guard in `app/app.js:32` | TanStack Router `beforeLoad` guard |
+| `$rootScope.$on('$stateChangeStart')` guard in `app/app.js:32` | Router `beforeLoad` guard |
 
 > Keep the `authToken` key. Changing it is a one-character edit that invalidates every Playwright
 > storage-state fixture you built in step 04.

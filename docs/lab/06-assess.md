@@ -134,7 +134,7 @@ Your marking scheme at the gate:
 | 5 | `moment()` without a format string | `flight-search.controller.js:47-48` on `$watch`; also `:107` (that one *does* format on output) | ⚠️ **Requires a decision** — see below |
 | 6 | JWT in `localStorage`, no expiry | `app/services/auth.service.js`, guard at `app/app.js:32` | ❌ **Survives unchanged** — deferred to the Security path |
 | 7 | `bower_components/` committed | repo root | ✅ Deleted at [cutover](14-cutover.md) |
-| 8 | `$rootScope` as an event bus | publishers/subscribers across controllers; `notification:add` handled at `app/app.js:44` | ✅ Becomes an explicit Zustand store |
+| 8 | `$rootScope` as an event bus | publishers/subscribers across controllers; `notification:add` handled at `app/app.js:44` | ✅ Becomes an explicit state store |
 
 <details>
 <summary><b>Finding 4 was rewritten after step 01 — and it changed the work</b></summary>
@@ -255,7 +255,7 @@ will notice.
 
 ### The `$rootScope` event map
 
-The assessment should produce something equivalent to this. It is the input to the Zustand store
+The assessment should produce something equivalent to this. It is the input to the state-store
 design in [step 08](08-deliver-inc0-shell.md):
 
 | Event | Published by | Consumed by |
@@ -293,7 +293,7 @@ The recommendation this lab expects:
 | 0 | *(walking skeleton)* | No feature. Prove React runs against the same API, as a separate app, before betting a module on it. |
 | 1 | **flight-search** | Highest complexity **and** the best coverage. It touches routing, a directive, two filters, a service, Restangular, Lodash, Moment and jQuery — so migrating it forces every pattern decision at once, under the protection of the strongest part of the baseline. Get the hard one wrong early and cheaply. |
 | 2 | **hotel-booking** | Shares the date-picker pattern with flight-search. Second use validates the pattern instead of inventing a new one. |
-| 3 | **itinerary** | Subscribes to `itinerary:refresh`. Migrating it after flight-search proves the Zustand store replaced the event bus correctly across a module boundary. |
+| 3 | **itinerary** | Subscribes to `itinerary:refresh`. Migrating it after flight-search proves the state store replaced the event bus correctly across a module boundary. |
 | 4 | **travel-request** | Validation-heavy form + `approval-status.directive.js`. Different shape of problem; low coupling. |
 | 5 | **expense-reconciliation** | `currency-input.directive.js` + `currency.filter.js`. Last because it is the most self-contained — by now the patterns are settled. |
 

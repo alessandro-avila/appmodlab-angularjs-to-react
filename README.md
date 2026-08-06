@@ -222,16 +222,21 @@ The agent **stops and waits** at each of these. Nothing is approved by default.
 
 ## 🎯 THE TARGET STACK
 
+React 19 + JavaScript (ES modules) is settled — everything below it is a **role to fill**, not a
+decision already made. `tech-stack-resolution` in [step 07](docs/lab/07-plan.md) picks the actual
+libraries and writes an ADR for each; the named candidates are what a 2026 React project would
+plausibly reach for, and are there so you can tell whether the agent researched or just agreed.
+
 ```
 React 19 + JavaScript (ES modules)
-    ├── ⚡ Vite 6            build + dev server (HMR that actually works)
-    ├── 🧭 TanStack Router   file-based routing       ← replaces UI-Router
-    ├── 🔄 TanStack Query    server state + caching   ← replaces Restangular
-    ├── 🐻 Zustand           client state             ← replaces $rootScope
-    ├── 🧪 Vitest + Testing Library   unit/component tests   ← replaces Karma + Jasmine
-    ├── 🎭 Playwright        e2e / behaviour tests    ← replaces "click it and see"
-    ├── 📅 date-fns          dates                    ← replaces Moment.js
-    └── 🎨 CSS Modules       styles                   ← replaces global Bootstrap 3 CSS
+    ├── ⚡ bundler + dev server    replaces Grunt + Bower        e.g. Vite
+    ├── 🧭 router                  replaces UI-Router            e.g. TanStack Router, React Router
+    ├── 🔄 data-fetching client    replaces Restangular          e.g. TanStack Query, SWR
+    ├── 🐻 state store             replaces $rootScope events    e.g. Zustand, Redux Toolkit, context
+    ├── 🧪 unit/component tests    replaces Karma + Jasmine      e.g. Vitest + Testing Library
+    ├── 🎭 e2e / behaviour tests   replaces "click it and see"   Playwright (already in the repo)
+    ├── 📅 date library            replaces Moment.js            e.g. date-fns, Day.js
+    └── 🎨 style scoping           replaces global Bootstrap 3   e.g. CSS Modules, Tailwind
 ```
 
 ### Migration map
@@ -239,16 +244,16 @@ React 19 + JavaScript (ES modules)
 | Legacy (AngularJS 1.6) | Target (React 19) | Notes |
 |------------------------|-------------------|-------|
 | Controller + `$scope` | Function component + `useState`/`useReducer` | `$scope` is not state — it is a DI-scoped bag. Untangle it. |
-| `$rootScope` broadcast/on | Zustand store or React context | `$rootScope.$broadcast('flight:selected')` becomes an explicit store action |
-| UI-Router `$stateProvider` | TanStack Router route tree | Hash routing (`#!/flights`) → real paths (`/flights`) |
-| Restangular | TanStack Query + `fetch` | Base URL moves from hardcoded to `import.meta.env` |
+| `$rootScope` broadcast/on | State store or React context | `$rootScope.$broadcast('flight:selected')` becomes an explicit store action |
+| UI-Router `$stateProvider` | Router route tree | Hash routing (`#!/flights`) → real paths (`/flights`) |
+| Restangular | Data-fetching client + `fetch` | Base URL moves from hardcoded to `import.meta.env` |
 | `.directive()` | Component (or hook, if behaviour-only) | `date-picker` wraps jQuery UI → native `<input type="date">` or Radix |
 | `.filter('currency')` | `Intl.NumberFormat` | Delete the filter entirely |
-| `.filter('dateFormat')` | `date-fns/format` | Delete the filter entirely |
+| `.filter('dateFormat')` | Date library `format()` | Delete the filter entirely |
 | `$(...).animate()` / `.offset()` | `element.scrollIntoView({ behavior: 'smooth' })` | **remove jQuery completely** |
-| `$http` interceptors (auth) | TanStack Query + fetch wrapper | JWT stays in `localStorage` for the lab (flagged as tech debt) |
-| Bower + Grunt | npm + Vite | `bower_components/` is deleted at the end |
-| Karma + Jasmine | Vitest | The 11 red tests become the first Gherkin scenarios |
+| `$http` interceptors (auth) | Fetch wrapper + data-fetching client | JWT stays in `localStorage` for the lab (flagged as tech debt) |
+| Bower + Grunt | npm + bundler | `bower_components/` is deleted at the end |
+| Karma + Jasmine | Unit/component test runner | The 11 red tests become the first Gherkin scenarios |
 
 ### 🎯 Non-negotiable outcomes
 

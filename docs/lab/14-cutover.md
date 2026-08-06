@@ -232,13 +232,13 @@ The journey, end to end:
 | From | To |
 |------|-----|
 | AngularJS 1.6.10, EOL 2022 | React 19 |
-| Bower + Grunt | Vite + npm |
-| UI-Router hash routes | TanStack Router |
-| Restangular | TanStack Query |
-| `$rootScope` event bus | typed stores + query invalidation |
+| Bower + Grunt | a bundler + npm |
+| UI-Router hash routes | real paths through the router |
+| Restangular | the data-fetching client |
+| `$rootScope` event bus | explicit stores + query invalidation |
 | jQuery + jQuery UI in controllers | React, no jQuery |
-| Moment.js, loosely parsed | date-fns, explicitly parsed |
-| Karma + Jasmine, 11/11 red | Vitest + Playwright, green |
+| Moment.js, loosely parsed | a date library, explicitly parsed |
+| Karma + Jasmine, 11/11 red | unit + Playwright suites, green |
 | No specs | PRD, 6 FRDs, contracts, ADRs, a Gherkin baseline |
 
 Every behaviour change in that table is either invisible to users or written down in an ADR with

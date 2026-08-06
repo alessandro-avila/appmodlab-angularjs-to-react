@@ -85,9 +85,9 @@ Do not resolve the tech stack yet. Stop at the Plan Review gate.
 Phase P, continued. Resolve the target stack.
 
 Use the MCP research tools, context7 especially, and check current versions and
-current patterns. Do not answer from training data — React 19, TanStack Router and
-TanStack Query are all newer than most of it, and I would rather find that out now
-than in increment 0.
+current patterns. Do not answer from training data — React 19 and the current
+generation of React routers and data-fetching clients are all newer than most of
+it, and I would rather find that out now than in increment 0.
 
 Every legacy technology needs a named replacement or an explicit "dropped", justified
 against the FRDs and the green baseline rather than against popularity. If nothing in
@@ -115,16 +115,20 @@ Not part of the prompt — the agent should derive this. Use it to mark the resu
 | Legacy | Expected target |
 |--------|-----------------|
 | AngularJS 1.6.10 | React 19 |
-| Grunt + Bower | Vite 6 + npm |
-| angular-ui-router 0.4.3 | TanStack Router |
-| Restangular 1.6.1 | TanStack Query + `fetch` |
-| `$rootScope` event bus | Zustand |
-| Karma 1.7 + Jasmine 2.8 | Vitest + Testing Library |
+| Grunt + Bower | a bundler + npm |
+| angular-ui-router 0.4.3 | a router |
+| Restangular 1.6.1 | a data-fetching client + `fetch` |
+| `$rootScope` event bus | a state store |
+| Karma 1.7 + Jasmine 2.8 | a unit/component runner + Testing Library |
 | "click it and see" | Playwright |
-| Moment.js 2.18 | date-fns |
-| global Bootstrap 3 CSS | CSS Modules |
+| Moment.js 2.18 | a date library, parsing explicitly |
+| global Bootstrap 3 CSS | scoped styles |
 | angular-ui-bootstrap | dropped entirely |
 | — | ESLint flat config; response shapes validated at the API boundary |
+
+The right-hand column is deliberately role-shaped. ADR-005 left bundler, router and date control
+as follow-on ADRs, so the *names* are this step's output, not its input — that is exactly the
+judgement you are here to review.
 
 </details>
 
@@ -262,7 +266,7 @@ Jira board.
 <details>
 <summary><b>The stack is chosen from popularity, not from the FRDs</b></summary>
 
-Ask of every entry: *which FRD requires this?* Zustand is justified because
+Ask of every entry: *which FRD requires this?* A state store is justified because
 `specs/docs/assessment` mapped four `$rootScope` events that need a home. A form library is not
 justified by anything — `travel-request` is validation-heavy, but that is an increment-4
 decision, made when you can see the actual form.

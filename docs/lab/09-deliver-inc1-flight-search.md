@@ -117,7 +117,7 @@ src/
     ├── FilterPanel.jsx                     ← replaces filters + deep watch
     ├── ResultsTable.jsx                    ← replaces the ng-repeat + sort
     ├── FlightDetails.jsx                   ← scrollIntoView target
-    ├── use-flight-search.js                ← TanStack Query hook
+    ├── use-flight-search.js                ← data-fetching hook
     ├── filters.js                          ← pure functions, unit-testable
     └── *.test.jsx / *.test.js
 
@@ -136,7 +136,7 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 | Legacy | Where it goes | Note |
 |--------|---------------|------|
 | `flight-search.controller.js` | split across components + `filters.js` | 258 lines of controller become several small units |
-| `flight-search.service.js` | `use-flight-search.js` | Restangular → TanStack Query |
+| `flight-search.service.js` | `use-flight-search.js` | Restangular → the data-fetching client |
 | `flight-search.template.html` | JSX across the components | |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |

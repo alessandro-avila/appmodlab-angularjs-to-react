@@ -167,9 +167,9 @@ Plus the cross-cutting pieces that get **dissolved** rather than migrated:
 | `app/directives/approval-status.directive.js` | Becomes a presentational component |
 | `app/filters/currency.filter.js` | Deleted — `Intl.NumberFormat` |
 | `app/filters/date-format.filter.js` | Deleted — `date-fns/format` |
-| `app/services/api.service.js` | Becomes a fetch wrapper + TanStack Query hooks |
-| `app/services/auth.service.js` | Becomes a Zustand store |
-| `app/app.routes.js` | Becomes a TanStack Router route tree |
+| `app/services/api.service.js` | Becomes a fetch wrapper + data-fetching hooks |
+| `app/services/auth.service.js` | Becomes an auth store |
+| `app/app.routes.js` | Becomes a router route tree |
 
 ---
 

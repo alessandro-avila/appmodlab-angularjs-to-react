@@ -103,8 +103,9 @@ Ground truth from `app/components/itinerary/itinerary.controller.js`:
 | mutated `startFormatted` / `daysUntil` fields | derived at render — do **not** mutate query data |
 
 > **The mutation is worth pausing on.** Lines 32–41 write formatted strings back onto the objects
-> the API returned. With TanStack Query that data is cached and shared; mutating it in place is how
-> you get a component that renders correctly once and staler every time after. Derive at render.
+> the API returned. Under any caching data-fetching client that data is cached and shared; mutating
+> it in place is how you get a component that renders correctly once and staler every time after.
+> Derive at render.
 
 ---
 
@@ -144,7 +145,7 @@ Ground truth from `app/components/itinerary/itinerary.controller.js`:
 <details>
 <summary><b>Replacing the event bus with... an event bus</b></summary>
 
-The tempting port is a Zustand action called `refreshItinerary()` that components subscribe to.
+The tempting port is a store action called `refreshItinerary()` that components subscribe to.
 That is `$rootScope.$broadcast` with different imports.
 
 The idiomatic answer is that the booking mutation invalidates the itinerary query key and the data
@@ -155,7 +156,7 @@ result still has something named `refresh`, look again.
 <details>
 <summary><b>Mutating cached query data</b></summary>
 
-Lines 32–41 do exactly this in AngularJS, where it is merely untidy. Under TanStack Query it is a
+Lines 32–41 do exactly this in AngularJS, where it is merely untidy. Behind a query cache it is a
 correctness bug — the cache is shared, and a second component reading the same key sees fields
 that were computed against a different render's assumptions.
 </details>
