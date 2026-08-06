@@ -73,9 +73,10 @@ includes the surprising things. If you find yourself fixing something the baseli
 pins, stop and tell me instead. Bug fixes are separate, deliberate increments.
 
 One thing spans the increment boundary: hotel-booking listens for flight:selected
-to pre-fill its search, and hotel-booking is still AngularJS. Implement the bridge
-the plan describes. If the plan does not describe one, stop and flag it rather than
-quietly dropping the behaviour.
+to pre-fill its search, and hotel-booking is still AngularJS. ADR-005 rejected an
+in-page bridge, so that journey is simply unserved until increment 2. Say so in the
+PR — do not build interop for it, and do not quietly drop the scenario. It is
+deferred, and the baseline scenario that covers it should be marked as such.
 
 Remove the AngularJS 'flights' state only after the React route is green, and delete
 app/components/flight-search/ in the same commit. Touch no other module.
@@ -181,7 +182,8 @@ digest cycle in React, badly.
 > 6. Did it remove the AngularJS `flights` route, and did it do so **last**?
 > 7. How it handled the `maxPrice` reset — preserved, or silently "fixed"?
 > 8. How it translated the three `$watch`es — `useMemo` or `useEffect`?
-> 9. **How `flight:selected` reaches the still-AngularJS hotel-booking** — the interop bridge
+> 9. **What it did about `flight:selected`** — the journey should be *explicitly deferred* to
+>    increment 2, not bridged and not silently dropped
 > 10. Anything it discovered that the FRD got wrong
 
 ---

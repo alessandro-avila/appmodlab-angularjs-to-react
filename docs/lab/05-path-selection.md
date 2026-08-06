@@ -1,7 +1,7 @@
 # Step 05 · Path Selection
 
 > **Phase** Gate (between B3 and A) &nbsp;|&nbsp; **Branch** [`lab/05-path-selection`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/05-path-selection) &nbsp;|&nbsp; **Parent** `lab/04-green-baseline`
-> **Human gate** 🧑‍⚖️ Path Selection &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ Path Selection &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -20,7 +20,7 @@ because that is the question people will ask six months from now.
 | Skill | Purpose |
 |-------|---------|
 | `human-gate` | Presents the paths, blocks until you choose |
-| `adr` | Writes `specs/adrs/adr-005-path-selection.md` |
+| `adr` | Writes `specs/adrs/adr-005-path-selection-modernize-to-react.md` |
 | `state-management` | Records the selected path(s) in `.spec2cloud/state.json` |
 
 No assessment runs yet. That is [step 06](06-assess.md).
@@ -48,22 +48,37 @@ git switch -c lab/05-path-selection
 ```text
 The green baseline is approved. Walk me through Path Selection.
 
-Give a verdict on each of the seven paths, but ground every one in the B1 extraction
-and the FRDs — I want to see "restangular 1.6.1, unmaintained, per
-specs/docs/technology/dependencies.md", not "legacy apps often have outdated
-dependencies".
-
-Two scoping facts you will not find in the extraction: the Express mock API is
-explicitly out of scope for this exercise, and there is no cloud deployment today
-and none is required.
-
-I am selecting Modernize, delivered as a strangler-fig sequence of increments. Write
-the ADR for it — and make the rejected alternatives real arguments rather than
-placeholders, especially Rewrite, since it is the only one someone could reasonably
-have picked instead.
-
-Stop at the gate. No assessment yet.
+I am selecting Modernize, from AngularJS to React 19 + JavaScript, delivered as a
+sequence of increments. Write the ADR for it — and make the rejected alternatives real
+arguments rather than placeholders, especially Rewrite, since it is the only one someone
+could reasonably have picked instead.
 ```
+
+That is the prompt that produced the outcome below, and it is deliberately short. Three
+sentences: the state, the decision, the standard of argument. Everything else the agent needed
+was already in the artifacts.
+
+<details>
+<summary><b>What a longer prompt would have added — and why it was not needed</b></summary>
+
+An earlier draft of this step also supplied two scoping facts (*"the Express mock API is out of
+scope"*, *"there is no cloud deployment and none is required"*) and an instruction to stop at the
+gate. None of the three turned out to be necessary:
+
+- **Both scoping facts were already decided.** Q-12 in `adr-002` had removed deployment from
+  scope, and the agent cited it by name to reject Cloud-Native. Restating a decision the ADR chain
+  already carries teaches the agent to trust the prompt over the artifacts — the opposite of what
+  this pipeline is for.
+- **It stopped at the gate anyway**, because path selection *is* a gate in the framework.
+
+The one instruction worth keeping is the standard of argument — *"real arguments rather than
+placeholders"*. That is not recoverable from the artifacts, and it is what produced a
+five-point rejection of Rewrite instead of a one-line dismissal.
+
+**The general rule:** state what only you know. Everything already written down, leave written
+down.
+
+</details>
 
 <details>
 <summary><b>Why not restate the findings in the prompt?</b></summary>
@@ -86,7 +101,7 @@ never opened the extraction, and everything downstream inherits that.
 
 ```
 specs/adrs/
-└── adr-005-path-selection.md
+└── adr-005-path-selection-modernize-to-react.md
 
 .spec2cloud/
 ├── state.json         ← selected path recorded
@@ -103,22 +118,23 @@ Use this to check the agent's reasoning at the gate.
 |------|------------------|----------------|--------------|
 | **Modernize** | `modernization-assessment` | `modernization-planner` | ✅ **Selected.** Dead framework, deprecated package manager, unmaintained router and HTTP client, an anti-pattern (jQuery inside Angular) baked into every controller. This is the textbook case. |
 | **Rewrite** | `rewrite-assessment` | `rewrite-planner` | ⚪ Optional stretch. Genuinely arguable — see below. |
-| **Cloud-Native** | `cloud-native-assessment` | `cloud-native-planner` | ⚪ Optional stretch. `api-mock/server.js` is a lab fixture, not a workload. Nothing to containerize that anyone would deploy. |
+| **Cloud-Native** | `cloud-native-assessment` | `cloud-native-planner` | ⚪ Deferred, not refuted. Q-12 removed the deployment target, and the two hardcoded `localhost:3000` literals live in files increment 1 deletes. Applies cleanly once the React client exists. |
 | **Extend** | — | `extension-planner` | ❌ No new features in scope. Adding features while the framework is EOL is how you get a bigger EOL app. |
-| **Fix Bugs** | — | `bug-fix` | ❌ The quirks (`maxPrice` reset, `returnDate` shift) are *documented behaviour* with green tests. No defect reports exist. |
-| **Security** | `security-assessment` | `security-planner` | ⚪ Deferred. The JWT-in-`localStorage` finding is real, but it survives the migration unchanged — fix it once, in React, not twice. |
+| **Fix Bugs** | — | `bug-fix` | ❌ ~40 documented limitations across the six FRDs — but the overwhelming majority live in code increment 1 deletes. Fixing them in AngularJS to delete them later is waste. SEAM-3/4/5 are server-side and fold into the increments touching their endpoints. |
+| **Security** | `security-assessment` | `security-planner` | ⚪ Partly absorbed, partly deferred. Q-7 and Q-8 already schedule the ownership filter and the credential form. The plaintext credential comparison and the literal `JWT_SECRET` are server-side, survive the migration, and become a follow-on path. |
 | **Performance** | `performance-assessment` | — | ❌ No performance evidence was extracted. Optimising without a measurement is guessing. |
 
 ### Modernize vs Rewrite — the argument worth having
 
 This is the discussion to have out loud with the team, because "we are replacing AngularJS with
-React, surely that is a rewrite?" is a reasonable objection.
+React, surely that is a rewrite?" is a reasonable objection. It is more than reasonable — on the
+plain reading it is *correct*, and the run below concedes it.
 
 | | **Modernize** | **Rewrite** |
 |---|---|---|
 | Unit of work | Increment per feature, behaviour preserved | Component replaced wholesale, behaviour re-specified |
 | Safety net | The Track A `@existing-behavior` suite must keep passing | New tests, written against the new spec |
-| Old and new coexist? | Yes — strangler-fig, both run behind one entry point | Usually not |
+| Old and new coexist? | In the repository, both startable — **not in one page** | Usually not |
 | Answer to *"did behaviour change?"* | The test suite answers it | You argue about it |
 | Failure mode | Slow | Big bang that never ships |
 
@@ -130,19 +146,144 @@ Where we *deliberately* deviate from legacy behaviour — the Moment.js date par
 [step 09](09-deliver-inc1-flight-search.md) — it is recorded as a Gherkin delta plus an ADR, not
 smuggled in.
 
+> ⚠️ **Note the coexistence row.** This lab originally assumed strangler fig — React mounted
+> inside the running AngularJS shell, both stacks serving one user in one page. ADR-005 rejected
+> that, and the reasoning is in the Outcome below. Increments are still incremental; the
+> mechanism is a stable HTTP API rather than an in-page bridge.
+
 ---
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/04-green-baseline..lab/05-path-selection`
-> 2. The agent's verdict per path — did it reason from the extraction or from generalities?
-> 3. The full `adr-005-path-selection.md`
-> 4. Did it push back on Modernize and argue for Rewrite? (A good agent might. Record the
->    argument either way.)
-> 5. The updated `state.json`
+> ✅ **Verified against the artifacts on `lab/05-path-selection`.** One commit —
+> [`8419bd4`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/commit/8419bd4),
+> 3 files, +328/−8. Nothing under `app/`, `api-mock/` or `test/` was touched: this step decides,
+> it does not change code.
+
+**Decision: Modernize.** AngularJS 1.6.10 → React 19, authored in JavaScript, delivered as one
+increment per FRD feature area. The client goes entirely — all 27 files, all 9 bower runtime
+dependencies. `api-mock/server.js` survives.
+
+The numbers behind that, each independently confirmed:
+
+| Claim | Verified |
+|-------|----------|
+| `app/` is 4 462 lines | 20 JS = 2 332 · 6 HTML = 1 547 · 1 CSS = 583 ✅ exact |
+| `api-mock/server.js` survives at 634 lines | ✅ exact |
+| 9 vendored runtime deps, none survives | ✅ `angular`, `ui-router`, `ui-bootstrap`, `restangular`, `jquery`, `jquery-ui`, `bootstrap`, `lodash`, `moment` |
+| `index.html` has 20 hand-written `<script src>` lines | ✅ 29 total = 9 vendor + 20 app-owned |
+| Two `localhost:3000` literals | ✅ `app/app.js:14`, `app/services/auth.service.js:18` |
+| `JWT_SECRET` is a source literal | ✅ `api-mock/server.js:13` |
+| Q-10 deletes 7 files rather than porting them | ✅ 3 directives, 2 filters, 2 unused services — all present |
+
+### The Rewrite argument — conceded, then defeated
+
+The most interesting part of the run is that the agent **argued the case against its own
+instruction before rejecting it**, and the concession is not a rhetorical throat-clear:
+
+> *"100% of the 4462-line client is deleted and re-authored; not one AngularJS file, directive or
+> filter survives. By any plain-English reading that is a rewrite, and calling it 'modernization'
+> risks the label doing damage."*
+
+It then names the concrete hazard: `modernization-planner` is described as *"upgrade deps, fix
+patterns, reduce debt"*, so a planner given the wrong label **could emit `upgrade lodash to 4.17`
+for a dependency being deleted outright**. It ends with a tripwire — if the plan in
+[step 07](07-plan.md) comes back shaped like dependency upgrades, that is the mis-scoping showing,
+and the plan is to be rejected and re-run.
+
+Four grounds defeat it:
+
+1. **Strangler fig is insurance against live traffic, and Q-12 means there is none.** *"We would
+   pay the premium and own no policy."*
+2. **The interop bridge is 100% throwaway** — a bundler forced into a client with no build step,
+   a `$rootScope`-to-React-state bridge, dual routing across ui-router's hash URLs, and a
+   Restangular/`fetch` coexistence story for the auth interceptor. Against 4 462 lines, the
+   scaffolding plausibly rivals the migration it exists to de-risk.
+3. **Four of six features cannot serve as a working legacy reference.** Strangler fig assumes the
+   old side keeps working. [Step 04](04-green-baseline.md) proved it does not — hotel booking
+   cannot complete a booking at all, two itinerary controls are dead, request search is inert.
+4. **The seam already exists and is not in the client — it is the HTTP API**, extracted to
+   `specs/contracts/api/`, unchanged by this work, and pinned by baseline scenarios that never
+   open a browser.
+
+And it states the condition that flips the decision: *"if a production instance with real users
+existed, or if Q-12 were reversed."* A rejection you can re-open is worth more than one you cannot.
+
+### Two counting errors — both understating its own case
+
+Verification found two numbers wrong. Both are **per-item sub-counts promoted to totals**, and
+both make the ADR's argument *weaker* than the evidence supports:
+
+| ADR says | Actually | Where the wrong number came from |
+|---|---|---|
+| 24 `$broadcast` sites | **29** broadcasts, or **36** call sites with listeners | 24 is `notification:add` **alone** (`frd-authentication.md:704`). B1's `overview.md:410` had it right: *"6 event names, 36 call sites"* |
+| 15 browser-free scenarios | **19** | 15 is **authentication's** count in `state.json`; hotel-booking adds 1 and itinerary 3 |
+
+Neither changes the decision — argument 2 is *stronger* with 29 bridge points than 24, and
+argument 4 is stronger with 19 API-level pins than 15. But the pattern is worth naming, because
+it is the failure mode of an agent reading a rich state file: **a number sitting next to the
+feature you are currently thinking about gets read as the number for everything.** The defence is
+cheap — when an ADR cites a count, re-derive it from source rather than from the artifact that
+quotes it.
+
+### What it did without being told
+
+The prompt supplied neither scoping fact. The agent recovered both from the ADR chain:
+
+- **Cloud-Native rejected via Q-12** — and sharpened, in a way the prompt could not have: the two
+  hardcoded URLs *"live in files being deleted in increment 1 — externalising them first is work
+  performed on a corpse."* Explicitly a deferral, not a refutation.
+- **`api-mock/` scoped out** by observing it is the one thing that survives.
+- **Security partly absorbed rather than deferred wholesale.** Q-7 already schedules the ownership
+  filter and Q-8 the credential form; running Security in parallel would build both twice. It then
+  isolates the two findings that genuinely survive the client migration — the plaintext credential
+  comparison and the literal `JWT_SECRET` — as a follow-on path.
+- **Extend rejected while admitting the boundary is blurry:** Q-8's login and sign-out are
+  *"genuinely extension-shaped — net-new behaviour with no baseline scenario"*. They ride inside
+  the authentication increment because they cannot be built twice.
+
+### The baseline is a reference, not a contract
+
+The most consequential paragraph in the ADR, and the one that shapes every increment from here:
+
+> The 235 scenarios are a **reference, not a contract to reproduce verbatim.**
+
+Every scenario must be classified before an increment is written:
+
+| Class | Meaning | Examples |
+|-------|---------|----------|
+| **Preserve** | Correct behaviour; React must match | flight search results, request validation, the server's 401 surface |
+| **Supersede** | Encodes a defect ADR-001/002 already decided to fix | the four dead controls, `ngRepeat:dupes`, SEAM-3/4/5 |
+| **Net-new** | No baseline exists — the behaviour does not exist yet | Q-7 ownership isolation, Q-8 login form, sign-out, 401 policy |
+
+With the rule that keeps it honest: **a superseded scenario is rewritten in place with the
+authorising ADR reference, never silently deleted.** That is the difference between a migration
+and a quiet loss of coverage.
+
+### The JavaScript cost, recorded rather than glossed
+
+> *"Without a compiler, the API contract cannot be enforced at build time… conformance is asserted
+> at the **test** layer. This must not be quietly reversed later without a new ADR."*
+
+`specs/contracts/api/` stays normative, shapes are documented in JSDoc, and the API-level scenarios
+carry the enforcement burden. Whether that holds is a genuine open question for
+[step 08](08-deliver-inc0-shell.md) — it is the reason the increment-0 pitfall in that step is
+*"trusting the API response shape"* and not a type-system concern.
+
+### Five follow-on ADRs, named now so they are not decided by accident
+
+Bundler · router and hash-vs-real URLs · the date control replacing jQuery UI (constraint C-2
+lives here) · **where Q-7 ownership is enforced** — server-side or client-side, which changes the
+API contract · and the 401 / session-expiry policy, which is net-new because today a rejected
+session renders as an empty account.
+
+### State
+
+`currentPhase: "P-planning"`, `selectedPaths: ["modernize"]`, and a `pathSelection` block carrying
+the target, both fates, every rejection with its reason, the label caveat and the three-way
+baseline disposition. Four audit entries — gate, selection, ADR, phase transition. The
+consolidated green-baseline gate from [step 04](04-green-baseline.md) is recorded `approved` here
+with `appDiffLines: 0`.
 
 ---
 
@@ -150,13 +291,18 @@ smuggled in.
 
 > 🟠 **Blast radius if you rubber-stamp this: wrong strategy, wasted effort.**
 
-- [ ] All seven paths are addressed, not just the selected one
-- [ ] Each rejection cites a **fact from the extraction**, not a generic argument
-- [ ] The Modernize-vs-Rewrite distinction is articulated, not assumed
-- [ ] Consequences and **non-goals** are both written down
-- [ ] The Security path is explicitly *deferred with a reason*, not silently dropped —
-      JWT-in-`localStorage` is a real finding and it should reappear later
-- [ ] `state.json` records the selection; `audit.log` records the gate
+- [x] All seven paths are addressed, not just the selected one — each with its own section
+- [x] Each rejection cites a **fact from the extraction**, not a generic argument — Q-12 for
+      Cloud-Native, the NFR IDs for Security, `app/app.js:14` and `api-mock/server.js:13` by line
+- [x] The Modernize-vs-Rewrite distinction is articulated, not assumed — five numbered grounds
+      plus a stated condition under which the decision is wrong
+- [x] Consequences and **non-goals** are both written down, including the JavaScript cost
+- [x] The Security path is explicitly *deferred with a reason*, not silently dropped — and split:
+      the parts absorbed by Q-7/Q-8 versus the two server-side findings that survive
+- [x] `state.json` records the selection; `audit.log` records the gate — 4 entries
+- [x] ⚠️ **Counts re-derived from source, not from the artifact that quotes them.** Two were
+      wrong — `24 $broadcast sites` is 29, `15 browser-free scenarios` is 19. Both understate the
+      ADR's own case, so the decision stands. **Check this box by re-measuring, not by reading.**
 
 ---
 

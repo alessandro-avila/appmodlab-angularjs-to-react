@@ -7,14 +7,18 @@
 
 ## 🎯 Goal
 
-Stand up React 19 + JavaScript + Vite **alongside** the AngularJS app, behind a single entry
-point. Migrate **nothing**.
+Stand up React 19 + JavaScript + Vite **alongside** the AngularJS app. Migrate **nothing**.
 
-This is the walking skeleton. Its only job is to prove the strangler fig works before you bet a
-feature on it. If increment 0 is wrong, increments 1–5 inherit the wrongness five times over.
+This is the walking skeleton. Its only job is to prove the new stack runs against the same API
+before you bet a feature on it. If increment 0 is wrong, increments 1–5 inherit the wrongness
+five times over.
 
-> **Success looks boring:** two apps serve, one entry point routes between them, a trivial React
-> page renders, and every `@existing-behavior` scenario still passes untouched.
+> **Success looks boring:** two apps serve independently, a trivial React page renders against
+> the real API, and every `@existing-behavior` scenario still passes untouched.
+
+> **Not a strangler fig.** ADR-005 rejected mounting React inside the AngularJS shell — no
+> bundler forced into the legacy client, no `$rootScope` bridge, no dual routing. The two stacks
+> coexist in the *repository*, not in one page, and the seam between them is the HTTP API.
 
 ---
 
@@ -57,9 +61,9 @@ git switch -c lab/08-deliver-inc0-shell
 Phase 2, increment 0 — the walking skeleton.
 
 Build the React app the plan and tech-stack call for, running ALONGSIDE the
-AngularJS app behind a single entry point. Mirror the seven UI-Router states as
-routes, but every one except login is a placeholder in this increment. No feature
-is migrated.
+AngularJS app as a separate app on its own port — not mounted inside it, per
+ADR-005. Mirror the seven UI-Router states as routes, but every one except login is
+a placeholder in this increment. No feature is migrated.
 
 Two ports of substance:
   - app/services/auth.service.js becomes the auth store. Keep the behaviour identical
@@ -79,8 +83,9 @@ are done:
   - package.json gains scripts and devDependencies and loses nothing.
   - bower.json, Gruntfile.js and bower_components/ are untouched.
 
-Document how the strangler-fig entry point actually works — increments 1 to 5 all
-depend on it and I need to be able to explain it.
+Document how the React app and the legacy app coexist in the repo — two servers, two
+entry points, no shared page per ADR-005. Increments 1 to 5 all depend on it and I
+need to be able to explain it.
 
 Paste the build, the new test suite, npm test, and the full Playwright
 @existing-behavior run against the legacy app. Then stop at the PR Review gate.
@@ -176,8 +181,8 @@ toast component subscribed to it.
 >
 > Paste back:
 > 1. `git --no-pager diff --stat lab/07-plan..lab/08-deliver-inc0-shell`
-> 2. **How the strangler fig actually works** — Vite proxy? Two ports? A reverse proxy? This is
->    the single most important thing to document, because increments 1–5 all depend on it.
+> 2. **How the two apps coexist** — two dev servers? Which ports? How does each reach the API on
+>    :3000? Increments 1–5 all depend on this, and per ADR-005 it is *not* an in-page bridge.
 > 3. The `package.json` diff — additions only?
 > 4. Output of: Vite build, Vitest, `npm test` (Karma), full Playwright `@existing-behavior`
 > 5. Whether it used React 19 APIs or fell back to React 18 patterns
@@ -201,7 +206,8 @@ toast component subscribed to it.
 - [ ] The auth store uses the `authToken` localStorage key
 - [ ] The route tree covers all seven states
 - [ ] `package.json` has additions only — no removed dependencies, no changed legacy scripts
-- [ ] The strangler-fig mechanism is **documented**, not just implemented
+- [ ] The coexistence mechanism is **documented**, not just implemented — and it does not
+      smuggle in an AngularJS/React in-page bridge that ADR-005 rejected
 
 ---
 

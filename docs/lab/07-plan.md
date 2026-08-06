@@ -63,12 +63,15 @@ untouched, which are new — and the FRD delta. An increment plan without deltas
 list of module names, and Phase 2 has nothing to work against.
 
 Four constraints that have to be visible in the plan itself:
-  - the legacy app keeps working until the final increment; strangler fig, not big bang
+  - per ADR-005 there is no strangler-fig bridge: the two stacks do not share a page.
+    The AngularJS app stays startable in the repo until the final increment, and the
+    HTTP API is the seam. Say how incrementality survives without an in-page bridge
   - every @existing-behavior scenario passes after every increment, against whichever
     implementation now owns that route
   - a module's AngularJS route is removed only AFTER its React route is green
-  - flight:selected crosses the increment 1 / increment 2 boundary. Say how that
-    coupling survives the gap where flight-search is React and hotel-booking is not.
+  - flight:selected crosses the increment 1 / increment 2 boundary. With no bridge, the
+    cross-feature journey is unserved in the gap. Say so explicitly rather than
+    designing interop for it.
 
 Deliberate behaviour changes need their own Gherkin delta and an ADR. From Phase A
 there is exactly one candidate.
@@ -161,7 +164,7 @@ specs/
 
 | # | Increment | Scope | Verification |
 |---|-----------|-------|--------------|
-| 0 | Walking skeleton | Vite + React 19 + TS strict, TanStack Router tree, Query client, Zustand auth store, Vitest, Playwright config, strangler-fig entry | `npm start` serves legacy; React dev server serves a trivial route; **all existing `@existing-behavior` scenarios still pass** |
+| 0 | Walking skeleton | Vite + React 19 (JavaScript), router tree, data-fetching client, auth store, Vitest, Playwright config, ESLint flat config | `npm start` serves legacy; React dev server serves a trivial route; **all existing `@existing-behavior` scenarios still pass** |
 | 1 | flight-search | `app/components/flight-search/*` → React; `date-picker.directive.js` and both filters dissolved | `flight-search.feature` passes against the React route |
 | 2 | hotel-booking | `app/components/hotel-booking/*` → React | `hotel-booking.feature` green |
 | 3 | itinerary | `app/components/itinerary/*` → React; `itinerary:refresh` becomes a store subscription | `itinerary.feature` green; booking a flight still refreshes the itinerary |
@@ -208,8 +211,9 @@ gets a different date. That is user-visible. It therefore needs:
 > 5. Did it use the MCP tools, or answer from training data? (Symptom: React 18 patterns,
 >    `ReactDOM.render`, outdated TanStack APIs.)
 > 6. What it decided about hash routes (`#!/flights`) — redirect, or drop?
-> 7. **How it bridges `flight:selected` across increments 1 and 2** — this is the question that
->    separates a real strangler-fig plan from a list of modules
+> 7. **What it says about `flight:selected` across increments 1 and 2** — with no in-page bridge,
+>    the honest answer is that the cross-feature journey is unserved in the gap. A plan that
+>    quietly designs interop anyway has not read ADR-005
 
 ---
 

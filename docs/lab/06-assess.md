@@ -290,7 +290,7 @@ The recommendation this lab expects:
 
 | # | Module | Why here |
 |---|--------|----------|
-| 0 | *(walking skeleton)* | No feature. Prove React + AngularJS coexist behind one entry point before betting a module on it. |
+| 0 | *(walking skeleton)* | No feature. Prove React runs against the same API, as a separate app, before betting a module on it. |
 | 1 | **flight-search** | Highest complexity **and** the best coverage. It touches routing, a directive, two filters, a service, Restangular, Lodash, Moment and jQuery — so migrating it forces every pattern decision at once, under the protection of the strongest part of the baseline. Get the hard one wrong early and cheaply. |
 | 2 | **hotel-booking** | Shares the date-picker pattern with flight-search. Second use validates the pattern instead of inventing a new one. |
 | 3 | **itinerary** | Subscribes to `itinerary:refresh`. Migrating it after flight-search proves the Zustand store replaced the event bus correctly across a module boundary. |

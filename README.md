@@ -253,9 +253,8 @@ React 19 + JavaScript (ES modules)
 ### 🎯 Non-negotiable outcomes
 
 - Zero jQuery in the React app.
-- Zero `any` in migrated modules (`strict: true`).
 - Every migrated feature has a passing Gherkin-derived test.
-- Legacy app keeps working until the last module is migrated (strangler-fig, not big bang).
+- Legacy app stays startable until the last module is migrated (incremental, not big bang).
 
 ---
 
@@ -501,7 +500,7 @@ The canonical prompts live in the step docs. These are the patterns behind them:
 | # | Block | ⏱️ | What you actually do | Deliverable |
 |---|-------|----|----------------------|-------------|
 | 1 | **Kick-off & context** | 30m | Use cases, current pain, success criteria | Agreed definition of done |
-| 2 | **Modernisation approach** | 60m | AngularJS → React patterns; incremental (strangler-fig) vs rewrite; React architecture; **why SDD for brownfield** | Path decision (Modernize) |
+| 2 | **Modernisation approach** | 60m | AngularJS → React patterns; incremental vs strangler-fig vs rewrite; React architecture; **why SDD for brownfield** | Path decision (Modernize) |
 | 3 | **AI-assisted development** | 75m | Copilot for transformation & refactoring; prompting; agentic development; the Ralph loop; HITL gates | Everyone has Copilot CLI working in their Codespace |
 | 4 | **Live demo** | 60m | Facilitator drives **B1 → B2 → Testability Gate → Track A → first React component**, end to end, live | Reference walkthrough |
 | 5 | **🏗️ Hands-on hackathon** | 3h | Teams run the loop on real modules (see below) | Migrated components + specs |
@@ -603,8 +602,8 @@ appmodlab-angularjs-to-react/
 **Stretch**
 
 - [ ] All five modules migrated; `bower_components/` deleted
-- [ ] Strangler-fig routing: React and AngularJS coexisting behind one entry point
-- [ ] `strict: true` with zero `any` in migrated code
+- [ ] React and AngularJS coexisting in the repo, both startable, sharing only the HTTP API
+- [ ] API responses validated at the client boundary — no silently-undefined fields
 - [ ] Playwright e2e covering the full booking flow
 - [ ] Deployed to Azure Static Web Apps via `azd`
 - [ ] `security-assessment` run on the JWT/`localStorage` handling
