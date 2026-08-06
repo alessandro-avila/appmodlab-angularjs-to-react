@@ -170,6 +170,9 @@ unless someone writes it down.
 | 13 | Itinerary notes overwrite each other | `POST /api/itinerary-items/:id/notes` assigns rather than appends | Plural route, scalar field. Fixing it is an API contract change. |
 | 14 | Currency stored, never honoured | `Expense.currency` read by no code; `totalAmount` sums mixed currencies unconverted | Either implement conversion or state that totals are single-currency. Silence is the one option that is wrong. |
 | 15 | Price slider hides the dearest results | `flight-search.template.html:129` hardcodes `step="50"` against a dynamic `min`/`max`; `controller.js:117` assigns the unrepresentable `priceRange.max` to the model | Found by [step 03](03-testability-gate.md#-outcome) *running* the app, not by extraction. A native React range input inherits the same snapping rule — reproducing the markup reproduces the bug. |
+| 16 | **Rooms never render — no hotel is bookable** | `hotel-booking.template.html:184` tracks by `room.id`; the fixture defines rooms as `{ type, price, available }` with **no `id`**. Three `undefined` keys → `ngRepeat:dupes` → the repeater renders nothing. | Found by [step 04](04-green-baseline.md#-outcome). A whole feature is unreachable through the UI. Decide whether the fixture gains an `id` or the template stops tracking — then finding 10 (`pricePerNight` → `NaN`) becomes reachable and needs its own answer. |
+| 17 | Four primary controls dead via `ng-if` scope shadowing | Undotted `ng-model`/`ng-click` inside `ng-if` writes to a child scope — e.g. `itinerary.template.html:188` binds `ng-model="newNote"` | **React has no scope chain, so these controls start working when migrated.** Itinerary filter, itinerary notes, request search and expense dates all arrive as new behaviour nobody asked for. Each needs a spec, not a port. |
+| 18 | Auth guard checks token presence, never validity | A garbage token opens the portal; a rejected session renders as an empty account | Found by [step 04](04-green-baseline.md#-outcome). Compounds C-1 — the guard admits, then `currentUser` is `null`, so the UI substitutes `'Demo User'`. |
 
 Finding 15 was not in the B1 six. The testability gate produced it by driving a browser and
 **looking at the screenshot**: the toast reported six flights above a list rendering four. With
@@ -178,12 +181,25 @@ down from 642 and the filter at `controller.js:156` drops two results, while the
 the unfiltered count. Both numbers are correct for what they measure — which is precisely why
 neither a code read nor an accessibility snapshot caught it.
 
-**None of these is resolved incidentally by moving to React.** That is what separates them from
-findings 1-8, and it is why they each need an ADR or an explicit deferral.
+Findings 16-18 came from step 04 the same way — by *executing* the app rather than reading it.
+Finding 17 is the one to sit with: it is the only defect in the table that the migration **fixes by
+accident**. AngularJS swallowed those four controls in a child scope; React has no scope chain, so
+they will simply start working. A port that reproduces the markup faithfully still changes the
+product's behaviour, and nobody asked it to.
+
+**A coverage gap you inherit, not a defect.** Q-7 — data is private to its owner — has **zero
+baseline scenarios**, and cannot have any. Every fixture is `userId: 1` and no endpoint filters by
+owner, so a manager's `GET /api/trips` is byte-identical to an employee's. The green baseline
+therefore protects nothing about ownership isolation. Treat it as untested when assessing.
+
+**With one exception, none of these is resolved incidentally by moving to React** — finding 17 is
+the exception, and it is *resolved* only in the sense that the control starts working, which is
+itself an unrequested change. That is what separates findings 9-18 from findings 1-8, and it is why
+they each need an ADR or an explicit deferral.
 
 ### The workflow seams — a third scheme, and the hardest one
 
-Findings 1-8 are debt. Findings 9-14 are defects inside one module. The five seams the PRD raised in
+Findings 1-8 are debt. Findings 9-18 are defects inside one module. The five seams the PRD raised in
 [step 02](02-b2-spec-enable.md#-what-it-found--the-part-that-actually-matters) are neither: each is a
 **transition the product implies and no code performs**, spanning two features, so no single module's
 assessment can see it.
