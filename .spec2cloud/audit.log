@@ -262,3 +262,7 @@
 2026-08-06T11:50:00Z action=correct-record target=audit result=ok detail="the earlier entry karma 19/19 legacy Jasmine specs untouched was inaccurate - test/spec/flight-search.spec.js changed by +193/-25; app/ and api-mock/ did not change"
 2026-08-06T11:50:00Z action=correct-record target=adr-002 result=ok detail="Q-11 section now carries a supersession notice pointing at ADR-004"
 2026-08-06T11:50:00Z action=coverage-gap scope=B3 result=recorded detail="scroll-on-select not asserted - 400ms presentation animation handled as harness timing; Q-7 ownership isolation has zero baseline scenarios because every fixture is userId 1 and no endpoint filters by owner"
+2026-08-06T12:23:49+02:00 action=human-gate gate=green-baseline-track-a result=approved detail="consolidated gate; all six features approved in one decision; 235 scenarios / 1944 steps; app diff 0 lines"
+2026-08-06T12:23:49+02:00 action=path-selection result=modernize detail="AngularJS 1.6.10 -> React 19 in JavaScript (not TypeScript), delivered as one increment per FRD feature area; api-mock/server.js survives"
+2026-08-06T12:23:49+02:00 action=adr file=specs/adrs/adr-005-path-selection-modernize-to-react.md result=accepted detail="ADR-005; rejects rewrite, cloud-native, security, performance, extend, fix-bugs with reasoned arguments; records the label caveat, the three-way baseline disposition and five follow-on ADRs"
+2026-08-06T12:23:49+02:00 action=phase-transition from=B3-track-a-green-baseline to=P-planning result=ok detail="next: modernization-planner -> specs/increment-plan.md"

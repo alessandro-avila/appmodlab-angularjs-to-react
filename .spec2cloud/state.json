@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
-  "currentPhase": "B3-track-a-green-baseline",
-  "currentStep": "green-baseline",
-  "status": "green-baseline-approved",
+  "currentPhase": "P-planning",
+  "currentStep": "modernization-planner -> specs/increment-plan.md",
+  "status": "green baseline approved; modernize path selected; planning not started",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -61,7 +61,9 @@
     "sourceUntouched": true,
     "prdGenerated": true,
     "frdCount": 6,
-    "selectedPaths": [],
+    "selectedPaths": [
+      "modernize"
+    ],
     "openQuestions": {
       "total": 12,
       "blockingB2b": [],
@@ -107,7 +109,8 @@
       "adrs": [
         "specs/adrs/adr-001-product-intent-decisions.md",
         "specs/adrs/adr-002-remaining-product-intent-decisions.md",
-        "specs/adrs/adr-003-testability-gate.md"
+        "specs/adrs/adr-003-testability-gate.md",
+        "specs/adrs/adr-005-path-selection-modernize-to-react.md"
       ],
       "note": "All twelve questions are answered. Q-1..Q-7 by the product owner 2026-08-04 (ADR-001); Q-8..Q-12 at the B2c Refinement Review gate 2026-08-05 (ADR-002). Q-12 was answered by a scope decision - no production deployment for this hackathon - which removes the cloud-native and deployment increments rather than unblocking them. The testability gate is unblocked: its two open inputs were Q-10 and Q-11."
     },
@@ -262,7 +265,48 @@
         "openItemAtReview": "the Karma reconciliation contradicted ADR-002 Q-11 with no superseding record",
         "resolution": "ADR-004 accepted - the legacy Jasmine suite is promoted to green-baseline unit coverage; 0 tests deleted, 1 inverted",
         "recordedGap": "scroll-on-select is not asserted; it is a 400ms presentation animation handled as a harness timing concern"
+      },
+      "gate": {
+        "status": "approved",
+        "approvedAt": "2026-08-06T12:23:49+02:00",
+        "approvedBy": "product owner",
+        "scope": "consolidated - all six features approved in one gate",
+        "scenarios": 235,
+        "steps": 1944,
+        "appDiffLines": 0
       }
+    },
+    "pathSelection": {
+      "selectedAt": "2026-08-06T12:23:49+02:00",
+      "paths": [
+        "modernize"
+      ],
+      "adr": "specs/adrs/adr-005-path-selection-modernize-to-react.md",
+      "target": {
+        "framework": "React 19",
+        "language": "JavaScript",
+        "typescript": false,
+        "delivery": "sequence of increments, one per FRD feature area"
+      },
+      "clientFate": "all 27 files / 4462 lines of app/ replaced (20 js = 2332, 6 html = 1547, 1 css = 583); all 9 bower runtime deps dropped (angular, angular-ui-router, angular-ui-bootstrap, restangular, jquery, jquery-ui, bootstrap, lodash, moment)",
+      "serverFate": "api-mock/server.js (634 lines) survives in structure; SEAM-3/4/5 fixed and Q-6/Q-7 enforced in the increments that touch those endpoints",
+      "rejected": {
+        "rewrite": "closest contender, and the more literally accurate label - 100% of the client is deleted and re-authored. Rejected because strangler fig buys insurance against live traffic and Q-12 means there is none; the AngularJS-React interop bridge (bundler into a client with no build step, a bridge across 24 $broadcast sites, dual routing, Restangular+fetch coexistence) is 100% throwaway against a 4462-line client; four of six features have a dead or trapped primary control so the legacy side is a poor running reference; and the real seam is the HTTP API, already extracted to specs/contracts/api/ and pinned by 15 browser-free scenarios. REVISIT IF a production instance ever exists or Q-12 is reversed",
+        "cloudNative": "deferred, not refuted - Q-12 removed the deployment target, and the two hardcoded localhost:3000 literals (app/app.js:14, app/services/auth.service.js:18) live in files deleted by increment 1. cloud-native-planner applies cleanly once the React client exists",
+        "security": "partly absorbed - Q-7 schedules the ownership filter (NFR-F001-005) and Q-8 the credential form (fixes the presence-only guard); building them twice is waste. The plaintext credential comparison (NFR-F001-002) and the literal JWT_SECRET at api-mock/server.js:13 (NFR-F001-003) are server-side, survive the migration, and are recommended as a follow-on path",
+        "performance": "every finding - $digest patterns, the unbounded notifications array, no pagination, 9 serially loaded vendor scripts - is an artefact of AngularJS 1.6 and the no-build-step loading. They are deleted, not optimised",
+        "extend": "no new capability requested. Q-8 multi-user login and sign-out are genuinely extension-shaped (net-new, no baseline) but ride inside the authentication increment rather than a separate path",
+        "fixBugs": "most of the ~40 documented limitations live in code increment 1 deletes. SEAM-3/4/5 are server-side and fold into the increments touching their endpoints"
+      },
+      "labelCaveat": "Modernize is chosen for the increment shape it produces, not for descriptive accuracy - Rewrite describes the code change better. modernization-planner must be invoked with ADR-005 as explicit input; if it emits dependency-upgrade-shaped increments it has mis-scoped the work and the plan must be rejected and re-run",
+      "baselineDisposition": "the 235 scenarios are a reference, not a contract to reproduce verbatim. Classify every scenario before writing an increment: PRESERVE (React must match), SUPERSEDE (encodes a defect ADR-001/002 already decided to fix - rewritten in place with the authorising ADR reference, never silently deleted), NET-NEW (Q-7 ownership isolation, Q-8 login form, sign-out, 401 policy - no baseline exists, needs new Gherkin through the Step 1 gate)",
+      "followOnAdrsRequired": [
+        "bundler / toolchain (the client has no build step today)",
+        "router, and hash URLs vs real paths (changes every navigation step in the baseline)",
+        "date control replacing jQuery UI (constraint C-2 changes shape or disappears)",
+        "ownership enforcement point for Q-7 (server-side filter vs client-side; affects the API contract and the 15 server scenarios)",
+        "401 / session-expiry policy (net-new; today a rejected session renders as an empty account)"
+      ]
     }
   },
   "artifacts": {
@@ -574,7 +618,20 @@
     "brownfield-b2a-prd-approved": true,
     "brownfield-b2c-refinement-approved": true,
     "brownfield-testability-gate-approved": true,
-    "brownfield-b3-green-baseline-approved": true
+    "brownfield-b3-green-baseline-approved": true,
+    "greenBaselineTrackA": {
+      "status": "approved",
+      "at": "2026-08-06T12:23:49+02:00",
+      "scenarios": 235
+    },
+    "pathSelection": {
+      "status": "approved",
+      "at": "2026-08-06T12:23:49+02:00",
+      "paths": [
+        "modernize"
+      ],
+      "adr": "ADR-005"
+    }
   },
   "testabilityGateReview": {
     "gate": "brownfield-testability-gate",
@@ -707,7 +764,7 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-05T19:44:56Z",
+  "lastUpdated": "2026-08-06T12:23:49+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-06T07:45:00Z"
+  "updatedAt": "2026-08-06T12:23:49+02:00"
 }
