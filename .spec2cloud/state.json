@@ -1,6 +1,6 @@
 {
   "mode": "brownfield",
-  "currentPhase": "P-planning",
+  "currentPhase": "A-assessment",
   "currentStep": "modernization-planner -> specs/increment-plan.md",
   "status": "green baseline approved; modernize path selected; planning not started",
   "project": {
@@ -307,6 +307,125 @@
         "ownership enforcement point for Q-7 (server-side filter vs client-side; affects the API contract and the 15 server scenarios)",
         "401 / session-expiry policy (net-new; today a rejected session renders as an empty account)"
       ]
+    },
+    "assessment": {
+      "status": "complete",
+      "awaitingGate": "assessment-review",
+      "paths": {
+        "modernize": {
+          "status": "complete",
+          "depth": "level-3",
+          "escalations": [
+            "level-1 -> level-2: 6 critical/high findings exceeded threshold of 5",
+            "level-2 -> level-3: architectural concerns (no build step, no module system, global mutable state)"
+          ],
+          "scope": "client only (app/); api-mock/ out of scope per ADR-005",
+          "output": "specs/assessment/modernization.md",
+          "findings": {
+            "total": 34,
+            "critical": 5,
+            "high": 13,
+            "medium": 13,
+            "low": 3,
+            "confirmedFromReadmeFloor": 8,
+            "newBeyondReadme": 26,
+            "categories": {
+              "dependencies": 11,
+              "patterns": 12,
+              "architecture": 7,
+              "testing": 4,
+              "devops": 3,
+              "documentation": 3,
+              "accessibility": 3
+            }
+          },
+          "clientInventory": {
+            "files": 27,
+            "totalLines": 4462,
+            "javascriptLines": 2332,
+            "htmlLines": 1547,
+            "cssLines": 583,
+            "deadCodeLines": 512,
+            "bowerRuntimeDeps": 9,
+            "trackedBowerFiles": 964
+          },
+          "moduleScores": {
+            "rubric": {
+              "maxScore": 45,
+              "dimensions": {
+                "D1-size": 1,
+                "D2-state-and-logic": 1,
+                "D3-dom-entanglement": 2,
+                "D4-template-complexity": 1,
+                "D5-behavioural-change-required": 2,
+                "D6-unproven-surface": 2
+              }
+            },
+            "scores": {
+              "flight-search": 22,
+              "authentication-and-shell": 29,
+              "travel-request": 30,
+              "itinerary": 34,
+              "hotel-booking": 34,
+              "expense-reconciliation": 37
+            }
+          },
+          "recommendedOrder": [
+            {
+              "increment": "Inc-0",
+              "module": "shell + authentication",
+              "score": 29
+            },
+            {
+              "increment": "Inc-1",
+              "module": "flight-search",
+              "score": 22
+            },
+            {
+              "increment": "Inc-2",
+              "module": "hotel-booking",
+              "score": 34
+            },
+            {
+              "increment": "Inc-3",
+              "module": "itinerary",
+              "score": 34
+            },
+            {
+              "increment": "Inc-4",
+              "module": "travel-request",
+              "score": 30
+            },
+            {
+              "increment": "Inc-5",
+              "module": "expense-reconciliation",
+              "score": 37
+            }
+          ],
+          "orderingPrinciples": [
+            "hard dependencies first",
+            "discover unknowns early",
+            "establish patterns on the best-covered module"
+          ],
+          "keyFindings": [
+            "D-1 Critical: AngularJS 1.6.10 LTS ended 2021-12-31, 4y7m past end of life",
+            "D-2 Critical: bower deprecated, 964 bower_components files committed",
+            "P-1 Critical: 46 DOM-manipulation sites across 7 categories",
+            "P-2 Critical: ng-if child-scope shadowing, 4 confirmed dead controls",
+            "A-1 Critical: no build step, no module system, 20 hand-written script tags",
+            "P-7 Medium/high-risk: /api/hotels/h-1/rooms returns no id field, track by room.id throws ngRepeat:dupes, booking path never rendered"
+          ],
+          "deferredToTechStack": [
+            "bundler",
+            "router",
+            "date control",
+            "state library",
+            "unit runner",
+            "component library"
+          ],
+          "codeChanged": false
+        }
+      }
     }
   },
   "artifacts": {
@@ -378,6 +497,45 @@
           "C-4 default price filter hides dearest results while the toast counts them"
         ],
         "self_corrections": 3
+      },
+      {
+        "id": "ADR-004",
+        "path": "specs/adrs/adr-004-karma-reconciliation.md",
+        "title": "Karma suite reconciliation",
+        "status": "accepted",
+        "date": "2026-08-05"
+      },
+      {
+        "id": "ADR-005",
+        "path": "specs/adrs/adr-005-path-selection-modernize-to-react.md",
+        "title": "Path selection: Modernize AngularJS 1.6 to React 19 (JavaScript)",
+        "status": "accepted",
+        "date": "2026-08-06",
+        "phase": "path-selection"
+      },
+      {
+        "id": "ADR-006",
+        "path": "specs/adrs/adr-006-migration-order-and-increment-boundaries.md",
+        "title": "Migration Order and Increment Boundaries",
+        "status": "accepted",
+        "date": "2026-08-06",
+        "phase": "A-assessment"
+      },
+      {
+        "id": "ADR-007",
+        "path": "specs/adrs/adr-007-eliminating-direct-dom-manipulation.md",
+        "title": "Eliminating Direct DOM Manipulation",
+        "status": "accepted",
+        "date": "2026-08-06",
+        "phase": "A-assessment"
+      },
+      {
+        "id": "ADR-008",
+        "path": "specs/adrs/adr-008-testing-strategy-through-migration.md",
+        "title": "Testing Strategy Through the Migration",
+        "status": "accepted",
+        "date": "2026-08-06",
+        "phase": "A-assessment"
       }
     ],
     "frds": [
@@ -764,7 +922,7 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-06T12:23:49+02:00",
+  "lastUpdated": "2026-08-06T22:07:20.145Z",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
   "updatedAt": "2026-08-06T12:23:49+02:00"
 }
