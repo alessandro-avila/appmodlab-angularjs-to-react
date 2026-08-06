@@ -656,10 +656,70 @@ semantically but differ by case, and grouping is by raw string equality
 
 ### Test Coverage
 
-**None.** There is no test file for this module anywhere in the repository, no test runner
-configured, and no assertion of any behaviour described above
-(`specs/docs/testing/coverage.md`). Every statement in this FRD was verified by reading source,
-not by executing it.
+**Before the green baseline: none.** There was no test file for this module anywhere in the
+repository and no assertion of any behaviour described above
+(`specs/docs/testing/coverage.md`). Every statement in the sections above was originally verified
+by reading source, not by executing it — and two of those statements turned out to be wrong (see
+*Green Baseline* below).
+
+**After the green baseline: 57 executable scenarios**, all passing against the unmodified
+application.
+
+| Artefact | Path |
+|---|---|
+| Scenarios | `specs/features/expense-reconciliation.feature` |
+| Page object | `tests/pages/expense.page.js` |
+| Step definitions | `tests/steps/expense.steps.js` |
+| Fixture rebuild | `tests/support/hooks.js` (`EXPENSE_DEFAULTS`, `restoreExpenses`) |
+
+Coverage by area: dashboard 5, report list 4, status filter 5, search 4, date range 6, form 5,
+line items 11, expense date 2, receipts 2, submit 6, detail dialogue 4, delete 2, server seams 5.
+
+The legacy Jasmine suite (19 specs) contains nothing for this module and remains untouched
+(ADR-002 Q-11).
+
+### Green Baseline (Track A)
+
+Captured under ADR-003. The scenarios describe **what the code does today**; where that is wrong,
+the scenario asserts the wrong behaviour and its comment says so. Nothing under `app/` or
+`api-mock/` was modified — verified by an empty `git diff` at the gate.
+
+**Assumptions this feature's code-reading pass got wrong.** Both were corrected in place above.
+
+| # | The FRD claimed | Execution showed |
+|---|---|---|
+| 2 | Removing the last line item leaves the stale total rendered in the footer and the progress bars on screen | Both are inside `ng-if="newReport.expenses.length > 0"` (`template:166`…`:216`), so both disappear with the last row. The stale value survives in the model only and is never rendered. |
+| 18 | No element carries `.expense-required`, so the flash runs against an empty set and produces no visual feedback | Three form groups carry it (`template:110`, `:126`, `:133`). Date, Description and Amount all flash red, and the class is removed three seconds later exactly as the jQuery chain intends. |
+
+**Nine behaviours that only execution could reveal** — limitations 20 to 28. The load-bearing ones
+for the migration:
+
+- **The date-range filter cannot be cleared** (20). A user who sets a bound and then clears it is
+  stranded on an empty table with empty inputs. This is the most user-hostile defect in the module
+  and has no workaround a user would guess.
+- **The error alert cannot be dismissed** (22) — the fourth instance of the `ng-if` scope-shadowing
+  class. React has no scope chain, so this control *starts working* on migration: new behaviour to
+  specify, not behaviour to preserve.
+- **The detail dialogue renders two blank fields on every report** (23).
+
+**What works here that fails elsewhere.** The status filter and the search box both function
+correctly, because the filter row sits outside every `ng-if` (all controls read scope id `3`,
+the controller's) and both seeded reports carry the `title` and `tripDestination` that
+`applyFilters` dereferences without a guard. The travel-request search is inert for exactly the
+opposite reason. The contrast is the evidence for the refined rule recorded in
+`specs/features/travel-request.feature`: `ng-if` alone is not the hazard — **placement and dotted
+model paths decide**.
+
+**Fixture management.** Submitting appends a report permanently and deleting removes a seed
+permanently, both in the mock server's in-process array. `restoreExpenses` deletes every report and
+rebuilds `exp-1` and `exp-2` from the exact bodies at `api-mock/server.js:222-253`, and is bound to
+**every** `@feature-expense-reconciliation` scenario — read-only ones included, since they assert on
+the seeded figures.
+
+**Not captured.** Receipt *transport* (limitation 9) — the portal never calls the upload endpoint,
+so there is nothing to observe beyond the client-side capture, which is covered. `PUT
+/api/expense-reports/:id` and `linkToTravelRequest` (limitation 4, FR-F015-016) have no UI caller
+and are exercised only in so far as the server seams are asserted directly.
 
 ### Known Limitations
 
@@ -675,14 +735,23 @@ the Track A green baseline captures.
    (`controller:306`), in `categoryTotals` (`service:41`) and in `_getTopCategory`
    (`controller:314`), because all three group by raw string equality.
 
-2. **Removing the last line item leaves the previous total in place.** The auto-totalling watch is
-   guarded by `expenses && expenses.length > 0` (`controller:38`). `removeExpense` splices without
-   touching `totalAmount` (`controller:174-176`). When the array goes from one entry to zero the
-   watch fires but the body does not run, so `newReport.totalAmount` retains the value computed
-   when the item was still present. The footer keeps rendering it (`template:199`), and
-   `categoryBreakdown` likewise keeps its last non-empty state, so the progress bars remain
-   (`template:206-214`). Submission is blocked by the empty-array check
-   (`controller:184-187`), so the stale value is visible but not sendable.
+2. **Removing the last line item leaves a stale total in the model, invisible on screen.** The
+   auto-totalling watch is guarded by `expenses && expenses.length > 0` (`controller:38`).
+   `removeExpense` splices without touching `totalAmount` (`controller:174-176`). When the array
+   goes from one entry to zero the watch fires but the body does not run, so
+   `newReport.totalAmount` retains the value computed when the item was still present, and
+   `categoryBreakdown` likewise keeps its last non-empty state. Neither is rendered at that point:
+   the footer (`template:196-203`) and the breakdown row (`template:205-215`) are both **inside**
+   `ng-if="newReport.expenses.length > 0"` (`template:166`, closing at `:216`), so both vanish with
+   the last row. Adding another item recomputes both from scratch, and submission is blocked by the
+   empty-array check (`controller:184-187`). The stale value is therefore observable only in scope,
+   never in the UI.
+
+   > **Corrected by execution.** This paragraph previously stated that the footer keeps rendering
+   > the stale total and that the progress bars remain. Both claims were wrong: reading the
+   > template's block boundaries shows the guard encloses them, and the baseline scenario *Removing
+   > the last line item leaves a stale total in the model but hides it from view* asserts the model
+   > value and the hidden table together.
 
 3. **`Expense.currency` is stored and read by nothing.** `_getEmptyExpense` defaults it to `'USD'`
    (`controller:298`); the form offers six values (`controller:34`, `template:145-147`); every
@@ -809,15 +878,111 @@ the Track A green baseline captures.
     written by the widget (`template:265`, `:268`). `moment('05/01/24')` parses a non-ISO string
     without a format and emits a deprecation warning.
 
-18. **The line-item error flash targets a class that the entry row does not carry.** The flash
-    applies `has-error` to `.expense-required` (`controller:156`). No element in
-    `expense.template.html` carries that class, so the three-second jQuery `delay`/`queue` chain
-    runs against an empty set and no visual feedback appears; only the silent `return`
-    (`controller:159`) is observable.
+18. **The line-item error flash reaches three fields and clears itself after three seconds.** The
+    flash applies `has-error` to `.expense-required` (`controller:156`). Three form groups carry
+    that class — Date (`template:110`), Description (`template:126`) and Amount (`template:133`) —
+    so all three turn red, and the jQuery `delay(3000)`/`queue` chain removes the class from all
+    three afterwards. The set is not the same as the validated set: `addExpense` tests only
+    `description` and `amount` (`controller:154`), so **Date is flashed but never validated** (it
+    always carries a default) and **Category is validated by nothing and never flashed**. No
+    message accompanies the flash and no notification is raised.
+
+    > **Corrected by execution.** This paragraph previously stated that no element carries
+    > `.expense-required`, that the chain runs against an empty set, and that no visual feedback
+    > appears. All three claims were wrong. The baseline scenarios *An incomplete line item is
+    > refused in silence with three fields flashed*, *The flashed fields are the date, description
+    > and amount* and *The flash clears itself after three seconds* pin the real behaviour.
 
 19. **No TODO, FIXME or HACK markers exist in this module.** Seven inline comments label patterns
     as "legacy" or "anti-pattern" (`controller:3`, `:14`, `:36`, `:56`, `:155`, `:222`, `:247`);
     they describe style, not defects.
+
+The remaining items were found by **executing** the application during the Track A green baseline.
+They are not visible from reading a single file, which is why the earlier code-reading pass missed
+them.
+
+20. **The date-range filter is one-way: it cannot be cleared.** The watch that reacts to
+    `dateRange` re-filters only when a bound is present —
+    `if (newVal.start || newVal.end) { $scope.applyFilters(); }` (`controller:50-54`). Clearing
+    both inputs therefore satisfies the deep-watch (the object changed) but fails the guard, so
+    `applyFilters` never runs and `filteredReports` keeps the narrowed list. The user sees two
+    empty date fields above a still-filtered table, or — as with a `From` of `01/01/2025`, which
+    excludes both seeds — above the empty state, with nothing on screen explaining why. The only
+    escape is to touch the search box or a status button, which route through the
+    `$watchGroup(['searchQuery', 'filterStatus'])` at `controller:46-48` and call `applyFilters`
+    unconditionally. Verified by *Clearing the dates does not bring the reports back* and *Touching
+    the search box escapes the stuck date filter*.
+
+21. **The report-range date pickers do not exist until the new-report form is opened.**
+    `initDatepickers` binds `#expenseDate`, `#reportStartDate` and `#reportEndDate` in one function
+    (`controller:57-72`), and its only caller is the `showNewReport` branch of `toggleNewReport`
+    (`controller:143-147`). The two range inputs sit in the filter row, permanently visible and
+    unrelated to the form, so clicking them raises no calendar until the user has opened the form
+    at least once. Once bound, a chosen day does reach `dateRange` — jQuery UI fires a `change`
+    event and Angular's input directive listens for it — despite the `onSelect` handler that
+    limitation 17 notes is absent. Verified by *The from-date has no calendar until the new report
+    form is opened* and *Choosing a from-date from the calendar reaches the filter*.
+
+22. **The error alert cannot be dismissed.** `ng-if="errorMessage"` creates a child scope, and the
+    close button's `ng-click="errorMessage = ''"` is a non-dotted assignment, so it defines a new
+    `errorMessage` on the child instead of clearing the controller's (`template:16-18`). The
+    controller's value is untouched, `ng-if` re-reads it on the next digest, and the alert stays.
+    Observed scope ids: controller `3`, alert `35`. This is the **fourth** confirmed instance of
+    the `ng-if` scope-shadowing defect class in this codebase, after the itinerary status filter,
+    the itinerary Add Note control and the travel-request error alert. Once shown, the alert
+    persists until a submission succeeds, because `submitReport` clears `errorMessage` only after
+    both validations pass (`controller:189`). Verified by *The expense error alert cannot be
+    dismissed*.
+
+23. **The detail dialogue shows a blank submission date and a blank item count.**
+    `ExpenseService.getReports` decorates each list row with `submittedFormatted`, `totalFormatted`,
+    `expenseCount` and `daysSinceSubmission` (`service:18-24`). `getReportDetails` re-fetches the
+    report from `GET /api/expense-reports/:id` and applies a *different* set of decorations —
+    per-line `dateFormatted`/`amountFormatted` and `categoryTotals` (`service:31-44`) — so the
+    fresh object carries none of the list-level fields. The modal binds two of them anyway, and
+    both render as empty strings: the meta line reads `Submitted:` with no date, and the heading
+    reads ` expense items` with no number. `totalFormatted` is bound too (`template:346`) and is
+    likewise undefined. Affects every report, draft or pending. Verified by *The detail dialogue
+    shows no submission date and no item count*.
+
+24. **The Draft filter button gives no sign of being selected.** Each status button's `ng-class`
+    names both states — for example `{'btn-warning': filterStatus === 'pending', 'btn-default':
+    filterStatus !== 'pending'}` (`template:247-248`). The Draft button names only the unselected
+    state, `{'btn-default': filterStatus !== 'draft'}` (`template:245-246`). Selecting it therefore
+    strips `btn-default` and adds nothing, leaving a bare `btn` that reads as unstyled rather than
+    active, while the filter itself is applied correctly. Verified by *The Draft filter is applied
+    but the button shows no sign of being selected*.
+
+25. **The empty state offers to create a first report when reports already exist.** The block is
+    shown whenever `filteredReports.length === 0` (`template:313`) regardless of why, and its
+    button reads "Create Your First Report" (`template:316-318`, rendered uppercase by CSS). Any
+    filter that matches nothing — a status no report holds, a search term, a date bound — replaces
+    the table with an invitation that misdescribes the situation. Verified by *Filtering by a
+    status no report holds offers to create a first report though two exist*.
+
+26. **`topCategory` is computed on every load and never displayed.** `calculateDashboard` derives
+    it across every stored report's line items (`controller:130`, `_getTopCategory` at
+    `controller:298-308`), and the six dashboard tiles render `reportCount`, `totalSubmitted`,
+    `totalPending`, `totalApproved`, `avgAmount` and `recentMonth` (`template:22-72`) — not
+    `topCategory`. Like `daysSinceSubmission` (limitation 16), it is dead output. Its observed
+    value against the seeds is `flights`. Verified by *The top spending category is derived across
+    all reports but never displayed*.
+
+27. **A line item costing nothing is rejected, and one with no category is accepted.**
+    `addExpense` guards with `!$scope.newExpense.description || !$scope.newExpense.amount`
+    (`controller:154`). An amount of `0` is falsy, so a genuinely zero-cost line — a comped meal, a
+    fully discounted fare — is refused as though the field were blank, with no message
+    distinguishing the two. Category is not tested at all, so a line saved without one is stored
+    with `category: ''` and buckets under an empty-string key in `categoryBreakdown`
+    (`controller:41`), rendering a progress bar with no label (`template:209-213`). Verified by the
+    *An incomplete line item is refused in silence* outline and *A line item with no category is
+    accepted and buckets under a blank label*.
+
+28. **Notification toasts overlay the New Report button.** The notification area is fixed over the
+    page header, so a toast raised by adding a line item intercepts pointer events aimed at the
+    button beneath it until it expires. This is a real interaction hazard, not a test artefact: it
+    forced the baseline harness to wait for toasts to clear before every click on the header
+    button (`tests/pages/expense.page.js`, `waitForToastsToClear`).
 
 ### Integration Points
 
@@ -857,7 +1022,7 @@ own, so its Track A baseline is authored entirely from observed behaviour
 
 ---
 
-> **Track B sections omitted deliberately.** `brownfield.testability` is still `null` in
-> `.spec2cloud/state.json`; the testability gate has not run. Manual verification checklists and
-> `@documentation-only` scenarios are added only if the gate selects Track B or Hybrid for this
-> feature.
+> **Track B sections omitted deliberately.** The testability gate ran and selected **Track A** for
+> every feature (`brownfield.testability: "full"`, ADR-003), so this feature is covered by
+> executable scenarios rather than manual verification checklists. See *Green Baseline (Track A)*
+> above.

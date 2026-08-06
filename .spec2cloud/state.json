@@ -126,7 +126,9 @@
         "tests/pages/itinerary.page.js",
         "tests/steps/itinerary.steps.js",
         "tests/pages/travel-request.page.js",
-        "tests/steps/travel-request.steps.js"
+        "tests/steps/travel-request.steps.js",
+        "tests/pages/expense.page.js",
+        "tests/steps/expense.steps.js"
       ],
       "appUnmodified": true,
       "appDiffLines": 0,
@@ -134,10 +136,10 @@
         "flight-search",
         "hotel-booking",
         "itinerary",
-        "travel-request"
+        "travel-request",
+        "expense-reconciliation"
       ],
       "featuresRemaining": [
-        "expense-reconciliation",
         "authentication"
       ],
       "features": {
@@ -201,13 +203,32 @@
           "scenariosBypassingUi": 0,
           "fixtureRestore": "every @feature-travel-request scenario deletes and rebuilds tr-1 and tr-2 before and after; PUT merges with Object.assign and cannot remove the travelerName an edit adds, so patching back is impossible",
           "gate": "pending-human-approval"
+        },
+        "expense-reconciliation": {
+          "featureFile": "specs/features/expense-reconciliation.feature",
+          "scenarios": 57,
+          "passing": 57,
+          "steps": 575,
+          "stableRuns": 2,
+          "unitTestsBefore": "none - no spec existed for this module",
+          "unitTestsAfter": "none - no spec authored; behaviour captured end-to-end",
+          "unitTestsDeleted": 0,
+          "reconciliations": 0,
+          "correctedAssumptions": 2,
+          "headlineFinding": "the date-range filter is one-way - the $watch guard re-filters only when a bound is set, so clearing both dates leaves the table filtered behind two empty inputs with no way back except touching the search box",
+          "secondFinding": "fourth occurrence of the ng-if scope-shadowing defect class - the error alert cannot be dismissed",
+          "thirdFinding": "the detail dialogue shows a blank submission date and a blank item count on every report, because getReportDetails does not re-apply the list decorations the modal binds",
+          "newLimitations": "20-28, all found by execution rather than code reading",
+          "scenariosBypassingUi": 0,
+          "fixtureRestore": "every @feature-expense-reconciliation scenario deletes all reports and rebuilds exp-1 and exp-2 from the exact server.js bodies, before and after; submit appends and delete removes permanently",
+          "gate": "pending-human-approval"
         }
       },
       "fullSuite": {
-        "scenarios": 127,
-        "passing": 127,
-        "steps": 1042,
-        "lastRunAt": "2026-08-06T07:41:00Z"
+        "scenarios": 184,
+        "passing": 184,
+        "steps": 1617,
+        "lastRunAt": "2026-08-06T08:31:00Z"
       },
       "unitSuite": {
         "tests": 19,

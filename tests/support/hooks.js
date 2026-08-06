@@ -15,6 +15,7 @@ const FlightSearchPage = require('../pages/flight-search.page');
 const HotelBookingPage = require('../pages/hotel-booking.page');
 const ItineraryPage = require('../pages/itinerary.page');
 const TravelRequestPage = require('../pages/travel-request.page');
+const { ExpensePage } = require('../pages/expense.page');
 
 const AUTH_STATE = path.join(__dirname, '..', '.auth', 'state.json');
 const HEADED = process.env.BASELINE_HEADED === '1';
@@ -63,6 +64,8 @@ Before(async function () {
   this.hotels = new HotelBookingPage(this.page);
   this.itinerary = new ItineraryPage(this.page);
   this.travelRequests = new TravelRequestPage(this.page);
+  this.expenses = new ExpensePage(this.page);
+  this.memory = this.memory || {};
 });
 
 /**
@@ -132,6 +135,49 @@ const REQUEST_DEFAULTS = [
   }
 ];
 
+/**
+ * Expense reports leak the same way: submit appends for good, delete removes a
+ * seed for good. There is no PUT caller here, so nothing mutates a seed in
+ * place — but the delete scenarios remove exp-2 outright, so the seeds are
+ * rebuilt wholesale rather than patched. Bound to EVERY expense scenario, for
+ * the same reason as travel requests: the read-only ones assert on the seeded
+ * figures and need them intact.
+ */
+const EXPENSE_DEFAULTS = [
+  {
+    id: 'exp-1',
+    userId: 1,
+    title: 'NYC Business Trip Expenses',
+    tripDestination: 'New York',
+    travelRequestId: null,
+    status: 'pending',
+    submittedAt: '2024-03-20T10:00:00Z',
+    submittedBy: 'Sarah Johnson',
+    totalAmount: 1875.50,
+    expenses: [
+      { id: 'e-1', date: '2024-03-15', category: 'flights', description: 'SFO to JFK round trip', amount: 930.00, currency: 'USD', notes: '' },
+      { id: 'e-2', date: '2024-03-15', category: 'hotels', description: 'Grand Hyatt - 3 nights', amount: 750.00, currency: 'USD', notes: 'Corporate rate applied' },
+      { id: 'e-3', date: '2024-03-16', category: 'meals', description: 'Client dinner at Nobu', amount: 145.50, currency: 'USD', notes: 'With client team' },
+      { id: 'e-4', date: '2024-03-17', category: 'transport', description: 'Uber rides', amount: 50.00, currency: 'USD', notes: '' }
+    ]
+  },
+  {
+    id: 'exp-2',
+    userId: 1,
+    title: 'Q1 Miscellaneous',
+    tripDestination: 'Local',
+    travelRequestId: null,
+    status: 'draft',
+    submittedAt: null,
+    submittedBy: 'Sarah Johnson',
+    totalAmount: 250.00,
+    expenses: [
+      { id: 'e-5', date: '2024-02-10', category: 'other', description: 'Office supplies for remote work', amount: 150.00, currency: 'USD', notes: '' },
+      { id: 'e-6', date: '2024-02-20', category: 'meals', description: 'Team lunch', amount: 100.00, currency: 'USD', notes: 'Team building event' }
+    ]
+  }
+];
+
 const API_ROOT = 'http://localhost:3000/api';
 
 async function restoreItineraryFixture() {
@@ -170,6 +216,33 @@ async function restoreRequestFixture(headers) {
   }
 }
 
+async function restoreExpenseFixture(headers) {
+  const res = await fetch(`${API_ROOT}/expense-reports`, { headers });
+  if (!res.ok) throw new Error(`could not read expense reports: HTTP ${res.status}`);
+  const current = await res.json();
+
+  for (const report of current) {
+    const gone = await fetch(`${API_ROOT}/expense-reports/${report.id}`, { method: 'DELETE', headers });
+    if (!gone.ok) throw new Error(`could not remove ${report.id}: HTTP ${gone.status}`);
+  }
+
+  for (const report of EXPENSE_DEFAULTS) {
+    const made = await fetch(`${API_ROOT}/expense-reports`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(report)
+    });
+    if (!made.ok) throw new Error(`could not rebuild ${report.id}: HTTP ${made.status}`);
+  }
+}
+
+async function restoreExpenses() {
+  await restoreExpenseFixture({
+    'Content-Type': 'application/json',
+    Authorization: ['Bearer', authToken].join(' ')
+  });
+}
+
 async function restoreFixture() {
   await restoreItineraryFixture();
   await restoreRequests();
@@ -190,6 +263,9 @@ async function restoreRequests() {
 
 Before({ tags: '@feature-travel-request' }, restoreRequests);
 After({ tags: '@feature-travel-request' }, restoreRequests);
+
+Before({ tags: '@feature-expense-reconciliation' }, restoreExpenses);
+After({ tags: '@feature-expense-reconciliation' }, restoreExpenses);
 
 Before({ tags: '@mutates-fixture' }, restoreFixture);
 After({ tags: '@mutates-fixture' }, restoreFixture);
