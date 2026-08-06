@@ -80,6 +80,11 @@ The 25 of 44 service methods with no caller are covered by the same decision, wi
 
 ### Q-11 — the existing test suite is stale and carries no authority
 
+> ⚠️ **Superseded in part by [ADR-004](adr-004-karma-reconciliation.md) (2026-08-06).** The premise
+> below stands — the suite carried no authority. Its disposition does not: the tests were **not**
+> preserved unmodified. During B3 they were reconciled to observed behaviour, reaching 19 specs all
+> passing, with none deleted. Read ADR-004 before acting on this section.
+
 All 11 Jasmine tests fail. Four assertions describe a `popularRoutes` load on init, a `POST` flight
 search, and a `{ airlines, priceRange }` filter shape — none of which any source file implements.
 No source states whether the spec led the implementation or the implementation moved away from it.

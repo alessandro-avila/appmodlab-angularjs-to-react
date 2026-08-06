@@ -2,7 +2,7 @@
   "mode": "brownfield",
   "currentPhase": "B3-track-a-green-baseline",
   "currentStep": "green-baseline",
-  "status": "awaiting-approval",
+  "status": "green-baseline-approved",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -203,7 +203,7 @@
           "secondFinding": "third occurrence of the ng-if scope-shadowing defect class - the validation alert cannot be dismissed",
           "scenariosBypassingUi": 0,
           "fixtureRestore": "every @feature-travel-request scenario deletes and rebuilds tr-1 and tr-2 before and after; PUT merges with Object.assign and cannot remove the travelerName an edit adds, so patching back is impossible",
-          "gate": "pending-human-approval"
+          "gate": "approved"
         },
         "expense-reconciliation": {
           "featureFile": "specs/features/expense-reconciliation.feature",
@@ -222,7 +222,7 @@
           "newLimitations": "20-28, all found by execution rather than code reading",
           "scenariosBypassingUi": 0,
           "fixtureRestore": "every @feature-expense-reconciliation scenario deletes all reports and rebuilds exp-1 and exp-2 from the exact server.js bodies, before and after; submit appends and delete removes permanently",
-          "gate": "pending-human-approval"
+          "gate": "approved"
         },
         "authentication": {
           "featureFile": "specs/features/authentication.feature",
@@ -241,7 +241,7 @@
           "scenariosBypassingUi": 15,
           "harnessChange": "tests/support/hooks.js now omits storageState when a scenario is tagged @unauthenticated, so authentication can arrive as a stranger; additive, all 184 pre-existing scenarios re-run unaffected",
           "fixtureRestore": "none required - no authentication scenario mutates server state",
-          "gate": "pending-human-approval",
+          "gate": "approved",
           "scenariosBypassingUiNote": "server auth surface only; the login button is hardwired to the employee, so the manager account and every 401 path are reachable through the API alone"
         }
       },
@@ -256,7 +256,13 @@
         "passing": 19
       },
       "completedAt": "2026-08-06T11:42:00Z",
-      "status": "all six features captured; awaiting consolidated Track A human gate"
+      "status": "all six features captured; consolidated Track A human gate approved 2026-08-06",
+      "gateApproval": {
+        "approvedOn": "2026-08-06",
+        "openItemAtReview": "the Karma reconciliation contradicted ADR-002 Q-11 with no superseding record",
+        "resolution": "ADR-004 accepted - the legacy Jasmine suite is promoted to green-baseline unit coverage; 0 tests deleted, 1 inverted",
+        "recordedGap": "scroll-on-select is not asserted; it is a 400ms presentation animation handled as a harness timing concern"
+      }
     }
   },
   "artifacts": {
@@ -567,12 +573,13 @@
     "brownfield-b1-extraction-approved": true,
     "brownfield-b2a-prd-approved": true,
     "brownfield-b2c-refinement-approved": true,
-    "brownfield-testability-gate-approved": true
+    "brownfield-testability-gate-approved": true,
+    "brownfield-b3-green-baseline-approved": true
   },
   "testabilityGateReview": {
     "gate": "brownfield-testability-gate",
     "reviewedOn": "2026-08-05",
-    "decision": "pending-human-approval",
+    "decision": "approved",
     "artifact": "specs/adrs/adr-003-testability-gate.md",
     "score": "6/6",
     "proposedTrack": "A",
