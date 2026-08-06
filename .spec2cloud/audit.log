@@ -183,3 +183,27 @@
 2026-08-05T19:45:32Z phase=B3-track-a-green-baseline action=frd-correction result=updated artifacts=specs/frd-flight-search.md,specs/frd-hotel-booking.md note="stale 'testability gate has not run' note replaced - gate ran in B2, Track A, ADR-003"
 2026-08-05T19:45:32Z phase=B3-track-a-green-baseline action=state-update result=updated note="hotel-booking complete; corrected stale karma-jasmine 0/11 entry to 19/19"
 2026-08-05T19:45:32Z phase=B3-track-a-green-baseline feature=hotel-booking action=human-gate result=pending note="per-feature green baseline gate"
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=probe-running-app result=ok note=three probes; suspicions verified against live scope, DOM and network
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=finding severity=high note=status filter is dead - ng-if child scope shadows filterStatus, controller watch never fires, button still highlights
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=finding severity=high note=Add Note is dead - ngRepeat row scope owns newNote, addNote reads controller newNote which stays empty and returns at its guard
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=finding severity=medium note=summary renders 3 of 4 computed categories; transport omitted from cards but included in total (1280 vs 1330 on trip-1)
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=finding severity=medium note=rootScope.currentUser is null on a restored session - only authToken is persisted - so notes are credited to 'You'
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=finding severity=low note=day numbering skips empty days - trip-1 shows Day 1, Day 2, Day 4 on a trip described as lasting 3 days
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=finding severity=high note=SEAM-3 confirmed by execution - flight booking POST accepted, trips 2/items 8 before and after, itinerary unchanged
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=gherkin-capture result=ok file=specs/features/itinerary.feature scenarios=32 tags=@existing-behavior,@feature-itinerary
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=step-collision-check result=ok note=reused 'I am signed in to the travel portal' and 'the last notification reads'; all new phrases distinct from approved flight-search and hotel-booking steps
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=test-scaffold result=ok files=tests/pages/itinerary.page.js,tests/steps/itinerary.steps.js
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=hooks-extended result=ok note=additive - ItineraryPage, authToken capture, @mutates-fixture restore hooks
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=green-verification run=1 result=fail scenarios=32 passing=26 ambiguous=2 failing=4 note=all six were test defects
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=test-fix result=ok note=duplicate Given/Then registration for 'the trip total reads'; Cucumber shares one registry across keywords
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=test-fix result=ok note=time cell selector matched the cost cell too - scoped to .col-md-2:not(.text-right)
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=test-fix result=ok note=view buttons are CSS-uppercased which defeats accessible-name matching - addressed by position
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=test-fix result=ok note=untagged cancel scenario mutated the fixture and starved a later scenario - both cancel scenarios now @mutates-fixture
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=assumption-corrected result=ok note=note author is 'You' not the signed-in name - this was a real app finding, not a test defect; scenario rewritten to assert it
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=green-verification run=2 result=pass scenarios=32 passing=32 steps=229
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=green-verification run=3 result=pass scenarios=32 passing=32 note=repeat run confirms the fixture restore holds across runs
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=full-suite result=pass scenarios=82 passing=82 steps=611
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=app-diff-check result=pass note=git diff over app/ and api-mock/ is 0 lines
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=skip-detection result=pass note=no skip/only/pending markers
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=frd-updated result=ok file=specs/frd-itinerary.md note=Test Coverage rewritten, Green Baseline section added with 7 corrected assumptions, limitations 6/9/10/11 corrected, 23-26 added, stale testability-gate note fixed
+2026-08-06T06:55:00Z phase=B3 track=A feature=itinerary action=state-updated result=ok note=featuresComplete=3, fullSuite 82/82

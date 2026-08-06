@@ -13,11 +13,13 @@ const { chromium } = require('playwright');
 const { BASE_URL } = require('./world');
 const FlightSearchPage = require('../pages/flight-search.page');
 const HotelBookingPage = require('../pages/hotel-booking.page');
+const ItineraryPage = require('../pages/itinerary.page');
 
 const AUTH_STATE = path.join(__dirname, '..', '.auth', 'state.json');
 const HEADED = process.env.BASELINE_HEADED === '1';
 
 let browser;
+let authToken;
 
 BeforeAll({ timeout: 120 * 1000 }, async function () {
   browser = await chromium.launch({ headless: !HEADED });
@@ -29,6 +31,7 @@ BeforeAll({ timeout: 120 * 1000 }, async function () {
   await page.getByRole('button', { name: 'Enter Portal' }).click();
   await page.waitForURL(/#!\/dashboard/, { timeout: 15000 });
   await page.waitForFunction(() => !!localStorage.getItem('authToken'), null, { timeout: 15000 });
+  authToken = await page.evaluate(() => localStorage.getItem('authToken'));
 
   fs.mkdirSync(path.dirname(AUTH_STATE), { recursive: true });
   await context.storageState({ path: AUTH_STATE });
@@ -57,7 +60,35 @@ Before(async function () {
   });
   this.flights = new FlightSearchPage(this.page);
   this.hotels = new HotelBookingPage(this.page);
+  this.itinerary = new ItineraryPage(this.page);
 });
+
+/**
+ * The mock API keeps trips in a mutable module-level array, so cancelling an
+ * itinerary item survives for the life of the server process and would leak
+ * into every later scenario — and into the next run. Scenarios that cancel are
+ * tagged @mutates-fixture; the fixture is put back both before and after, so a
+ * run that dies half way through still leaves the next one a clean slate.
+ *
+ * This restores DATA through the app's own API. Nothing under app/ is touched.
+ */
+const FIXTURE_DEFAULTS = [{ id: 'item-4', status: 'pending' }];
+
+async function restoreFixture() {
+  for (const item of FIXTURE_DEFAULTS) {
+    const res = await fetch(`http://localhost:3000/api/itinerary-items/${item.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ status: item.status })
+    });
+    if (!res.ok) {
+      throw new Error(`could not restore ${item.id}: HTTP ${res.status}`);
+    }
+  }
+}
+
+Before({ tags: '@mutates-fixture' }, restoreFixture);
+After({ tags: '@mutates-fixture' }, restoreFixture);
 
 After(async function (scenario) {
   if (scenario.result && scenario.result.status === Status.FAILED && this.page) {

@@ -485,14 +485,62 @@ Four of the eight service methods, and four of the eight handlers, are unreachab
 
 | Test Type | Files | Tests | Coverage |
 |-----------|-------|-------|----------|
-| Unit | — | 0 | 0% |
-| Integration | — | 0 | 0% |
-| E2E | — | 0 | 0% |
+| Unit (pre-existing) | — | 0 | 0% |
+| Green baseline (Cucumber + Playwright) | `specs/features/itinerary.feature`, `tests/steps/itinerary.steps.js`, `tests/pages/itinerary.page.js` | 32 scenarios / 229 steps | All 7 user stories except US-F009-006 (print) |
 
-`test/spec/` contains a single file, `flight-search.spec.js`. There is **no test of any kind** for
-this module.
+Before Track A, `test/spec/` contained a single file, `flight-search.spec.js`, and there was **no
+test of any kind** for this module. No unit spec was authored here — as with hotel-booking there was
+nothing to reconcile, and the behaviour worth pinning down is all at the scope-and-template
+boundary, which the browser-driven baseline exercises directly.
 
-**Untested paths**: all of them.
+**Captured**: trip listing, ordering and decoration; derived status and derived cost; the summary
+cards and their arithmetic; day grouping, day numbering and intra-day ordering; the empty `title`
+and `destination` bindings; the dead status filter (and the working logic underneath it); trip
+switching and the scroll; the dead note box (and the working logic underneath it); note
+attribution and non-persistence; the cancellation confirmation, both answers, and the total that
+does not move; both view modes; and SEAM-3.
+
+**Not captured**:
+
+- **US-F009-006 (print).** `printItinerary` calls `window.open` then `printWindow.print()`, which
+  blocks on a native print dialogue that Playwright cannot dismiss. Limitations 12 and 13 remain
+  code-read only.
+- **Limitation 11 (stale `displayDays` across a trip switch).** Unreachable — see the corrected
+  assumptions below: `displayDays` is never computed through the interface at all.
+- **Limitation 20 (re-cancelling a cancelled item).** Reachable only by issuing the `PUT` by hand;
+  the button that would do it is already hidden. Left to the API contract rather than this screen.
+
+### Green Baseline (Track A)
+
+Executed against the running application on 2026-08-06. All 32 scenarios pass; the full baseline
+across three features is 82 scenarios / 611 steps green. Nothing under `app/` or `api-mock/` was
+modified — `git diff` over both is empty.
+
+Running the screen overturned seven statements that had been derived from reading the code. The
+originals are kept above only where the numbered limitation has been corrected in place.
+
+| # | Written from the code | What the running app does |
+|---|----------------------|---------------------------|
+| 1 | The status filter narrows the itinerary (US-F009-005, FR-F009-007) | **The filter is dead.** The buttons sit inside `ng-if="itinerary && selectedTrip"`, which creates a child scope, so `filterStatus = 'pending'` writes a *new* property on the child and shadows the controller's. The controller's `$watch` never fires. The button highlights — because `ng-class` reads the child's own copy — so it looks like it worked. |
+| 2 | Limitation 6: every note box is bound to the same model, so typing in one updates all | **Wrong on both counts, and the feature is dead.** Each box sits inside `ng-repeat`, so each row gets its own scope and typing in one leaves the others empty. `addNote()` reads the *controller's* `newNote`, which stays `''`, and returns at its guard. No request, no note, no error, and the typed text stays in the box. |
+| 3 | Limitations 10 and 11: `displayDays` is undefined until the filter is changed, then goes stale across a trip switch | `displayDays` is **never** computed through the interface, because the change that would trigger it never reaches the controller. The staleness described in 11 cannot occur. Both the filtering logic and its day-level granularity (limitation 9) are correct — proven by setting `filterStatus` on the controller scope directly. |
+| 4 | The summary panel reports the four categories it computes | The panel computes four and **renders three**. `transport` has no card, but it is inside the total, so for `trip-1` the cards read 930 + 350 + 0 = **1,280** against a total of **1,330**. The missing $50 is the airport shuttle. `trip-2` has no transport, so its cards do add up — the discrepancy only surfaces on trips that include ground transport. |
+| 5 | A note is attributed to the signed-in user, falling back to "You" | It is attributed to **"You"** in normal use. `$rootScope.currentUser` is populated only by the login exchange and never persisted — `localStorage` holds `authToken` alone — so after any reload or restored session the fallback wins. Notes are never credited to their author. |
+| 6 | Day numbering follows the trip | Days with no items are dropped and the numbering **skips with them**: `trip-1` shows Day 1, Day 2, **Day 4** — and Day 4 on a trip the same screen describes as lasting "3 days". |
+| 7 | Cancelling an item is a client-side concern | The `PUT` mutates the mock API's module-level array, so a cancellation **survives for the life of the server process** and leaks into every later scenario and every later run. The baseline restores `item-4` before *and* after each `@mutates-fixture` scenario, through the app's own API. |
+
+Two consequences for migration planning:
+
+- **Two of this screen's seven user stories do not work at all today.** US-F009-005 (filter by
+  status) and US-F010-001 (annotate an item) are both unreachable, and both for the same reason:
+  AngularJS scope inheritance. A React rewrite has no equivalent of scope shadowing, so both
+  features will start working the moment they are ported — which means the migration must treat
+  them as **new behaviour to specify and test**, not as behaviour to preserve. The green baseline
+  records them as broken so that the change is visible rather than silent.
+- **The logic underneath both is correct.** Scenarios tagged `@bypasses-ui` drive the controller
+  directly and show `getFilteredDays` and `addNote` behaving as their FRs describe. The port is a
+  wiring problem, not a rewrite of the rules — and limitation 9 (the filter keeps whole days, not
+  matching items) is a real behaviour that *will* become visible once the wiring is fixed.
 
 ### Known Limitations
 
@@ -551,9 +599,16 @@ code does today, which is what the Track A green baseline captures.
    `completed`, and `daysUntil` is negative, so the `in N days` badge is hidden by its
    `ng-if="trip.daysUntil > 0"` guard (`template:61`).
 
-6. **Every note input on the screen is bound to the same model.** The template renders one
-   add-note box per item, each with `ng-model="newNote"` (`template:188`) against the single
-   scope property declared at `:23`. Typing in one box updates all of them simultaneously.
+6. **Add Note is unreachable, and no note box is bound to the model `addNote` reads.** The template
+   renders one add-note box per item, each with `ng-model="newNote"` (`template:188`), inside the
+   `ng-repeat` at `:146`. ngRepeat creates a child scope per row, so typing writes `newNote` onto
+   **that row's** scope — the boxes are independent of one another, and none of them is the
+   `$scope.newNote` declared at `:23` that `addNote` reads (`:140`). The controller's copy stays
+   `''`, so the guard `if (!$scope.newNote.trim()) return;` fires on every click: no request is
+   sent, no note is stored or displayed, no notification is raised, and the text stays in the box.
+   Verified in the green baseline — typing and clicking on the *same* row behaves identically.
+   Driving `addNote` from the controller scope shows the code underneath works as FR-F010-001
+   describes.
 
 7. **`item.title` is rendered but never supplied.** Both views bind `{{item.title}}`
    (`template:157`, `:215`); seeded items carry `description`, which is rendered separately on the
@@ -562,18 +617,33 @@ code does today, which is what the Track A green baseline captures.
 8. **`trip.destination` is rendered but never supplied.** The trip list (`template:50`) and the
    details heading (`template:92`) both bind it; no trip object carries the key.
 
-9. **The status filter keeps whole days, not matching items.** `getFilteredDays` retains a day if
-   **any** item matches (`:118-120`) and does not filter the day's `items` array, so selecting
-   `cancelled` shows every item on a day that contains one cancelled item.
+9. **The status filter is unreachable from the interface.** The filter buttons set
+   `filterStatus` by assignment (`template:126-133`) from inside
+   `<div id="itinerary-details" ng-if="itinerary && selectedTrip">` (`template:87`). `ng-if`
+   creates a child scope, so the assignment defines a **new** property on that child and shadows
+   the controller's, whose `$watch` (`:108-112`) therefore never fires. The button's `ng-class`
+   reads the same shadowed copy, so the control highlights and appears to have worked while
+   nothing is filtered. Verified in the green baseline for all three statuses: the button lights
+   up, all three day panels remain, and all five items remain.
 
-10. **`displayDays` is undefined until the filter is first changed.** It is assigned only inside
-   `getFilteredDays`, which the watcher invokes only on a `filterStatus` change (`:108-112`);
-   `selectTrip` does not call it. The template compensates with the fallback expression
-   `displayDays || itinerary.days` (`template:138`, `:204`).
+   When `filterStatus` is set on the controller scope instead, the filter works — and keeps
+   **whole days, not matching items**. `getFilteredDays` retains a day if *any* item matches
+   (`:118-120`) and does not filter the day's `items` array, so selecting `pending` on `trip-1`
+   shows Day 2 complete with the confirmed client meeting beside the pending shuttle. That
+   behaviour is real and will become visible the moment the wiring is fixed.
 
-11. **`displayDays` is not recomputed when a different trip is opened.** Once the user has changed
-    the filter, `displayDays` holds days belonging to the previously selected trip and the fallback
-    no longer applies, because `selectTrip` neither clears it nor re-runs the filter.
+10. **`displayDays` is never computed.** It is assigned only inside `getFilteredDays`, which the
+   watcher invokes only on a `filterStatus` change (`:108-112`) — a change that, per limitation 9,
+   never reaches the controller. `selectTrip` does not call it either. The template's fallback
+   expression `displayDays || itinerary.days` (`template:138`, `:204`) therefore takes the
+   right-hand branch for the entire life of the screen.
+
+11. **`displayDays` is not recomputed when a different trip is opened** — `selectTrip` neither
+    clears it nor re-runs the filter. In today's build this is latent rather than observable: per
+    limitation 10 the value is never set in the first place. It becomes a live defect as soon as
+    limitation 9 is fixed, because the filter's first successful use will leave the previous
+    trip's day objects on screen after the next trip is opened. Not covered by the green baseline
+    for that reason.
 
 12. **The print window is opened without checking that it exists.** `window.open` (`:174`) returns
     `null` when a popup blocker intervenes; the following five statements dereference it
@@ -633,6 +703,35 @@ code does today, which is what the Track A green baseline captures.
     "legacy" or "anti-pattern" (`controller:3`, `:14`, `:81`, `:107`, `:128`, `:171`); they
     describe style, not defects.
 
+23. **The summary panel computes four categories and renders three.** `calculateTotals` produces
+    `flights`, `hotels`, `activities` and `transport` (`:99-102`) and sums all four into `total`
+    (`:104`). The panel renders cards for the first three only (`template:100-115`), so on any trip
+    that includes ground transport the visible cards do not add up to the visible total: `trip-1`
+    shows 930 + 350 + 0 = 1,280 against a total of 1,330. `trip-2` carries no transport, so its
+    cards do reconcile. Verified in the green baseline against both trips.
+
+24. **A note is never credited to the person who wrote it.** `addNote` reads
+    `$rootScope.currentUser.name` and falls back to `'You'` (`:146`). `currentUser` is populated
+    only by the login exchange and is never persisted — `localStorage` holds `authToken` and
+    nothing else — so after any page reload or restored session it is `null` and the fallback
+    applies. Verified in the green baseline: the rendered note reads "You". The same gap will
+    affect any other feature that tries to identify the signed-in user after a reload, and is
+    carried into F-012 (authentication).
+
+25. **A day with no items disappears and takes its number with it.** Day numbers are derived per
+    surviving group as `moment(date).diff(trip.startDate, 'days') + 1` (`:73`), and days are built
+    from `_.groupBy` over the items (`:63-65`), so a date with nothing booked produces no group.
+    `trip-1` therefore shows Day 1, Day 2 and **Day 4** — with Day 4 sitting on a trip the same
+    screen describes as lasting "3 days" (`trip.duration`, `:36`). Verified in the green baseline.
+
+26. **A cancellation persists for the life of the server process.** `PUT /api/itinerary-items/{id}`
+    mutates the module-level `trips` array (`api-mock/server.js:518-530`), which is never reseeded.
+    Cancelling `item-4` therefore changes the fixture for every subsequent request, every
+    subsequent scenario and every subsequent test run. The green baseline restores the item through
+    the app's own API before and after each `@mutates-fixture` scenario; nothing under `app/` or
+    `api-mock/` is modified to achieve it. This is the same in-process mutability recorded in
+    NFR-F009-003, observed in practice.
+
 ### Integration Points
 
 | External System | Protocol | Purpose | Config Location |
@@ -671,7 +770,8 @@ Extraction artifacts corroborating this FRD: `specs/contracts/api/itinerary.yaml
 `specs/docs/architecture/data-models.md` (`Trip`, `ItineraryItem`, client-side derived fields),
 `specs/docs/testing/coverage.md` (no tests for this module).
 
-> **Track B sections omitted.** The testability gate has not run —
-> `.spec2cloud/state.json` → `brownfield.testability` is `null`. Per the `frd-generator` skill,
-> *Expected Behavior Scenarios*, *Manual Verification Checklist* and *Testability Roadmap* are
-> included only for features assigned to Track B.
+> **Track B sections omitted.** The testability gate ran in Phase B2 and returned 6 of 6 —
+> `.spec2cloud/state.json` → `brownfield.testability` is `"full"`, recorded in
+> `specs/adrs/adr-003-testability-gate.md`. This feature is on **Track A**, so *Expected Behavior
+> Scenarios*, *Manual Verification Checklist* and *Testability Roadmap* do not apply; executable
+> scenarios live in `specs/features/itinerary.feature` instead.

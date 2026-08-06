@@ -122,16 +122,18 @@
         "tests/pages/flight-search.page.js",
         "tests/steps/flight-search.steps.js",
         "tests/pages/hotel-booking.page.js",
-        "tests/steps/hotel-booking.steps.js"
+        "tests/steps/hotel-booking.steps.js",
+        "tests/pages/itinerary.page.js",
+        "tests/steps/itinerary.steps.js"
       ],
       "appUnmodified": true,
       "appDiffLines": 0,
       "featuresComplete": [
         "flight-search",
-        "hotel-booking"
+        "hotel-booking",
+        "itinerary"
       ],
       "featuresRemaining": [
-        "itinerary",
         "travel-request",
         "expense-reconciliation",
         "authentication"
@@ -163,14 +165,30 @@
           "correctedAssumptions": 7,
           "headlineFinding": "ngRepeat:dupes empties the room table, so a hotel booking cannot be completed through the UI",
           "scenariosBypassingUi": 1,
+          "gate": "approved"
+        },
+        "itinerary": {
+          "featureFile": "specs/features/itinerary.feature",
+          "scenarios": 32,
+          "passing": 32,
+          "steps": 229,
+          "stableRuns": 2,
+          "unitTestsBefore": "none - no spec existed for this module",
+          "unitTestsAfter": "none - no spec authored; behaviour captured end-to-end",
+          "unitTestsDeleted": 0,
+          "reconciliations": 0,
+          "correctedAssumptions": 7,
+          "headlineFinding": "AngularJS scope shadowing makes both the status filter and Add Note completely non-functional; two of seven user stories do not work at all",
+          "scenariosBypassingUi": 3,
+          "fixtureRestore": "@mutates-fixture scenarios restore item-4 through the app API before and after; the mock API mutates a module-level array",
           "gate": "pending-human-approval"
         }
       },
       "fullSuite": {
-        "scenarios": 50,
-        "passing": 50,
-        "steps": 382,
-        "lastRunAt": "2026-08-05T19:44:56Z"
+        "scenarios": 82,
+        "passing": 82,
+        "steps": 611,
+        "lastRunAt": "2026-08-06T06:52:00Z"
       },
       "unitSuite": {
         "tests": 19,
@@ -460,10 +478,10 @@
     },
     "baseline": {
       "runner": "cucumber-js",
-      "scenarios": 50,
-      "passing": 50,
+      "scenarios": 82,
+      "passing": 82,
       "failing": 0,
-      "steps": 382
+      "steps": 611
     }
   },
   "verifiedCounts": {
@@ -620,5 +638,6 @@
     ]
   },
   "lastUpdated": "2026-08-05T19:44:56Z",
-  "humanGateApprovedAt": "2026-08-04T18:58:30+02:00"
+  "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
+  "updatedAt": "2026-08-06T06:55:00Z"
 }
