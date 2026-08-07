@@ -72,6 +72,9 @@ Four constraints that have to be visible in the plan itself:
   - flight:selected crosses the increment 1 / increment 2 boundary. With no bridge, the
     cross-feature journey is unserved in the gap. Say so explicitly rather than
     designing interop for it.
+  - increment 2 (hotel-booking) has scope no baseline scenario covers. Its room table
+    has never rendered, so React will switch on a screen nobody has seen work. Plan for
+    that discovery instead of assuming the module is a port.
 
 Deliberate behaviour changes need their own Gherkin delta and an ADR. From Phase A
 there is exactly one candidate.
