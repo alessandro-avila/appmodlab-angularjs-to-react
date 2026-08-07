@@ -392,7 +392,7 @@ This is a *brownfield* lab. Some things are broken **on purpose** because fixing
 | **Searching flights logs a Moment.js deprecation warning** - `moment("08/15/2026")` is parsed with no format string, so it falls back to `new Date()`. | Expected, and harmless. A real `data-model-extractor` / date-handling finding: the React rewrite parses dates explicitly instead of guessing. |
 | JWT stored in `localStorage`, no refresh, no expiry handling. | Feeds the optional `security-assessment` path. |
 | `bower_components/` is **committed to the repo**. | 2016 called. It also means the app runs with zero network access. Deleted at the end of the migration. |
-| Global Bootstrap 3 CSS, no scoping. | Becomes CSS Modules. |
+| Global Bootstrap 3 CSS, no scoping. | Needs a scoped-styling decision in step 07. |
 | jQuery used for scrolling, datepickers, and animations inside Angular controllers. | The canonical "framework fighting the framework" anti-pattern. |
 
 ---

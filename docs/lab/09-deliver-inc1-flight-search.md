@@ -194,7 +194,7 @@ digest cycle in React, badly.
 > you will get four more times. Be harder on this PR than on any other.
 
 - [ ] All `@existing-behavior` scenarios pass — for **every** module, not just flights
-- [ ] The only modified scenario is the date-parsing one, and adr-011 explains it
+- [ ] The only modified scenario is the date-parsing one, and its ADR explains it
 - [ ] `grep -rn "jquery\|jQuery\|moment\|lodash\|restangular" src/` → nothing
 - [ ] `npx eslint src/` returns clean, and the flight response is validated before it is rendered
 - [ ] The `maxPrice` reset still happens on every search — **surprising behaviour preserved**
@@ -237,8 +237,8 @@ are separate, deliberate, and documented.**
 are different UX. The `@existing-behavior` scenario that types `08/15/2026` will fail against a
 native input expecting `2026-08-15`.
 
-That is not a regression — it is the adr-011 delta showing up in a place the plan may not have
-anticipated. Update the scenario, note it in the ADR, move on. What you must **not** do is add a
+That is not a regression — it is the date-parsing ADR's delta showing up in a place the plan may not
+have anticipated. Update the scenario, note it in the ADR, move on. What you must **not** do is add a
 jQuery UI shim to make the old scenario pass.
 </details>
 

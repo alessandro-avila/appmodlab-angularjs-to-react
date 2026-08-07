@@ -1,7 +1,7 @@
 # Step 06 · Phase A · Assess
 
 > **Phase** A · Assess &nbsp;|&nbsp; **Branch** [`lab/06-assess`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/06-assess) &nbsp;|&nbsp; **Parent** `lab/05-path-selection`
-> **Human gate** 🧑‍⚖️ Assessment Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ Assessment Review &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -110,16 +110,16 @@ measurement — and it is far more interesting than a checklist the agent was ha
 
 ```
 specs/
-├── docs/assessment/
+├── assessment/
 │   └── modernization.md            ← findings, severity, evidence, module scoring
 └── adrs/
-    ├── adr-006-*.md                ← e.g. drop angular-ui-bootstrap
-    ├── adr-007-*.md                ← e.g. externalise API base URL
-    └── ...
+    ├── adr-006-migration-order-and-increment-boundaries.md
+    ├── adr-007-eliminating-direct-dom-manipulation.md
+    └── adr-008-testing-strategy-through-migration.md
 ```
 
-<sub>Exact paths depend on how `modernization-assessment` is configured — the shape matters more
-than the location.</sub>
+<sub>Paths and ADR subjects above are what this run actually produced. The shape matters more than
+the location — but note the assessment landed in `specs/assessment/`, not `specs/docs/assessment/`.</sub>
 
 ### The eight findings, with ground truth
 
@@ -319,17 +319,125 @@ legitimate outcome — record it.
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/05-path-selection..lab/06-assess`
-> 2. The module scoring table
-> 3. **How many of the eight findings it caught unprompted** vs. only after being named
-> 4. The `$rootScope` event map — did it find a publisher with no subscriber?
-> 5. The proposed migration order and its justification. Did it agree with flight-search first?
-> 6. Which ADRs it wrote
-> 7. Anything it flagged that is **not** on the list above — the genuinely new findings are the
->    most interesting output of this step
+> ✅ **Verified** — branch [`lab/06-assess`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/06-assess) ·
+> [compare with `lab/05-path-selection`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/05-path-selection...lab/06-assess)
+
+```
+ .spec2cloud/audit.log                              |  18 ++
+ .spec2cloud/state.json                             | 162 +++++++++-
+ specs/adrs/adr-006-migration-order-…               | 183 ++++++++++++
+ specs/adrs/adr-007-eliminating-direct-dom-…        | 157 ++++++++++
+ specs/adrs/adr-008-testing-strategy-…              | 161 ++++++++++
+ specs/assessment/modernization.md                  | 329 +++++++++++++++++++++
+ 6 files changed, 1008 insertions(+), 2 deletions(-)
+```
+
+Assessment depth escalated **twice** — Level 1 returned 6 critical/high items against a threshold
+of 5; Level 2 surfaced *no build step / no module system / global mutable state* and escalated to
+**Level 3**. Scope held: **zero findings raised against `api-mock/`**, as ADR-005 requires.
+`git diff -- app/ api-mock/ test/` = **0 lines**.
+
+### The standout finding — and it was proved, not read
+
+**P-7.** `GET /api/hotels/:id/rooms` (`api-mock/server.js:403–411`) returns five room objects whose
+keys are `type, price, available, beds, maxGuests` — **there is no `id` field**. The template at
+`hotel-booking.template.html:184` iterates with `track by room.id`, so AngularJS derives five
+`undefined` keys, throws `ngRepeat:dupes`, and blanks the table.
+
+That is the **mechanism** behind step 04's "a hotel cannot be booked through the UI at all". The
+green baseline observed the symptom; the assessment queried the running API and found the cause.
+Every coordinate checks out against source.
+
+Its consequence is the sharpest thing in the report: **React tolerates duplicate keys with a console
+warning.** Migrating this module therefore *switches on a screen nobody has ever seen work* —
+undiscovered scope arriving at implementation time.
+
+### Migration order
+
+Six modules scored 1–5 across six dimensions, weighted ×2 on DOM entanglement, behavioural change
+and unproven surface (max 45). **All six weighted totals are arithmetically correct.**
+
+| # | Increment | Score | Why here |
+|---|---|---:|---|
+| 0 | shell + authentication | 29 | Hard prerequisite. No feature migrated. |
+| 1 | flight-search | **22** | Easiest *and* best covered — 25 scenarios plus the only 19 unit tests. |
+| 2 | hotel-booking | 34 | **Deliberately against its score** — carries the largest unknown (P-7). |
+| 3 | itinerary | 34 | Consumer of both booking flows; verifies SEAM-3 while that work is fresh. |
+| 4 | travel-request | 30 | Opens the request→expense chain; establishes form/modal patterns. |
+| 5 | expense-reconciliation | **37** | Hardest, most product decisions, depends on travel-request. |
+
+The two inversions are both argued rather than glossed. Hotel-booking jumps to 2nd so its unknown
+surfaces "at increment 2 of 6, not 6 of 6" — and flight-search still goes first so that *when* the
+surprise lands, it is unambiguously the module and not the new stack. Itinerary precedes the
+lower-scoring travel-request purely on dependency order.
+
+### What the measurements got exactly right
+
+| Claim | Verified |
+|---|---|
+| 95 lodash call sites | ✅ 95 |
+| 77 moment call sites | ✅ 77 |
+| 45 `<label>` elements, 34 without `for` | ✅ 45 total, 11 with `for` |
+| Zero `aria-*` attributes, one `alt` | ✅ 0 and 1 |
+| `track by room.id` at `hotel-booking.template.html:184` | ✅ exact line |
+| Rooms payload has no `id` (`server.js:403–411`) | ✅ exact range |
+| All six weighted module scores | ✅ all six recompute |
+| Every README debt item confirmed as the floor | ✅ 8 rows carry a `README` marker |
+
+**All eight ground-truth findings above came back confirmed**, each with file:line evidence — they
+form the floor, and the assessment then built on it rather than stopping there.
+
+### Four counting errors — and a three-hop propagation
+
+The report's own **Summary block contradicts its own tables**:
+
+| | Summary claims | Tables actually contain |
+|---|---:|---:|
+| Critical | 5 | **5** ✅ |
+| High | 13 | **15** |
+| Medium | 13 | **18** |
+| Low | 3 | **3** ✅ |
+| **Findings** | **34** | **41** |
+
+Add the two `*Asset*` rows (positive notes, not debt) and the tables hold **43 rows**. The
+consolidated chat summary reproduced the same "34" headline *directly above a category table whose
+own column sums to 43* — self-contradictory within a single message. Knock-on: **"26 of the 34 are
+new"** should read **33 of 41**, since exactly 8 rows carry the `README` marker.
+
+Two further slips are more interesting, because they are **inherited, not made**:
+
+| Claim | Actual | Origin |
+|---|---|---|
+| P-5: "24 `$broadcast` sites" | **29** | ADR-005 → assessment |
+| Inputs table: "15 scenarios are server-only" *(product-wide)* | **19** | ADR-005 → assessment |
+
+Both were caught and documented in [step 05](05-path-selection.md). The assessment **re-stated them
+instead of re-deriving them**, so each has now travelled three hops: FRD → ADR-005 → assessment.
+B1's `architecture/overview.md` had the event count right all along.
+
+> A number that is wrong in an ADR does not stay in that ADR. It gets cited, and the citation looks
+> like corroboration. **Re-derive from source at every hop; never inherit a figure from a document.**
+
+*(Note the near-miss: the authentication section's own "15 are server-only" is **correct** — 15 is
+that feature's individual count. The error is only in the product-wide roll-up.)*
+
+Finally, **P-1 claims "46 direct DOM-manipulation sites"**. Measured: **40** jQuery `$(…)` call
+sites, zero `angular.element`, zero `document.querySelector`/`getElementById`. And the seven-category
+enumeration that **ADR-007 is built on sums to 27** — so between 13 and 19 sites are outside the
+categories the ADR decides. The categorisation approach is right; its coverage claim is not yet
+proven.
+
+### Three ADRs, and they stayed in their lane
+
+- **ADR-006** — migration order. Rejects easiest-first, hardest-first, riskiest-first, big-bang and
+  layer-first explicitly.
+- **ADR-007** — DOM elimination as **7 category decisions rather than 46 ad-hoc rewrites**.
+- **ADR-008** — testing strategy through the migration.
+
+ADR-007 and ADR-008 decide **patterns, not packages**. Bundler, router, date control and state
+library are all left to step 07, exactly as ADR-005 requires. That restraint is the single most
+reusable habit in this step: an assessment that names its packages has quietly done the planner's
+job for it, and done it without research.
 
 ---
 

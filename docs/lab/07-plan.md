@@ -154,15 +154,16 @@ specs/
 ├── contracts/
 │   └── api/                        ← unchanged from B1, possibly annotated
 └── adrs/
-    ├── adr-008-routing-tanstack-router.md
-    ├── adr-009-server-state-tanstack-query.md
-    ├── adr-010-client-state-zustand.md
-    ├── adr-011-dates-date-fns-explicit-parsing.md    ← the behaviour change
-    ├── adr-012-config-vite-env.md
-    └── adr-013-auth-jwt-localstorage-accepted-risk.md
+    ├── adr-009-routing.md
+    ├── adr-010-server-state-and-caching.md
+    ├── adr-011-client-state-store.md
+    ├── adr-012-date-handling-explicit-parsing.md    ← the behaviour change
+    ├── adr-013-config-and-environment.md
+    └── adr-014-auth-jwt-localstorage-accepted-risk.md
 ```
 
-<sub>ADR numbering continues from Phase A. Exact numbers depend on how many ADRs step 06 produced.</sub>
+<sub>ADR numbering continues from Phase A, which ended at **ADR-008**. Slugs name the *role*, not
+the package — the package is this step's output, not its input.</sub>
 
 ### The increment plan, expected shape
 
@@ -193,7 +194,7 @@ gets a different date. That is user-visible. It therefore needs:
 
 - an entry in the increment 1 **Gherkin delta** — the `@existing-behavior` scenario that pins
   loose parsing is modified, and the modification is reviewed
-- **adr-011**, recording that we chose determinism over bug-compatibility
+- **adr-012**, recording that we chose determinism over bug-compatibility
 - a note in `specs/frd-flight-search.md`
 
 > The rule this illustrates: *behaviour changes are allowed. Undocumented behaviour changes are
@@ -211,7 +212,7 @@ gets a different date. That is user-visible. It therefore needs:
 > 2. `specs/increment-plan.md` — in particular, **do the increments actually carry Gherkin
 >    deltas**, or is it just a list of modules?
 > 3. `specs/tech-stack.md` with the resolved versions — and whether they are current
-> 4. Which ADRs it produced, and whether adr-011 (date parsing) exists
+> 4. Which ADRs it produced, and whether the date-parsing ADR (expected **adr-012**) exists
 > 5. Did it use the MCP tools, or answer from training data? (Symptom: React 18 patterns,
 >    `ReactDOM.render`, outdated TanStack APIs.)
 > 6. What it decided about hash routes (`#!/flights`) — redirect, or drop?
@@ -242,7 +243,7 @@ gets a different date. That is user-visible. It therefore needs:
 - [ ] React 19 patterns, not React 18 (`createRoot`, not `ReactDOM.render`)
 - [ ] Every legacy technology has a named replacement or an explicit "dropped"
 - [ ] `angular-ui-bootstrap` is dropped, per Phase A finding 1
-- [ ] adr-011 exists and references the Gherkin delta
+- [ ] The date-parsing ADR exists and references the Gherkin delta
 - [ ] The JWT-in-`localStorage` ADR says **accepted risk with a follow-up**, not "resolved"
 - [ ] A decision exists about hash-route compatibility — either answer is fine, silence is not
 - [ ] Nothing was added that no FRD needs. A state library *and* a form library *and* a UI kit
