@@ -96,6 +96,18 @@ Every legacy technology needs a named replacement or an explicit "dropped", just
 against the FRDs and the green baseline rather than against popularity. If nothing in
 the specs needs it, it does not go in the stack.
 
+The target language is TypeScript, in strict mode. ADR-005 recorded JavaScript and
+accepted a specific consequence for it: with no compiler, the API contract could not be
+enforced at build time, so conformance was pushed to the test layer. That decision has
+changed. Write a new ADR that supersedes ADR-005 on this point — say what changed, what
+the strict-mode contract now enforces, and which of ADR-005's test-layer obligations are
+consequently relaxed. Do not edit ADR-005 itself.
+
+One thing strict mode does not buy, so do not let it into the ADR as if it did: types are
+erased at runtime. Step 06 finding P-7 is the proof — the rooms payload has no `id` field,
+and a generated type declaring one would have made the compiler agree with the bug. Say
+where response validation happens, and note that it is a separate mechanism from typing.
+
 Then one ADR per real decision. Four of them I know I want, because they are choices
 rather than translations:
   - routing: hash URLs (#!/flights) become real paths. Decide explicitly whether the
@@ -157,12 +169,13 @@ specs/
 ├── contracts/
 │   └── api/                        ← unchanged from B1, possibly annotated
 └── adrs/
-    ├── adr-009-routing.md
-    ├── adr-010-server-state-and-caching.md
-    ├── adr-011-client-state-store.md
-    ├── adr-012-date-handling-explicit-parsing.md    ← the behaviour change
-    ├── adr-013-config-and-environment.md
-    └── adr-014-auth-jwt-localstorage-accepted-risk.md
+    ├── adr-009-target-language-typescript.md        ← supersedes ADR-005 on language
+    ├── adr-010-routing.md
+    ├── adr-011-server-state-and-caching.md
+    ├── adr-012-client-state-store.md
+    ├── adr-013-date-handling-explicit-parsing.md    ← the behaviour change
+    ├── adr-014-config-and-environment.md
+    └── adr-015-auth-jwt-localstorage-accepted-risk.md
 ```
 
 <sub>ADR numbering continues from Phase A, which ended at **ADR-008**. Slugs name the *role*, not
@@ -172,7 +185,7 @@ the package — the package is this step's output, not its input.</sub>
 
 | # | Increment | Scope | Verification |
 |---|-----------|-------|--------------|
-| 0 | Walking skeleton | Vite + React 19 (JavaScript), router tree, data-fetching client, auth store, Vitest, Playwright config, ESLint flat config | `npm start` serves legacy; React dev server serves a trivial route; **all existing `@existing-behavior` scenarios still pass** |
+| 0 | Walking skeleton | Vite + React 19 (TypeScript, `strict`), router tree, data-fetching client, auth store, Vitest, Playwright config | `npm start` serves legacy; React dev server serves a trivial route; **all existing `@existing-behavior` scenarios still pass** |
 | 1 | flight-search | `app/components/flight-search/*` → React; `date-picker.directive.js` and both filters dissolved | `flight-search.feature` passes against the React route |
 | 2 | hotel-booking | `app/components/hotel-booking/*` → React | `hotel-booking.feature` green |
 | 3 | itinerary | `app/components/itinerary/*` → React; `itinerary:refresh` becomes a store subscription | `itinerary.feature` green; booking a flight still refreshes the itinerary |
@@ -197,7 +210,7 @@ gets a different date. That is user-visible. It therefore needs:
 
 - an entry in the increment 1 **Gherkin delta** — the `@existing-behavior` scenario that pins
   loose parsing is modified, and the modification is reviewed
-- **adr-012**, recording that we chose determinism over bug-compatibility
+- **adr-013**, recording that we chose determinism over bug-compatibility
 - a note in `specs/frd-flight-search.md`
 
 > The rule this illustrates: *behaviour changes are allowed. Undocumented behaviour changes are
@@ -215,7 +228,7 @@ gets a different date. That is user-visible. It therefore needs:
 > 2. `specs/increment-plan.md` — in particular, **do the increments actually carry Gherkin
 >    deltas**, or is it just a list of modules?
 > 3. `specs/tech-stack.md` with the resolved versions — and whether they are current
-> 4. Which ADRs it produced, and whether the date-parsing ADR (expected **adr-012**) exists
+> 4. Which ADRs it produced, and whether the date-parsing ADR (expected **adr-013**) exists
 > 5. Did it use the MCP tools, or answer from training data? (Symptom: React 18 patterns,
 >    `ReactDOM.render`, outdated TanStack APIs.)
 > 6. What it decided about hash routes (`#!/flights`) — redirect, or drop?
@@ -246,6 +259,10 @@ gets a different date. That is user-visible. It therefore needs:
 - [ ] React 19 patterns, not React 18 (`createRoot`, not `ReactDOM.render`)
 - [ ] Every legacy technology has a named replacement or an explicit "dropped"
 - [ ] `angular-ui-bootstrap` is dropped, per Phase A finding 1
+- [ ] An ADR **supersedes ADR-005 on language**, and **ADR-005 itself is unedited** —
+      `git diff` on it must be empty
+- [ ] That ADR does not claim strict mode validates API responses. Types are erased; P-7 is the
+      counter-example
 - [ ] The date-parsing ADR exists and references the Gherkin delta
 - [ ] The JWT-in-`localStorage` ADR says **accepted risk with a follow-up**, not "resolved"
 - [ ] A decision exists about hash-route compatibility — either answer is fine, silence is not

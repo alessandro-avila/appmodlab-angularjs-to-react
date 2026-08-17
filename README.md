@@ -10,7 +10,7 @@
 
 AngularJS reached **end of life in January 2022** ([link to the blog](https://blog.angular.dev/discontinued-long-term-support-for-angularjs-cc066b82e65a)).
 
-Your mission is to modernize it into **React 19 + JavaScript**, *without* the "big bang rewrite that never ships". You will do it the way real modernization programmes should be run: **understand first, specify second, test third, change last** - using the [**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) as the framework and GitHub Copilot as the engine.
+Your mission is to modernize it into **React 19 + TypeScript**, *without* the "big bang rewrite that never ships". You will do it the way real modernization programmes should be run: **understand first, specify second, test third, change last** - using the [**spec2cloud**](https://github.com/EmeaAppGbb/spec2cloud) as the framework and GitHub Copilot as the engine.
 
 ---
 
@@ -222,13 +222,13 @@ The agent **stops and waits** at each of these. Nothing is approved by default.
 
 ## 🎯 THE TARGET STACK
 
-React 19 + JavaScript (ES modules) is settled — everything below it is a **role to fill**, not a
+React 19 + TypeScript (strict) is settled — everything below it is a **role to fill**, not a
 decision already made. `tech-stack-resolution` in [step 07](docs/lab/07-plan.md) picks the actual
 libraries and writes an ADR for each; the named candidates are what a 2026 React project would
 plausibly reach for, and are there so you can tell whether the agent researched or just agreed.
 
 ```
-React 19 + JavaScript (ES modules)
+React 19 + TypeScript (strict)
     ├── ⚡ bundler + dev server    replaces Grunt + Bower        e.g. Vite
     ├── 🧭 router                  replaces UI-Router            e.g. TanStack Router, React Router
     ├── 🔄 data-fetching client    replaces Restangular          e.g. TanStack Query, SWR
@@ -463,7 +463,7 @@ Then, in Copilot CLI or Copilot Chat, the orchestrator in `AGENTS.md` activates 
 
 ```
 Analyze this codebase and start the spec2cloud brownfield workflow.
-This is an AngularJS 1.6 app. Target is React 19 + JavaScript.
+This is an AngularJS 1.6 app. Target is React 19 + TypeScript.
 ```
 
 ➡️ **From here, follow [`docs/lab/`](docs/lab/README.md) step by step** — starting with
@@ -601,7 +601,7 @@ appmodlab-angularjs-to-react/
 - [ ] Testability Gate answered, track chosen, **ADR written**
 - [ ] Gherkin `@existing-behavior` scenarios for at least one module
 - [ ] Green baseline: the scenarios pass **against the legacy app**
-- [ ] At least one module migrated to React 19 + JavaScript, tests still green
+- [ ] At least one module migrated to React 19 + TypeScript, tests still green
 - [ ] PR opened with the spec + tests + code in the same changeset
 
 **Stretch**

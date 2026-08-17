@@ -61,8 +61,8 @@ The spec for this increment is specs/features/flight-search.feature. Every
 done. I am not going to restate the behaviour here — if the baseline is missing
 something, that is a bug in step A1 and I want to find it now.
 
-What must be gone: jQuery, jQuery UI, Moment.js, Lodash, Restangular, and $rootScope.
-The datepicker becomes a native date input, the scroll animation
+What must be gone: jQuery, jQuery UI, Moment.js, Lodash, Restangular, $rootScope,
+and any `any`. The datepicker becomes a native date input, the scroll animation
 becomes scrollIntoView, currency becomes Intl.NumberFormat, dates go through
 date-fns with an explicit parse format, and data fetching goes through the query
 hooks from increment 0.
@@ -110,16 +110,16 @@ not touch.
 
 ```
 src/
-├── routes/flights.jsx                      ← real route now, not a placeholder
+├── routes/flights.tsx                      ← real route now, not a placeholder
 └── features/flight-search/
-    ├── FlightSearchPage.jsx
-    ├── SearchForm.jsx                      ← replaces the searchParams block
-    ├── FilterPanel.jsx                     ← replaces filters + deep watch
-    ├── ResultsTable.jsx                    ← replaces the ng-repeat + sort
-    ├── FlightDetails.jsx                   ← scrollIntoView target
-    ├── use-flight-search.js                ← data-fetching hook
-    ├── filters.js                          ← pure functions, unit-testable
-    └── *.test.jsx / *.test.js
+    ├── FlightSearchPage.tsx
+    ├── SearchForm.tsx                      ← replaces the searchParams block
+    ├── FilterPanel.tsx                     ← replaces filters + deep watch
+    ├── ResultsTable.tsx                    ← replaces the ng-repeat + sort
+    ├── FlightDetails.tsx                   ← scrollIntoView target
+    ├── use-flight-search.ts                ← data-fetching hook
+    ├── filters.ts                          ← pure functions, unit-testable
+    └── *.test.tsx / *.test.ts
 
 specs/
 ├── features/flight-search.feature          ← delta applied, still tagged
@@ -135,8 +135,8 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 
 | Legacy | Where it goes | Note |
 |--------|---------------|------|
-| `flight-search.controller.js` | split across components + `filters.js` | 258 lines of controller become several small units |
-| `flight-search.service.js` | `use-flight-search.js` | Restangular → the data-fetching client |
+| `flight-search.controller.js` | split across components + `filters.ts` | 258 lines of controller become several small units |
+| `flight-search.service.js` | `use-flight-search.ts` | Restangular → the data-fetching client |
 | `flight-search.template.html` | JSX across the components | |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |
@@ -196,7 +196,8 @@ digest cycle in React, badly.
 - [ ] All `@existing-behavior` scenarios pass — for **every** module, not just flights
 - [ ] The only modified scenario is the date-parsing one, and its ADR explains it
 - [ ] `grep -rn "jquery\|jQuery\|moment\|lodash\|restangular" src/` → nothing
-- [ ] `npx eslint src/` returns clean, and the flight response is validated before it is rendered
+- [ ] `grep -rn ": any\|as any\|@ts-expect-error\|@ts-ignore" src/` → nothing
+- [ ] The flight response is validated before it is rendered — the generated type is not the check
 - [ ] The `maxPrice` reset still happens on every search — **surprising behaviour preserved**
 - [ ] Time buckets are still 6–12 / 12–18 / 18–6
 - [ ] Sorting still toggles direction on repeated header clicks
@@ -258,10 +259,10 @@ It also passes the tests, which is why it needs to be caught in review rather th
 </details>
 
 <details>
-<summary><b>One giant <code>FlightSearchPage.jsx</code></b></summary>
+<summary><b>One giant <code>FlightSearchPage.tsx</code></b></summary>
 
 258 lines of controller ported to 400 lines of component is a translation, not a migration. The
-filter logic in particular should end up in `filters.js` as pure functions — testable without
+filter logic in particular should end up in `filters.ts` as pure functions — testable without
 rendering anything, which makes the Vitest suite fast and the time-bucket edge cases (what is
 `18–6` at 23:00?) actually pinnable.
 </details>

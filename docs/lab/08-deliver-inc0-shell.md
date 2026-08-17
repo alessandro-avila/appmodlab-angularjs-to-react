@@ -7,7 +7,7 @@
 
 ## 🎯 Goal
 
-Stand up React 19 + JavaScript + Vite **alongside** the AngularJS app. Migrate **nothing**.
+Stand up React 19 + TypeScript + Vite **alongside** the AngularJS app. Migrate **nothing**.
 
 This is the walking skeleton. Its only job is to prove the new stack runs against the same API
 before you bet a feature on it. If increment 0 is wrong, increments 1–5 inherit the wrongness
@@ -114,30 +114,29 @@ something tidier is a one-word edit that silently breaks all three.
 
 ```
 src/                                ← or wherever tech-stack.md put it
-├── main.jsx                        ← createRoot (React 19), not ReactDOM.render
+├── main.tsx                        ← createRoot (React 19), not ReactDOM.render
 ├── routes/
-│   ├── __root.jsx
-│   ├── login.jsx
-│   ├── dashboard.jsx
-│   ├── flights.jsx                 ← placeholder
-│   ├── hotels.jsx                  ← placeholder
-│   ├── itinerary.jsx               ← placeholder
-│   ├── travel-request.jsx          ← placeholder
-│   └── expenses.jsx                ← placeholder
+│   ├── __root.tsx
+│   ├── login.tsx
+│   ├── dashboard.tsx
+│   ├── flights.tsx                 ← placeholder
+│   ├── hotels.tsx                  ← placeholder
+│   ├── itinerary.tsx               ← placeholder
+│   ├── travel-request.tsx          ← placeholder
+│   └── expenses.tsx                ← placeholder
 ├── lib/
-│   ├── api-client.js               ← fetch wrapper, VITE_API_URL, Bearer token
-│   └── query-client.js
+│   ├── api-client.ts               ← fetch wrapper, VITE_API_URL, Bearer token
+│   └── query-client.ts
 ├── stores/
-│   ├── auth-store.js               ← replaces auth.service.js + auth:login/auth:logout
-│   └── notification-store.js       ← replaces notification:add
-└── contracts/
-    └── api-schemas.js              ← response validators from specs/contracts/api/*.yaml
+│   ├── auth-store.ts               ← replaces auth.service.js + auth:login/auth:logout
+│   └── notification-store.ts       ← replaces notification:add
+└── types/
+    └── api.ts                      ← generated from specs/contracts/api/*.yaml
 
-vite.config.js
-jsconfig.json                       ← path aliases, editor IntelliSense
-eslint.config.js                    ← flat config
-vitest.config.js
-playwright.config.js
+vite.config.ts
+tsconfig.json                       ← strict: true
+vitest.config.ts
+playwright.config.ts
 .env.example                        ← VITE_API_URL=http://localhost:3000/api
 package.json                        ← new scripts ADDED, legacy scripts UNTOUCHED
 ```
@@ -155,7 +154,7 @@ package.json                        ← new scripts ADDED, legacy scripts UNTOUC
 
 ### The two mappings that matter
 
-**`auth.service.js` → `auth-store.js`.** The behaviour must be preserved exactly, because the
+**`auth.service.js` → `auth-store.ts`.** The behaviour must be preserved exactly, because the
 `@existing-behavior` scenarios assert on it:
 
 | Legacy | Target |
@@ -169,7 +168,7 @@ package.json                        ← new scripts ADDED, legacy scripts UNTOUC
 > Keep the `authToken` key. Changing it is a one-character edit that invalidates every Playwright
 > storage-state fixture you built in step 04.
 
-**`notification:add` → `notification-store.js`.** Handled globally at `app/app.js:44` today;
+**`notification:add` → `notification-store.ts`.** Handled globally at `app/app.js:44` today;
 published by every controller. In React it is a store with an `add(message, type)` action and a
 toast component subscribed to it.
 
@@ -186,8 +185,9 @@ toast component subscribed to it.
 > 3. The `package.json` diff — additions only?
 > 4. Output of: Vite build, Vitest, `npm test` (Karma), full Playwright `@existing-behavior`
 > 5. Whether it used React 19 APIs or fell back to React 18 patterns
-> 6. Whether ESLint runs clean, and whether the API client validates the response shape or just
->    trusts it — with no type layer, that boundary is the only place a renamed field gets caught
+> 6. Whether `tsconfig.json` really has `strict: true` and whether any `any` slipped in — and,
+>    separately, whether the API client validates the response shape at **runtime**. Types are
+>    erased at the network boundary; step 06's **P-7** is the proof
 > 7. Anything it wanted to delete and had to be stopped from deleting
 
 ---
@@ -199,7 +199,9 @@ toast component subscribed to it.
 - [ ] `npm start` still serves the legacy app at :8080 and the mock API at :3000
 - [ ] All `@existing-behavior` scenarios pass, unchanged
 - [ ] `npm test` (Karma) still green from step 04
-- [ ] `npx eslint src/` returns clean — no disabled rules smuggled in via `/* eslint-disable */`
+- [ ] `tsconfig.json` has `strict: true`; `grep -rn ': any\|as any' src/` returns nothing
+- [ ] The API client validates the response before returning it — a generated type is not a runtime
+      guarantee (step 06, **P-7**)
 - [ ] No hardcoded `http://localhost:3000` anywhere in `src/` — it comes from
       `import.meta.env.VITE_API_URL`
 - [ ] `.env.example` is committed; a real `.env` is **not**
@@ -241,12 +243,26 @@ research, you will find out here.
 </details>
 
 <details>
-<summary><b>Trusting the API response shape</b></summary>
+<summary><b><code>strict: true</code> with escape hatches</b></summary>
 
-There is no type layer to catch a renamed or missing field, so the API client is the only place
-that can. The legacy app already shows what happens without it: `room.id` does not exist in the
-mock fixture, and `pricePerNight` is never sent — both surface as `undefined` in the UI rather
-than as an error. Validate at the boundary, or you inherit the same failure mode in React.
+`strict: true` plus `// @ts-expect-error` scattered around, or `any` renamed to `unknown` and
+immediately cast, is not strict mode — it is strict mode theatre. Grep the diff.
+</details>
+
+<details>
+<summary><b>Trusting the API response shape — <i>especially</i> with TypeScript</b></summary>
+
+TypeScript is erased at runtime, so a type generated from `specs/contracts/api/*.yaml` is a
+**claim about** the response, never a check on it. The API client is the only place that can
+actually verify one arrived.
+
+The legacy app already demonstrates the failure, and [step 06](06-assess.md) measured it:
+`room.id` **does not exist** in the payload (`api-mock/server.js:403–411`), and `pricePerNight`
+is never sent — both surface as `undefined` rather than as an error. That is finding **P-7**, and
+it is the reason a hotel cannot be booked in the legacy UI at all.
+
+A generated `Room` type declaring `id: string` would not have caught it. It would have made the
+compiler agree with the bug. Validate at the boundary.
 </details>
 
 <details>
