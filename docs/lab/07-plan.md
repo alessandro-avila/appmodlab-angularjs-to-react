@@ -62,7 +62,7 @@ Gherkin delta — which existing @existing-behavior scenarios are affected, whic
 untouched, which are new — and the FRD delta. An increment plan without deltas is a
 list of module names, and Phase 2 has nothing to work against.
 
-Four constraints that have to be visible in the plan itself:
+Five constraints that have to be visible in the plan itself:
   - per ADR-005 there is no strangler-fig bridge: the two stacks do not share a page.
     The AngularJS app stays startable in the repo until the final increment, and the
     HTTP API is the seam. Say how incrementality survives without an in-page bridge
@@ -78,6 +78,11 @@ Four constraints that have to be visible in the plan itself:
 
 Deliberate behaviour changes need their own Gherkin delta and an ADR. From Phase A
 there is exactly one candidate.
+
+One caution about your inputs. Re-derive any figure you rely on from source rather
+than quoting the assessment. Its summary block disagrees with its own tables on the
+finding counts, and two numbers in it were carried over from ADR-005 instead of being
+re-measured. If a count matters to the plan, count it.
 
 Do not resolve the tech stack yet. Stop at the Plan Review gate.
 ```
