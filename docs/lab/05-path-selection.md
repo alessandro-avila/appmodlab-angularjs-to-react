@@ -55,9 +55,10 @@ could reasonably have picked instead.
 ```
 
 > ⚠️ **This lab originally ran with JavaScript as the target language, and the outcome below
-> records that.** The target has since changed to **TypeScript**. The prompt above is the
-> corrected one — but ADR-005 on `lab/05-path-selection` still says JavaScript, and that is
-> **left alone deliberately**. See [the note below](#the-language-decision-changed-after-this-step).
+> records that.** The customer later clarified that the landing stack is **React + TypeScript**,
+> and the hackathon follows that. The prompt above is the corrected one — but ADR-005 on
+> `lab/05-path-selection` still says JavaScript, and that is **left alone deliberately**.
+> See [the note below](#the-language-decision-changed-after-this-step).
 
 That is the prompt that produced the outcome below, and it is deliberately short. Three
 sentences: the state, the decision, the standard of argument. Everything else the agent needed
@@ -279,6 +280,13 @@ The target language was later changed to **TypeScript**, which reverses exactly 
 ADR-005 recorded above. Note what did **not** happen: ADR-005 was not edited. It still reads
 JavaScript, and it stays that way.
 
+**And it was not wrong.** This is the distinction worth taking away. ADR-005 reasoned correctly
+from the input it had; the input then changed — the customer clarified that the landing stack is
+React + TypeScript. A decision overturned by a changed requirement is a completely different
+artefact from a decision that was mistaken, and only one of them suggests the process needs
+fixing. Erasing ADR-005 would flatten the two into each other and leave the repo implying the
+team knew all along.
+
 That is ADR discipline, and it is the whole reason the sentence *"must not be quietly reversed
 later without a new ADR"* was written into it. An ADR is a dated record of what was decided and
 why, on the evidence available then. When the decision changes you write a **new** ADR that
@@ -286,8 +294,9 @@ supersedes it and says what changed — you do not rewrite the old one, because 
 the only evidence that the trade-off was ever considered.
 
 So the supersession is a `tech-stack-resolution` output in [step 07](07-plan.md), not a retroactive
-edit here. Concretely it must say: TypeScript is now the target, the build-time contract enforcement
-ADR-005 gave up is regained, and the test-layer burden this ADR imposed is relaxed accordingly.
+edit here. Concretely it must say: TypeScript is now the target **because the requirement was
+clarified, not because the original reasoning failed**; the build-time contract enforcement ADR-005
+gave up is regained; and the test-layer burden this ADR imposed is relaxed accordingly.
 
 One consequence survives the switch intact. The increment-0 pitfall in
 [step 08](08-deliver-inc0-shell.md) is *"trusting the API response shape"*, and it is **not** a

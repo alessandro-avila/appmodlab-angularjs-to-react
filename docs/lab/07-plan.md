@@ -98,10 +98,11 @@ the specs needs it, it does not go in the stack.
 
 The target language is TypeScript, in strict mode. ADR-005 recorded JavaScript and
 accepted a specific consequence for it: with no compiler, the API contract could not be
-enforced at build time, so conformance was pushed to the test layer. That decision has
-changed. Write a new ADR that supersedes ADR-005 on this point — say what changed, what
-the strict-mode contract now enforces, and which of ADR-005's test-layer obligations are
-consequently relaxed. Do not edit ADR-005 itself.
+enforced at build time, so conformance was pushed to the test layer. That requirement has
+since been clarified — TypeScript is the landing stack. Write a new ADR that supersedes
+ADR-005 on this point. It must say what changed and why: the requirement was clarified,
+ADR-005's reasoning was not faulty. Then state what strict mode now enforces and which of
+ADR-005's test-layer obligations are consequently relaxed. Do not edit ADR-005 itself.
 
 One thing strict mode does not buy, so do not let it into the ADR as if it did: types are
 erased at runtime. Step 06 finding P-7 is the proof — the rooms payload has no `id` field,
