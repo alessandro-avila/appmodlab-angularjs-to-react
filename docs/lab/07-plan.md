@@ -1,7 +1,7 @@
 # Step 07 · Phase P · Plan
 
 > **Phase** P · Plan &nbsp;|&nbsp; **Branch** [`lab/07-plan`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/07-plan) &nbsp;|&nbsp; **Parent** `lab/06-assess`
-> **Human gates** 🧑‍⚖️ Plan Review · Tech-Stack Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gates** 🧑‍⚖️ Plan Review · Tech-Stack Review &nbsp;|&nbsp; **Status** 🔄 P1 verified · P2 pending
 
 ---
 
@@ -175,17 +175,22 @@ specs/
 ├── contracts/
 │   └── api/                        ← unchanged from B1, possibly annotated
 └── adrs/
-    ├── adr-009-target-language-typescript.md        ← supersedes ADR-005 on language
-    ├── adr-010-routing.md
-    ├── adr-011-server-state-and-caching.md
-    ├── adr-012-client-state-store.md
-    ├── adr-013-date-handling-explicit-parsing.md    ← the behaviour change
-    ├── adr-014-config-and-environment.md
-    └── adr-015-auth-jwt-localstorage-accepted-risk.md
+    │  ── from P1, the increment plan ──
+    ├── adr-009-explicit-date-parsing.md            ← the behaviour change
+    ├── adr-010-authentication-surface-sequencing.md ← unpredicted; reshapes Inc-0
+    │  ── from P2, the tech stack ──
+    ├── adr-011-target-language-typescript.md       ← supersedes ADR-005 on language
+    ├── adr-012-routing.md
+    ├── adr-013-server-state-and-caching.md
+    ├── adr-014-client-state-store.md
+    ├── adr-015-config-and-environment.md
+    └── adr-016-auth-jwt-localstorage-accepted-risk.md
 ```
 
-<sub>ADR numbering continues from Phase A, which ended at **ADR-008**. Slugs name the *role*, not
-the package — the package is this step's output, not its input.</sub>
+<sub>The first two are what P1 actually produced. **ADR-010 was not predicted by anyone** — the
+planner derived it from a collision between ADR-006 and ADR-005 that neither ADR noticed. P2's
+numbering therefore starts at 011. Phase A ended at ADR-008; the P2 slugs name the *role*, not the
+package, because the package is P2's output rather than its input.</sub>
 
 ### The increment plan, expected shape
 
@@ -216,7 +221,7 @@ gets a different date. That is user-visible. It therefore needs:
 
 - an entry in the increment 1 **Gherkin delta** — the `@existing-behavior` scenario that pins
   loose parsing is modified, and the modification is reviewed
-- **adr-013**, recording that we chose determinism over bug-compatibility
+- **adr-009**, recording that we chose determinism over bug-compatibility
 - a note in `specs/frd-flight-search.md`
 
 > The rule this illustrates: *behaviour changes are allowed. Undocumented behaviour changes are
@@ -227,20 +232,139 @@ gets a different date. That is user-visible. It therefore needs:
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/06-assess..lab/07-plan`
-> 2. `specs/increment-plan.md` — in particular, **do the increments actually carry Gherkin
->    deltas**, or is it just a list of modules?
-> 3. `specs/tech-stack.md` with the resolved versions — and whether they are current
-> 4. Which ADRs it produced, and whether the date-parsing ADR (expected **adr-013**) exists
-> 5. Did it use the MCP tools, or answer from training data? (Symptom: React 18 patterns,
->    `ReactDOM.render`, outdated TanStack APIs.)
-> 6. What it decided about hash routes (`#!/flights`) — redirect, or drop?
-> 7. **What it says about `flight:selected` across increments 1 and 2** — with no in-page bridge,
->    the honest answer is that the cross-feature journey is unserved in the gap. A plan that
->    quietly designs interop anyway has not read ADR-005
+### P1 — Increment plan · ✅ Verified
+
+> Branch [`lab/07-plan`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/07-plan) ·
+> [compare with `lab/06-assess`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/06-assess...lab/07-plan)
+
+```
+ .spec2cloud/audit.log                             |   36 +
+ .spec2cloud/state.json                            |  220 ++-
+ specs/adrs/adr-009-explicit-date-parsing.md       |  204 +++
+ specs/adrs/adr-010-authentication-surface-…       |  198 +++
+ specs/increment-plan.md                           | 1754 ++++++++++++++++
+ 5 files changed, 2405 insertions(+), 7 deletions(-)
+```
+
+`git status -- app/ api-mock/ test/` = **0 changes**. No package is named anywhere in the plan; §13
+hands the entire stack to P2. It stopped at the gate.
+
+### The deltas are real
+
+This was the thing to check hardest, and it passes. Every increment classifies its scenarios
+**Preserve / Supersede / Net-new**, line-numbered, each with a mechanism and an authorising ADR, and
+the scenario arithmetic is carried forward increment to increment. A sample from Inc-1:
+
+| Line | Verdict | Why |
+|---|---|---|
+| `:118` | **SUPERSEDE** | C-4 — `step=50` with `min=230` caps the filter at 630, hiding flights at 638 and 642 |
+| `:123` | **SUPERSEDE** | same root cause — `controller.js:120` broadcasts the *unfiltered* count |
+| `:62` | **PRESERVE** | the generator ignores the requested date. Unauthorised, therefore reproduced |
+| *typed departure date* | **NET-NEW** | the field is `<input type="text">`; typing never fires `onSelect`, so the model stays null while the field looks filled. React makes typing work **for the first time** |
+
+Seven line citations sampled at random — `feature:91`, `:118`, `:123`, `template.html:57`,
+`page.js:7`, `controller.js:107`, `controller.js:120` — were **7/7 exact**.
+
+### The finding that changes the project
+
+§0.6 ran the baseline before relying on it:
+
+```
+235 scenarios (189 passed, 46 failed)
+1944 steps (1781 passed, 117 skipped, 46 failed)
+```
+
+**`git diff app/` and `git diff api-mock/` are both 0 lines.** Not one line of application source
+changed since the baseline was approved at 235/235. **The suite decayed on its own.**
+
+Cause, proven by driving a browser rather than inferred: the datepickers are configured `minDate: 0`
+and `minDate: 1`, so every past day of the current month renders `unselectable` with no `<a>` inside.
+The baseline hard-codes **absolute** August 2026 dates. On approval day all were in the future; they
+are now in the past, and `pickDate` waits 30 s for a locator that will never appear. All 46 failures
+carry the identical signature.
+
+I verified the mechanism independently — `minDate: 0`/`1` confirmed in `flight-search`,
+`hotel-booking` and `travel-request` controllers, and the hard-coded August days confirmed in both
+the feature files and the step definitions. *(One slip: §0.6 attributes `minDate: 0` to
+"departure, check-in, **expense** date" — `expense.controller.js` has no `minDate` at all. The third
+is travel-request.)*
+
+Its chosen repair is the right one, and the reasoning is the interesting part. **Rejected:** relative
+dates, because deriving from the run date rewrites `Then` literals — `flight-search.feature:93`
+asserts the field reads *"Tue Aug 25 2026"* — and editing assertions is exactly what ADR-008 exists
+to prevent. **Chosen:** pin the suite clock. Inputs stay literal, assertions stay untouched, and
+Inc-0's *"no feature file changes"* proof survives.
+
+> A green baseline is not green forever. This one rotted with **zero commits** against it, and it
+> would have been discovered mid-increment as a "React regression" that was nothing of the kind.
+> Re-run the baseline at the start of every increment, not just after changes.
+
+### It found a genuine ADR conflict
+
+§1.7: `adr-006:164` states *"Both frameworks are loaded simultaneously, the bundle is larger than
+either endpoint"* — which is only possible if they share a document, and **ADR-005 forbids exactly
+that**. I confirmed the quote is real and at that line.
+
+The plan implements ADR-005's reading — two documents, two bundles, one origin, never co-loaded —
+**says so**, and escalates rather than silently choosing. That is the correct behaviour for a
+contradiction between two approved decisions.
+
+### ADR-010 was not on anyone's list
+
+Predicted ADRs for this step were all stack decisions. The planner produced one nobody asked for,
+and it reshapes an increment boundary.
+
+ADR-006 put authentication in Inc-0. But with no bridge, **the login screen cannot move before `/`
+moves** — so the auth *surface* cannot live in an increment that migrates no feature. ADR-010 splits
+it: Inc-0 takes the **plumbing** (token store on the same `localStorage` key, `Authorization` header,
+route guard, `GET /api/auth/me` rehydration for the C-1 repair, 401 handling) with a Gherkin delta of
+**0 affected / 235 untouched / 0 new**; the **surface** moves to cutover.
+
+This is a planner deriving a consequence its own inputs implied but never stated. It also means
+[step 08](08-deliver-inc0-shell.md) is *shell + auth plumbing*, not *shell + auth*.
+
+### Figures re-derived, as instructed
+
+§0 exists because the P1 prompt told it not to trust its inputs. It paid off:
+
+| Figure | Assessment said | Plan re-derived | Verdict |
+|---|---|---|---|
+| Findings | 34 (5/13/13/3) | **41** (5/**15**/**18**/3), 43 rows | ✅ matches my count exactly |
+| `$broadcast` sites | 24 | **29** | ✅ matches |
+| `app/` size | 27 files / 4462 lines | 27 files ✓ / 4925 physical, **4458 non-blank** | ADR-005's figure was non-blank lines, and 4 short |
+| API-only scenarios | 15 | **15** ✓ | see below — this one corrected *me* |
+
+Three of the four inputs did not survive re-measurement. None changed an increment boundary, which is
+itself worth noting: the plan recorded them so the gate would not inherit them, then carried on.
+
+**And it caught an error in this lab's own review.** Step 06's outcome claimed the assessment's
+*"15 server-only"* should read 19. It should not. The full correction is
+[in step 06](06-assess.md#the-reviewer-broke-his-own-rule) — briefly, **API-only (15)** and
+**`@bypasses-ui` (4)** are different categories and do not add, `itinerary.feature:27` is a comment
+rather than a tag, and the one scenario that looks server-only calls `page.goto()`. The plan resolved
+every step against `tests/steps/*.js`; the reviewer added two numbers that looked related.
+
+### Six decisions handed to the gate
+
+The plan refuses to answer six questions it judges outside its authority, and states §3.2's supersede
+figure as a **range (65–69)** rather than picking answers to close it. Only one has real blast radius:
+
+| # | Decision | Blast radius |
+|---|---|---|
+| **1** | **§1.7 — ADR-005 vs ADR-006 on simultaneous loading** | **the whole plan** |
+| 2 | §10.1 — cutover carries auth, or a separate Inc-5b? | one increment boundary |
+| 3 | §12 — authorise the 14 reproduced defects now? | 14 scenarios, plus rework if deferred |
+| 4 | §7.5 — do cancelled items count toward a server-derived `Trip.totalCost`? | one scenario, one API field |
+| 5 | §1.5 — where is Q-7 ownership enforced? | one scenario, the API contract |
+| 6 | §11.3 — P-6, client-minted expense IDs | one scenario, one server field |
+
+**Resolved at the gate:** ADR-005's reading stands (it is the governing decision; ADR-006's bullet is
+a loosely worded consequence, corrected by note rather than edit). The 7-increment shape stands. The
+14 reproduced defects are authorised now.
+
+### P2 — Tech stack
+
+> ⏳ **Pending.**
 
 ---
 

@@ -387,7 +387,7 @@ lower-scoring travel-request purely on dependency order.
 **All eight ground-truth findings above came back confirmed**, each with file:line evidence — they
 form the floor, and the assessment then built on it rather than stopping there.
 
-### Four counting errors — and a three-hop propagation
+### Three counting errors, one propagation — and one error of mine
 
 The report's own **Summary block contradicts its own tables**:
 
@@ -404,22 +404,53 @@ consolidated chat summary reproduced the same "34" headline *directly above a ca
 own column sums to 43* — self-contradictory within a single message. Knock-on: **"26 of the 34 are
 new"** should read **33 of 41**, since exactly 8 rows carry the `README` marker.
 
-Two further slips are more interesting, because they are **inherited, not made**:
+[Step 07](07-plan.md) re-derived all of this independently and landed on the identical
+5 / 15 / 18 / 3 → 41. Two agents measuring the same tables agreed; the summary block is simply stale.
+
+One further slip is more interesting, because it was **inherited, not made**:
 
 | Claim | Actual | Origin |
 |---|---|---|
 | P-5: "24 `$broadcast` sites" | **29** | ADR-005 → assessment |
-| Inputs table: "15 scenarios are server-only" *(product-wide)* | **19** | ADR-005 → assessment |
 
-Both were caught and documented in [step 05](05-path-selection.md). The assessment **re-stated them
-instead of re-deriving them**, so each has now travelled three hops: FRD → ADR-005 → assessment.
+It was caught and documented in [step 05](05-path-selection.md). The assessment **re-stated it
+instead of re-deriving it**, so it has now travelled three hops: FRD → ADR-005 → assessment.
 B1's `architecture/overview.md` had the event count right all along.
 
 > A number that is wrong in an ADR does not stay in that ADR. It gets cited, and the citation looks
 > like corroboration. **Re-derive from source at every hop; never inherit a figure from a document.**
 
-*(Note the near-miss: the authentication section's own "15 are server-only" is **correct** — 15 is
-that feature's individual count. The error is only in the product-wide roll-up.)*
+#### The reviewer broke his own rule
+
+This page originally listed a **fourth** error: that the assessment's *"15 scenarios are server-only"*
+should read **19**. That correction was wrong, and step 07 disproved it.
+
+There are two different categories, and I collapsed them:
+
+| Category | Count | What it means |
+|---|---:|---|
+| **API-only** | **15** | Never touches a browser. All in `authentication.feature`. |
+| **`@bypasses-ui`** | **4** | Reaches past the interface *for setup*, then still drives a browser. |
+
+I added them and reported 19 as the server-only figure. They do not add — a `@bypasses-ui` scenario
+still needs a browser, which is the entire property the "server-only" number exists to express.
+
+Two things made it easy to get wrong, and both are worth knowing:
+
+- `itinerary.feature:27` reads `# Scenarios that reach past the interface are tagged @bypasses-ui.`
+  It is a **comment**. A raw tag count returns 5; the real tag count is 4.
+- The 15 sit in one section of `authentication.feature` that holds **16** expanded scenarios. The
+  sixteenth, *"The server can identify the holder of a token"* (`:274`), opens with
+  `Given I am signed in to the travel portal` — whose step definition calls `page.goto(…)`
+  (`flight-search.steps.js:39`). It boots a browser, so it is not API-only. 16 − 1 = 15.
+
+Step 07 got there by resolving **every step of every scenario** against `tests/steps/*.js` and
+reading the definition bodies. I got there by adding two numbers that looked related. The assessment
+was right; the reviewer was not.
+
+The lesson is the same one this page already teaches, aimed the other way: **a correction is a claim
+too, and it needs deriving from source exactly like the thing it corrects.** Being the one checking
+does not exempt you.
 
 Finally, **P-1 claims "46 direct DOM-manipulation sites"**. Measured: **40** jQuery `$(…)` call
 sites, zero `angular.element`, zero `document.querySelector`/`getElementById`. And the seven-category

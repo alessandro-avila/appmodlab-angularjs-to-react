@@ -7,19 +7,30 @@
 
 ## 🎯 Goal
 
-Delete AngularJS.
+Delete AngularJS — **and build the one screen it still owns.**
 
-All five modules are React. What remains under `app/` is scaffolding for an application nobody
-runs: the module bootstrap, the router config, three services already replaced by stores and query
-hooks, and `index.html`. Alongside it sits Bower, Grunt, Karma, and a committed
-`bower_components/`.
+All five feature modules are React. What remains under `app/` is scaffolding for an application
+nobody runs — plus, uniquely, the **login screen**, which is still the real thing. Per **ADR-010**
+the authentication *surface* was deferred to this increment, because with no in-page bridge the login
+screen cannot move until `/` moves. Alongside the scaffolding sits Bower, Grunt, Karma, and a
+committed `bower_components/`.
 
-This increment removes all of it and makes React the single entry point. It is the only increment
-that is almost entirely deletion — which is exactly why it goes last and alone.
+So this increment is two jobs that only work together:
+
+1. **Build** the React login screen, and the sign-out control that has never existed anywhere
+   (`authentication.feature:124` — *"No screen offers a way to sign out"*).
+2. **Delete** everything AngularJS and make React the single entry point.
+
+It is the only increment where deletion and net-new behaviour land in the same PR — which is exactly
+why it goes last and alone.
 
 > The safety net is doing something different here. Through increments 1–5 the
 > `@existing-behavior` suite proved *"the migrated module behaves like the old one"*. Now it proves
 > *"nothing was still quietly depending on the old one"*. Same tests, different question.
+
+> **Watch the asymmetry.** Increments 1–5 mostly *preserved*. This one carries the largest net-new
+> Gherkin delta in the project, because the auth surface was never migrated — it was postponed.
+> Treat it as a feature increment that happens to end in a deletion, not as a cleanup.
 
 ---
 
@@ -44,13 +55,21 @@ git switch -c lab/14-cutover
 ## 🗣️ The prompt
 
 ```text
-Phase 2, final increment — cutover. Delete AngularJS.
+Phase 2, final increment — cutover. Build the login screen, then delete AngularJS.
 
-All five modules are React. Remove the legacy application and its entire build
-chain: app/, bower.json, .bowerrc, bower_components/, Gruntfile.js, the Karma
-config and specs, and every dependency in package.json that exists only to serve
-them. React becomes the single entry point, and npm start runs the mock API plus
-Vite.
+Order matters. Per ADR-010 the authentication surface was deferred to this
+increment, so AngularJS still owns sign-in. Build the React login screen and the
+sign-out control first, prove them green, and only then delete anything. The auth
+plumbing has been in place since increment 0; what is missing is the surface.
+
+Sign-out is net-new. It exists nowhere in the product today — authentication.feature
+asserts no screen offers it. Treat it as a new behaviour with its own scenarios, not
+as a port.
+
+Then remove the legacy application and its entire build chain: app/, bower.json,
+.bowerrc, bower_components/, Gruntfile.js, the Karma config and specs, and every
+dependency in package.json that exists only to serve them. React becomes the single
+entry point, and npm start runs the mock API plus Vite.
 
 The mock API stays exactly as it is. It was out of scope in step 05 and it still is.
 
@@ -148,6 +167,9 @@ specs/                            updated, not deleted
 > 🔴 **Blast radius: irreversible in spirit.** Recoverable from git, but this is the commit the
 > repo is judged on.
 
+- [ ] **The React login screen exists and works**, and the auth-surface Gherkin delta was reviewed
+      before any deletion happened (ADR-010)
+- [ ] **Sign-out exists** — net-new behaviour, with its own scenarios, not a port
 - [ ] `app/`, `bower.json`, `.bowerrc`, `bower_components/`, `Gruntfile.js` all gone
 - [ ] `grep -rn "angular\|bower\|grunt\|karma\|jasmine" --include=*.json --include=*.js .` returns
       nothing outside `specs/` and `docs/`

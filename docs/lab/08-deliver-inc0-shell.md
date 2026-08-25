@@ -16,6 +16,14 @@ five times over.
 > **Success looks boring:** two apps serve independently, a trivial React page renders against
 > the real API, and every `@existing-behavior` scenario still passes untouched.
 
+> **Authentication: plumbing only, no surface.** ADR-010 (written during
+> [step 07](07-plan.md#adr-010-was-not-on-anyones-list)) split it. Increment 0 takes the token store,
+> the `Authorization` header, the route guard, `GET /api/auth/me` identity rehydration (the C-1
+> repair) and the 401 path — none of which has a user-visible surface of its own. **The React login
+> screen is not built here.** With no bridge, the login screen cannot move before `/` moves, so the
+> auth *surface* lands in [cutover](14-cutover.md). This increment's Gherkin delta is
+> **0 affected / 235 untouched / 0 new**.
+
 > **Not a strangler fig.** ADR-005 rejected mounting React inside the AngularJS shell — no
 > bundler forced into the legacy client, no `$rootScope` bridge, no dual routing. The two stacks
 > coexist in the *repository*, not in one page, and the seam between them is the HTTP API.
@@ -62,14 +70,18 @@ Phase 2, increment 0 — the walking skeleton.
 
 Build the React app the plan and tech-stack call for, running ALONGSIDE the
 AngularJS app as a separate app on its own port — not mounted inside it, per
-ADR-005. Mirror the seven UI-Router states as routes, but every one except login is
-a placeholder in this increment. No feature is migrated.
+ADR-005. Mirror the seven UI-Router states as routes, all placeholders in this
+increment. No feature is migrated, and per ADR-010 no login screen is built —
+AngularJS still owns every user-visible surface, including sign-in.
 
 Two ports of substance:
-  - app/services/auth.service.js becomes the auth store. Keep the behaviour identical
-    and keep the localStorage key exactly as it is — the Playwright storage state
-    from the green baseline depends on it. The $stateChangeStart guard in app/app.js
-    becomes a router guard.
+  - app/services/auth.service.js becomes the auth store — plumbing only. Keep the
+    behaviour identical and keep the localStorage key exactly as it is, because the
+    Playwright storage state from the green baseline depends on it. The
+    $stateChangeStart guard in app/app.js becomes a router guard. Add identity
+    rehydration via GET /api/auth/me: today a reload leaves currentUser null while
+    the token survives, so consumers silently fall back to 'Demo User'. That is
+    constraint C-1, and it fails invisibly rather than loudly.
   - the notification:add handler in app/app.js becomes a notification store.
 
 The API base URL comes from the environment, never hardcoded — it is currently
@@ -117,8 +129,8 @@ src/                                ← or wherever tech-stack.md put it
 ├── main.tsx                        ← createRoot (React 19), not ReactDOM.render
 ├── routes/
 │   ├── __root.tsx
-│   ├── login.tsx
-│   ├── dashboard.tsx
+│   ├── login.tsx                    ← route only; AngularJS still owns sign-in (ADR-010)
+│   ├── dashboard.tsx               ← placeholder
 │   ├── flights.tsx                 ← placeholder
 │   ├── hotels.tsx                  ← placeholder
 │   ├── itinerary.tsx               ← placeholder
@@ -198,6 +210,8 @@ toast component subscribed to it.
       matters.
 - [ ] `npm start` still serves the legacy app at :8080 and the mock API at :3000
 - [ ] All `@existing-behavior` scenarios pass, unchanged
+- [ ] **The baseline was re-run at the start of this increment, not just at the end.** Step 07 found
+      it had decayed to 189/235 with zero code changes
 - [ ] `npm test` (Karma) still green from step 04
 - [ ] `tsconfig.json` has `strict: true`; `grep -rn ': any\|as any' src/` returns nothing
 - [ ] The API client validates the response before returning it — a generated type is not a runtime
@@ -206,6 +220,8 @@ toast component subscribed to it.
       `import.meta.env.VITE_API_URL`
 - [ ] `.env.example` is committed; a real `.env` is **not**
 - [ ] The auth store uses the `authToken` localStorage key
+- [ ] **No React login screen was built** (ADR-010) — and identity rehydrates via
+      `GET /api/auth/me`, so a reload no longer leaves `currentUser` null (constraint C-1)
 - [ ] The route tree covers all seven states
 - [ ] `package.json` has additions only — no removed dependencies, no changed legacy scripts
 - [ ] The coexistence mechanism is **documented**, not just implemented — and it does not
