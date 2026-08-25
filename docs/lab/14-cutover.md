@@ -253,18 +253,31 @@ The journey, end to end:
 
 | From | To |
 |------|-----|
-| AngularJS 1.6.10, EOL 2022 | React 19 |
-| Bower + Grunt | a bundler + npm |
-| UI-Router hash routes | real paths through the router |
-| Restangular | the data-fetching client |
-| `$rootScope` event bus | explicit stores + query invalidation |
+| AngularJS 1.6.10, EOL 2022 | React 19.2.8 + **TypeScript 7 strict** |
+| Bower + Grunt | Vite 8 + npm |
+| UI-Router hash routes | real paths through React Router 8 |
+| Restangular | one `fetch` client — **no data-cache library**, because two NFRs specify *"No caching"* |
+| `$rootScope` event bus | a Zustand store — and three of the five events turned out to be dead |
 | jQuery + jQuery UI in controllers | React, no jQuery |
-| Moment.js, loosely parsed | a date library, explicitly parsed |
-| Karma + Jasmine, 11/11 red | unit + Playwright suites, green |
-| No specs | PRD, 6 FRDs, contracts, ADRs, a Gherkin baseline |
+| Moment.js, loosely parsed | `date-fns`, explicitly parsed (ADR-009) |
+| Karma + Jasmine, 11/11 red | Vitest + Playwright, green |
+| *nothing validated the API* | Zod at the boundary — because [P-7](06-assess.md) proved a type is not a runtime check |
+| No specs | PRD, 6 FRDs, contracts, 16 ADRs, a 235-scenario Gherkin baseline |
 
 Every behaviour change in that table is either invisible to users or written down in an ADR with
 a Gherkin delta. That is the actual deliverable — the React app is just what it looks like from
 the outside.
+
+### Tag the result
+
+`lab/14-cutover` accumulates all fourteen steps, so it *is* the finished application. Give it a name
+that does not require knowing the step numbering:
+
+```bash
+git branch lab/final-solution lab/14-cutover
+```
+
+One commit, two names. `lab/final-solution` is where anyone who just wants the working React +
+TypeScript app should start; `main` plus the `lab/NN-*` branches are where the reasoning lives.
 
 ← Back to [the walkthrough index](README.md)

@@ -96,6 +96,19 @@ gitGraph
 
 <sub>*(steps 10–13 elided from the diagram for readability — same pattern, one branch per module)*</sub>
 
+**`lab/final-solution` is a pointer, not a line of work.** Because every branch is cut from its
+predecessor, `lab/14-cutover` already *accumulates* all fourteen steps — it is the finished
+application. `lab/final-solution` is created at that same commit once step 14 is green, purely so
+that anyone landing on the repo can find the working React + TypeScript app without knowing the step
+numbering:
+
+```bash
+git branch lab/final-solution lab/14-cutover
+```
+
+Two branches, one commit, no divergence. If you want the journey, read `main` and walk the `lab/NN-*`
+branches in order. If you just want the modernized app, check out `lab/final-solution`.
+
 **Consequence worth internalising:** if step 01's extraction is wrong, every branch downstream
 carries the error. That is not a flaw in the tooling — it is *why* the Extraction Review gate
 exists, and why you should read the output rather than clicking approve.
