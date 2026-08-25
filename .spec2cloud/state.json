@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
-  "currentPhase": "A-assessment",
-  "currentStep": "modernization-planner -> specs/increment-plan.md",
-  "status": "green baseline approved; modernize path selected; planning not started",
+  "currentPhase": "P-planning",
+  "currentStep": "modernization-planner -> specs/increment-plan.md (complete); awaiting Plan Review gate",
+  "status": "increment plan proposed; 7 increments with per-increment Gherkin + FRD deltas; tech stack deliberately unresolved",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -274,6 +274,27 @@
         "scenarios": 235,
         "steps": 1944,
         "appDiffLines": 0
+      },
+      "currentRun": {
+        "ranAt": "2026-08-23T12:35:00+02:00",
+        "command": "npx cucumber-js",
+        "scenarios": 235,
+        "passed": 189,
+        "failed": 46,
+        "steps": 1944,
+        "stepsPassed": 1781,
+        "stepsSkipped": 117,
+        "stepsFailed": 46,
+        "duration": "32m 2.6s",
+        "appDiffLines": 0,
+        "apiDiffLines": 0,
+        "verdict": "FIXTURE DECAY, NOT REGRESSION",
+        "rootCause": "the baseline hard-codes absolute August-2026 calendar days (10,12,13,15,20,21,25,26) across 4 feature files plus hotel-booking.steps.js DEFAULT_CHECK_IN and itinerary.steps.js:396; the jQuery UI datepickers use minDate:0 / minDate:1, so on the current system date 2026-08-23 days 1-22 render as td.ui-datepicker-unselectable with no anchor and pickDate times out after 30s",
+        "proof": "drove a real browser against the running app: calendar 'August 2026' shows selectable days 23-31 and unselectable days 1-22; the 5 past days the baseline asks for are exactly the ones that fail",
+        "failureSignature": "locator.dispatchEvent: Timeout 30000ms exceeded - waiting for locator('#ui-datepicker-div').locator('td[data-handler=selectDay] a')",
+        "wasGreenAt": "2026-08-06T11:42:00Z (235/235) - every target day was in the future then",
+        "remediation": "Inc-0 task 0: PIN THE SUITE CLOCK in tests/support/hooks.js via Playwright ctx.clock.install. Verified against the running app - pinning to 2026-08-06 restores every day the baseline needs (10,12,13,15,20,21,25,26 all selectable). One file, zero feature-file diff, zero assertion changes, so ADR-008 section 7 is not engaged and Inc-0 keeps a literal empty specs/features diff. Relative dates were REJECTED: they would rewrite Then literals at flight-search.feature:76,:93 and hotel-booking.feature:48,:67",
+        "planReference": "specs/increment-plan.md sections 0.6, 2.2, 4.2, 4.4, 4.5, 4.7, 4.8"
       }
     },
     "pathSelection": {
@@ -536,6 +557,25 @@
         "status": "accepted",
         "date": "2026-08-06",
         "phase": "A-assessment"
+      },
+      {
+        "id": "ADR-009",
+        "path": "specs/adrs/adr-009-explicit-date-parsing.md",
+        "title": "Explicit Date Parsing",
+        "status": "proposed",
+        "date": "2026-08-23",
+        "phase": "P-planning",
+        "note": "the one deliberate behaviour change surfaced by Phase A (finding D-9); 4 scenarios superseded + 3 net-new across Inc-1/2/5; decides parse semantics only, not the date library"
+      },
+      {
+        "id": "ADR-010",
+        "path": "specs/adrs/adr-010-authentication-surface-sequencing.md",
+        "title": "The Authentication Surface Moves to the Cutover Increment",
+        "status": "proposed",
+        "date": "2026-08-23",
+        "phase": "P-planning",
+        "supersedes": "ADR-006 on increment boundaries only; ADR-006 module order unchanged",
+        "note": "Inc-0 must migrate no feature, and with no in-page bridge (ADR-005) React cannot own the login screen before it owns /; auth plumbing lands Inc-0, auth surface lands Inc-6"
       }
     ],
     "frds": [
@@ -737,6 +777,91 @@
         "frd-authentication"
       ],
       "note": "The PRD's 22 features map onto 5 UI-Router feature modules plus cross-cutting authentication, per docs/lab/02-b2-spec-enable.md. One FRD per module, generated one at a time with a human review after each."
+    },
+    "incrementPlan": {
+      "path": "specs/increment-plan.md",
+      "generatedAt": "2026-08-23T12:40:00+02:00",
+      "generator": "modernization-planner",
+      "increments": 7,
+      "shape": "Inc-0 walking skeleton (no feature migrated) -> Inc-1..Inc-5 one per component module in the assessment order -> Inc-6 cutover",
+      "deltasPerIncrement": true,
+      "techStackResolved": false,
+      "scenarioLedger": {
+        "baseline": 235,
+        "browserDriving": 220,
+        "apiOnly": 15,
+        "supersededTotal": "65 firm",
+        "supersededPending": 2,
+        "netNewEstimated": "34-46",
+        "projectedFinal": "269-281",
+        "perIncrement": {
+          "inc-0": {
+            "repointed": 0,
+            "supersede": 0,
+            "netNew": 0,
+            "total": 235
+          },
+          "inc-1": {
+            "repointed": 27,
+            "supersede": 4,
+            "netNew": 2,
+            "total": 237
+          },
+          "inc-2": {
+            "repointed": 27,
+            "supersede": 4,
+            "netNew": "8-14",
+            "total": "245-251"
+          },
+          "inc-3": {
+            "repointed": 38,
+            "supersede": 14,
+            "supersedeConditional": 1,
+            "netNew": "4-6",
+            "total": "249-257"
+          },
+          "inc-4": {
+            "repointed": 47,
+            "supersede": 9,
+            "netNew": "5-6",
+            "total": "254-263"
+          },
+          "inc-5": {
+            "repointed": 65,
+            "supersede": 22,
+            "netNew": "7-9",
+            "total": "261-272"
+          },
+          "inc-6": {
+            "repointed": 16,
+            "supersede": 12,
+            "supersedePending": 2,
+            "netNew": "8-9",
+            "total": "269-281"
+          }
+        },
+        "measuredToday": "189/235 passing; see brownfield.greenBaseline.currentRun",
+        "supersededConditional": 2,
+        "supersededRange": "65-69 (28-29% of the baseline)"
+      },
+      "constraintsMadeVisible": [
+        "no strangler-fig bridge (ADR-005): one origin, two documents, never co-rendered; AngularJS startable until Inc-6; bower_components untouched until Inc-6",
+        "all 235 scenarios green after every increment, against whichever implementation owns the route",
+        "AngularJS route removed only after the React route is green - two separate commits per module",
+        "flight:selected unserved in the Inc-1/Inc-2 gap AND deliberately still unserved after it; no interop designed",
+        "Inc-2 hotel-booking planned as a discovery increment with a ranged Gherkin delta, not a port"
+      ],
+      "gateDecisionsRequired": [
+        "ADR-005 vs ADR-006 conflict on \"both frameworks loaded simultaneously\" (plan implements the ADR-005 reading)",
+        "does cutover carry the authentication surface, or is there an Inc-5b",
+        "the 14 unauthorised defects the plan is otherwise committed to reproducing",
+        "do cancelled items count towards a server-derived Trip.totalCost (Q-6 does not say; itinerary.feature:218 is unclassified)",
+        "where is Q-7 ownership enforced - if server-side, authentication.feature:314 supersedes and the API-only control drops from 15 to 14",
+        "P-6 client-minted expense IDs: confirm as Inc-5 net-new, give it its own ADR, or drop from scope"
+      ],
+      "revisedAt": "2026-08-25T16:55:00+02:00",
+      "revision": "r2 - after an adversarial consistency review; 8 blocking findings accepted and fixed",
+      "crossRouteFinding": "authentication.feature does not partition by feature file: 20 of its 36 browser-driving scenarios re-point before Inc-6 and 8 supersede in Inc-3/Inc-5, because they assert on the itinerary and expenses screens. Its two Scenario Outlines (:57, :124) each have 6 Examples rows naming 6 different areas, so a single authored block straddles 6 increments. Derived by resolving every step against tests/steps and mapping each definition to the page object it drives. Recorded in increment-plan section 3.1"
     }
   },
   "testsStatus": {
@@ -753,7 +878,10 @@
       "passing": 82,
       "failing": 0,
       "steps": 611
-    }
+    },
+    "baselineLastRun": "2026-08-23T12:35:00+02:00",
+    "baselineLastResult": "189/235 - 46 fixture-decay failures, 0 regressions",
+    "baselineBlocking": "Inc-0 task 0 (specs/increment-plan.md section 0.6)"
   },
   "verifiedCounts": {
     "filesInScope": 30,
@@ -769,7 +897,33 @@
     "bowerRuntimeDependencies": 9,
     "openApiOperations": 36,
     "persistedEntities": 11,
-    "generatedEntities": 4
+    "generatedEntities": 4,
+    "_note": "Phase P re-derived every figure it relies on from source rather than quoting the assessment; see specs/increment-plan.md §0",
+    "clientFiles": 27,
+    "clientPhysicalLines": 4925,
+    "clientNonBlankLines": 4458,
+    "clientLinesByType": {
+      "js": 2619,
+      "html": 1607,
+      "css": 699
+    },
+    "baselineScenariosExpanded": 235,
+    "baselineAuthoredBlocks": 204,
+    "baselineScenarioOutlines": 12,
+    "baselineBrowserDriving": 220,
+    "baselineApiOnly": 15,
+    "rootScopeBroadcastSites": 29,
+    "rootScopeListeners": 7,
+    "rootScopeDestroyHandlers": 8,
+    "rootScopeCustomEvents": 5,
+    "rootScopeEventsNeverDelivered": 3,
+    "jqueryCallSites": 40,
+    "lodashCallSites": 95,
+    "momentCallSites": 79,
+    "datepickerInitSitesLive": 8,
+    "legacyUnitTests": 19,
+    "skipMarkers": 0,
+    "bowerTrackedFiles": 964
   },
   "humanGates": {
     "brownfield-b1-extraction-approved": true,
@@ -789,6 +943,26 @@
         "modernize"
       ],
       "adr": "ADR-005"
+    },
+    "planReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-23T12:40:00+02:00",
+      "artifacts": [
+        "specs/increment-plan.md",
+        "specs/adrs/adr-009-explicit-date-parsing.md",
+        "specs/adrs/adr-010-authentication-surface-sequencing.md"
+      ],
+      "blocks": "tech-stack-resolution (Phase 1d)",
+      "decisionsRequired": 6,
+      "decisions": [
+        "ADR-005 vs ADR-006 conflict on \"both frameworks loaded simultaneously\" (plan implements the ADR-005 reading)",
+        "does cutover carry the authentication surface, or is there an Inc-5b",
+        "the 14 unauthorised defects the plan is otherwise committed to reproducing",
+        "do cancelled items count towards a server-derived Trip.totalCost (Q-6 does not say; itinerary.feature:218 is unclassified)",
+        "where is Q-7 ownership enforced - if server-side, authentication.feature:314 supersedes and the API-only control drops from 15 to 14",
+        "P-6 client-minted expense IDs: confirm as Inc-5 net-new, give it its own ADR, or drop from scope"
+      ],
+      "reviewed": "adversarial consistency review run before the gate; 8 blocking + 3 non-blocking findings, all accepted and fixed; arithmetic and all 62 scenario citations re-verified mechanically"
     }
   },
   "testabilityGateReview": {
@@ -922,7 +1096,39 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-06T22:07:20.145Z",
+  "lastUpdated": "2026-08-25T16:55:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-06T12:23:49+02:00"
+  "updatedAt": "2026-08-25T16:55:00+02:00",
+  "planReDerivation": {
+    "performedAt": "2026-08-23T12:40:00+02:00",
+    "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
+    "discrepancies": [
+      {
+        "figure": "modernization findings by severity",
+        "claimed": "34 total (5 critical / 13 high / 13 medium / 3 low)",
+        "measured": "41 severity-bearing (5 critical / 15 high / 18 medium / 3 low) + 2 Asset rows = 43 table rows",
+        "source": "specs/assessment/modernization.md finding tables; state.assessment.modernize.findings.categories already sums to 43",
+        "impactOnPlan": "none - no increment is scoped by a finding count",
+        "action": "correction handed to tech-stack-resolution (increment-plan §13 item 15)"
+      },
+      {
+        "figure": "$rootScope.$broadcast sites",
+        "claimed": "24 (ADR-005 lines 62 and 115, carried into assessment P-5)",
+        "measured": "29 across 5 distinct events; 24 is the notification:add subset alone",
+        "impactOnPlan": "material - the Inc-0 store mapping must cover 5 events, 3 of which are never delivered today",
+        "action": "increment-plan §0.4 and §4.3"
+      },
+      {
+        "figure": "app/ size",
+        "claimed": "27 files / 4462 lines (ADR-005 clientFate, carried into the assessment)",
+        "measured": "27 files (correct) / 4925 physical lines; 4458 non-blank - the 4462 figure is a non-blank count, 4 short on JS",
+        "impactOnPlan": "cosmetic",
+        "action": "increment-plan §0.2"
+      }
+    ],
+    "derivedNotQuoted": [
+      "the 15 API-only scenarios were derived by resolving every step of every scenario (including Background) against tests/steps/*.js and inspecting each definition body for browser use; all 15 sit in authentication.feature",
+      "flight:selected, itinerary:refresh and auth:login are all undelivered today because app/index.html:37 holds a single ui-view and ui-router destroys the outgoing controller before instantiating the incoming one"
+    ]
+  }
 }
