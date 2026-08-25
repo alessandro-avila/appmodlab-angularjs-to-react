@@ -1,10 +1,26 @@
 # ADR-005 — Path selection: Modernize `globaltravel-portal` from AngularJS 1.6 to React 19 (JavaScript)
 
-- **Status:** accepted
+> [!IMPORTANT]
+> **The language decision in this ADR no longer holds. The target language is TypeScript, in strict
+> mode — see [ADR-011](adr-011-typescript-strict-mode.md).**
+>
+> The customer clarified after this ADR was accepted that the landing stack is React + TypeScript.
+> ADR-011 supersedes **the language choice only**; every other decision below still stands — the
+> Modernize path, React 19, the increment shape, the baseline disposition, and the rejection of
+> Rewrite, Cloud-Native, Security, Performance, Extend and Fix-Bugs.
+>
+> This document is left as written on 2026-08-06. It reasoned correctly from the requirement it had;
+> the requirement changed. Rewriting it would erase the evidence that the trade-off was ever weighed
+> — and this ADR's own Consequences section demanded a new ADR before any reversal. ADR-011 is that
+> ADR, arriving through the door this one left open.
+
+- **Status:** accepted — **partially superseded by [ADR-011](adr-011-typescript-strict-mode.md)
+  (language only)**
 - **Date:** 2026-08-06
 - **Phase:** B3 → Path Selection (end of Track A green baseline, before Phase A/P)
 - **Deciders:** product owner, orchestrator
 - **Supersedes:** —
+- **Superseded by:** **ADR-011** — on the language choice only, 2026-08-25
 - **Depends on:** ADR-001 (Q-1…Q-7), ADR-002 (Q-8…Q-12, especially **Q-10** and **Q-12**), ADR-003 (Track A adopted)
 
 ## Context

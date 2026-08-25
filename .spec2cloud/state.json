@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
-  "currentPhase": "P-planning",
-  "currentStep": "modernization-planner -> specs/increment-plan.md (complete); awaiting Plan Review gate",
-  "status": "increment plan proposed; 7 increments with per-increment Gherkin + FRD deltas; tech stack deliberately unresolved",
+  "currentPhase": "P-tech-stack",
+  "currentStep": "both Phase P gates approved with open items; ADR-005 vs ADR-006 settled in favour of ADR-005 -> Increment 0 is unblocked",
+  "status": "target stack resolved; 6 ADRs; every legacy technology has a named replacement or an explicit DROPPED; all versions installed and executed together rather than quoted; 14/14 versions independently re-verified against live npm",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -576,6 +576,114 @@
         "phase": "P-planning",
         "supersedes": "ADR-006 on increment boundaries only; ADR-006 module order unchanged",
         "note": "Inc-0 must migrate no feature, and with no in-page bridge (ADR-005) React cannot own the login screen before it owns /; auth plumbing lands Inc-0, auth surface lands Inc-6"
+      },
+      {
+        "id": "ADR-011",
+        "path": "specs/adrs/adr-011-typescript-strict-mode.md",
+        "title": "TypeScript in strict mode is the target language",
+        "status": "proposed",
+        "date": "2026-08-25",
+        "supersedes": "ADR-005 (language choice only)",
+        "supersedesNote": "the requirement was clarified; ADR-005 reasoning was not faulty. ADR-005 itself is NOT edited.",
+        "relaxes": [
+          "ADR-005 JSDoc contract documentation (retired)",
+          "ADR-005 test-layer STRUCTURAL conformance (moves to the compiler)"
+        ],
+        "doesNotRelax": [
+          "ADR-005 test-layer RUNTIME conformance (moves to schema validation, strengthened)",
+          "the 15 API-only baseline scenarios",
+          "ADR-008 in any respect"
+        ],
+        "key": "types are erased at runtime; P-7 proves a generated type declaring rooms.id would have made the compiler agree with the bug. Response validation happens in the API client and is a separate mechanism from typing."
+      },
+      {
+        "id": "ADR-012",
+        "path": "specs/adrs/adr-012-routing-real-paths.md",
+        "title": "Routing: real paths, React Router 8 declarative mode, and legacy hash URLs break",
+        "status": "proposed",
+        "date": "2026-08-25",
+        "hashDisposition": "BREAK - no redirect shim. Observable outcome: GET / is served, React renders the portal root, fragment ignored, no error. Consistent with authentication.feature:72 (PRESERVE). One NET-NEW scenario in Inc-6 asserts the break.",
+        "closes": [
+          "plan-13-item-2",
+          "plan-13-item-3",
+          "plan-13-item-10",
+          "adr-005-follow-on-2"
+        ]
+      },
+      {
+        "id": "ADR-013",
+        "path": "specs/adrs/adr-013-client-state-store.md",
+        "title": "Client state: a vanilla Zustand store replaces $rootScope",
+        "status": "proposed",
+        "date": "2026-08-25",
+        "eventMapping": {
+          "notification:add": {
+            "emits": 24,
+            "concern": "notifications (bounded, shell-owned)",
+            "disposition": "ported"
+          },
+          "auth:login": {
+            "emits": 1,
+            "concern": "session (set)",
+            "disposition": "absorbed, not replayed"
+          },
+          "auth:logout": {
+            "emits": 1,
+            "concern": "session (clear)",
+            "disposition": "absorbed; surface is net-new in Inc-6"
+          },
+          "flight:selected": {
+            "emits": 1,
+            "concern": "none",
+            "disposition": "DELIBERATELY DROPPED (plan 2.4)"
+          },
+          "itinerary:refresh": {
+            "emits": 2,
+            "concern": "deferred",
+            "disposition": "deferred to Inc-3, authorised by Q-3/SEAM-3"
+          }
+        },
+        "eventFacts": "5 events / 29 emit sites. 1 works; 4 are never delivered; 3 of those 4 are pinned non-functional by a baseline scenario (hotel-booking:209, itinerary:240, authentication:138).",
+        "closes": [
+          "plan-13-item-5"
+        ]
+      },
+      {
+        "id": "ADR-014",
+        "path": "specs/adrs/adr-014-date-library.md",
+        "title": "Date library: date-fns, chosen for explicit parsing and a controllable clock",
+        "status": "proposed",
+        "date": "2026-08-25",
+        "decidedBy": "day-first discriminator '09/08/2026' as dd/MM/yyyy: date-fns and Luxon return 2026-08-09; Day.js WITHOUT customParseFormat returns 2026-09-08 - it silently ignores the format string, which is moment's failure mode. Temporal is undefined in Node 22.22.2.",
+        "closes": [
+          "plan-13-item-6",
+          "adr-005-follow-on-3"
+        ]
+      },
+      {
+        "id": "ADR-015",
+        "path": "specs/adrs/adr-015-jwt-localstorage-accepted-risk.md",
+        "title": "The JWT stays in localStorage: an accepted, owned, unresolved risk",
+        "status": "accepted",
+        "riskStatus": "OPEN",
+        "date": "2026-08-25",
+        "closes": [
+          "plan-13-item-13"
+        ]
+      },
+      {
+        "id": "ADR-016",
+        "path": "specs/adrs/adr-016-toolchain-vite-vitest-oxlint.md",
+        "title": "Toolchain: Vite 8, Vitest 4, and oxlint instead of ESLint",
+        "status": "proposed",
+        "date": "2026-08-25",
+        "drivenBy": "typescript-eslint declares peer typescript \">=4.8.4 <6.1.0\" and hard-fails against TypeScript 7 with npm ERESOLVE (executed). oxlint + oxlint-tsgolint installs clean and delivers type-aware rules including no-floating-promises, which closes P-8.",
+        "closes": [
+          "plan-13-item-1",
+          "plan-13-item-7",
+          "plan-13-item-8",
+          "adr-005-follow-on-1"
+        ]
       }
     ],
     "frds": [
@@ -862,6 +970,91 @@
       "revisedAt": "2026-08-25T16:55:00+02:00",
       "revision": "r2 - after an adversarial consistency review; 8 blocking findings accepted and fixed",
       "crossRouteFinding": "authentication.feature does not partition by feature file: 20 of its 36 browser-driving scenarios re-point before Inc-6 and 8 supersede in Inc-3/Inc-5, because they assert on the itinerary and expenses screens. Its two Scenario Outlines (:57, :124) each have 6 Examples rows naming 6 different areas, so a single authored block straddles 6 increments. Derived by resolving every step against tests/steps and mapping each definition to the page object it drives. Recorded in increment-plan section 3.1"
+    },
+    "techStack": {
+      "path": "specs/tech-stack.md",
+      "generatedAt": "2026-08-25T21:55:00+02:00",
+      "status": "proposed - awaiting Tech-Stack Review gate",
+      "resolved": {
+        "react": "19.2.8",
+        "typescript": "7.0.2",
+        "react-router": "8.3.0",
+        "zustand": "5.0.15",
+        "date-fns": "4.4.0",
+        "zod": "4.4.3",
+        "vite": "8.2.1",
+        "@vitejs/plugin-react": "6.0.5",
+        "vitest": "4.1.11",
+        "@testing-library/react": "16.3.2",
+        "@testing-library/jest-dom": "7.0.1",
+        "@testing-library/user-event": "14.6.5",
+        "jsdom": "30.0.1",
+        "oxlint": "1.79.0",
+        "oxlint-tsgolint": "7.0.2001",
+        "prettier": "3.9.6"
+      },
+      "runtimeFloors": {
+        "node": ">=22.22.0 (react-router@8; host is 22.22.2)",
+        "react": ">=19.2.7",
+        "vite": ">=7",
+        "modules": "ESM-only"
+      },
+      "legacyLedger": {
+        "replaced": {
+          "angular": "react 19.2.8",
+          "angular-ui-router": "react-router 8.3.0",
+          "restangular": "one fetch client + zod",
+          "moment": "date-fns 4.4.0",
+          "grunt": "vite 8.2.1 (at Inc-6)",
+          "karma": "vitest 4.1.11 (retired Inc-1 per ADR-008 §2)"
+        },
+        "dropped": {
+          "angular-ui-bootstrap": "D-8: zero uib-* / $uibModal / uibDate references exist in app/",
+          "jquery": "P-1: 46 DOM-manipulation sites retired by ADR-007; React owns the DOM",
+          "jquery-ui": "P-3: 8 live datepicker sites -> one shared React date component",
+          "lodash": "95 call sites have native ES2022 equivalents; P-6 (_.uniqueId) disposition is a gate decision",
+          "angular-mocks": "retired with Karma in Inc-1"
+        },
+        "carriedForward": {
+          "bootstrap": "3.3.7 CSS per ADR-005; replacement is a separate decision"
+        },
+        "retainedDuringMigration": {
+          "grunt-contrib-connect": "serves the AngularJS document behind the front door until Inc-6",
+          "concurrently": "gains the vite dev server as a third process"
+        },
+        "serverUnchanged": {
+          "express": "4.22.1",
+          "cors": "2.8.6",
+          "body-parser": "1.20.4",
+          "jsonwebtoken": "9.0.3"
+        }
+      },
+      "notAdopted": {
+        "TanStack Query / SWR / any data cache": "specified against - NFR-F005-003 and NFR-F007-004 both state \"No caching\"; the server generates results per call so a cache would be observably wrong",
+        "UI component library": "plan §13 item 9 - angular-ui-bootstrap had zero usages",
+        "form library": "plan §13 - an Inc-4 decision made when the form is visible",
+        "Redux Toolkit": "ADR-013 - two concerns; disproportionate",
+        "TanStack Router": "ADR-012 - seven flat parameter-free paths",
+        "Luxon / Day.js / Temporal": "ADR-014",
+        "ESLint + typescript-eslint": "ADR-016 - ERESOLVE against TypeScript 7",
+        "React Compiler": "ADR-016 - no rendering performance requirement; ADR-005 rejected the Performance path",
+        "SSR / Azure / IaC / i18n": "Q-12, Q-9 - no deployment target, no locale requirement"
+      },
+      "verification": {
+        "method": "all 22 packages installed into one project and executed; nothing quoted from a compatibility matrix",
+        "npmInstall": "0 ERESOLVE, 0 vulnerabilities",
+        "tscStrictConforming": "exit 0",
+        "tscStrictViolations": "exit 1, 5 errors, 0 missed (TS2339, TS2345, TS2531, TS2362, TS2322)",
+        "p7TypedOnly": "compiles clean; 5 rooms, every r.id undefined, Set size 1 - ngRepeat:dupes reproduced through a typed client",
+        "p7Validated": "zod rejects the wrong contract at the boundary with the field named; accepts the real payload",
+        "dateDiscriminator": "'09/08/2026' as dd/MM/yyyy -> date-fns 2026-08-09, Luxon 2026-08-09, Day.js(no plugin) 2026-09-08",
+        "fakeClock": "vi.setSystemTime moves date-fns: daysUntil 9 -> -22",
+        "storeOutsideReact": "authHeader() and onUnauthorized() work from a non-component",
+        "notificationsBounded": "push 12 -> capped at 5 (P-5 closed)",
+        "typeAwareLint": "oxlint --type-aware fires typescript(no-floating-promises) - closes P-8",
+        "eslintContrast": "npm install -D eslint@10 typescript-eslint@latest -> ERESOLVE, exit 1",
+        "probeSuite": "16/16 passed"
+      }
     }
   },
   "testsStatus": {
@@ -945,8 +1138,39 @@
       "adr": "ADR-005"
     },
     "planReview": {
-      "status": "pending",
+      "status": "approved-with-open-items",
       "requestedAt": "2026-08-23T12:40:00+02:00",
+      "approvedAt": "2026-08-26T01:30:00+02:00",
+      "approvedBy": "product owner",
+      "resolutions": {
+        "adr005-vs-adr006-simultaneous-loading": {
+          "ref": "increment-plan §1.7 / techStackReview §13-16",
+          "ruling": "ADR-005 governs. The two stacks never share a document. Each AngularJS component is fully rewritten in React 19 + TypeScript; both applications live in the repo and both stay startable until cutover, but a page loads exactly one of them.",
+          "rationale": "ADR-005 is the path-selection decision that authorised the migration and ADR-006 is downstream of it. The conflicting text sits in ADR-006's Negative consequences list, so it describes a cost rather than taking a decision, and reading it literally would reinstate the interop bridge ADR-005 rejected on cost grounds.",
+          "appliedTo": "specs/adrs/adr-006-migration-order-and-increment-boundaries.md - correction note added at the top and the affected bullet struck through in place; the decision itself is unchanged and no other ADR-006 content was touched",
+          "correction": {
+            "true": ["the application runs as a hybrid from Inc-1 to Inc-5", "route transitions cross a boundary - but a document boundary, i.e. a full page load, not a framework boundary inside one page"],
+            "false": ["both frameworks are loaded simultaneously", "the bundle is larger than either endpoint - there is no combined bundle"]
+          },
+          "unblocks": "Increment 0"
+        },
+        "cutover-carries-authentication-surface": {
+          "ref": "increment-plan §10.1",
+          "ruling": "confirmed - 7 increments, cutover carries the authentication surface per ADR-010. No Inc-5b.",
+          "rationale": "matches the documented delivery steps 08-14 one-for-one; splitting would add an increment for balance reasons alone."
+        },
+        "reproduced-defects-authorised": {
+          "ref": "increment-plan §12",
+          "ruling": "authorised now - the 14 defects the plan reproduces are intended behaviour preservation, not oversights.",
+          "rationale": "the plan estimated roughly a day of avoidable rework if deferred."
+        }
+      },
+      "stillOpen": [
+        "increment-plan §7.5 - do cancelled items count towards a server-derived Trip.totalCost (Q-6 does not say; itinerary.feature:218 unclassified)",
+        "increment-plan §1.5 - where is Q-7 ownership enforced; if server-side, authentication.feature:314 supersedes and the API-only control drops from 15 to 14",
+        "increment-plan §11.3 - P-6 client-minted expense IDs: confirm as Inc-5 net-new, give it its own ADR, or drop from scope"
+      ],
+      "openItemsNote": "all three remaining items are product decisions rather than technical ones, and none blocks Increment 0. They are the reason §3.2's supersede figure is stated as a range (65-69) rather than a number.",
       "artifacts": [
         "specs/increment-plan.md",
         "specs/adrs/adr-009-explicit-date-parsing.md",
@@ -963,6 +1187,133 @@
         "P-6 client-minted expense IDs: confirm as Inc-5 net-new, give it its own ADR, or drop from scope"
       ],
       "reviewed": "adversarial consistency review run before the gate; 8 blocking + 3 non-blocking findings, all accepted and fixed; arithmetic and all 62 scenario citations re-verified mechanically"
+    },
+    "techStackReview": {
+      "status": "approved-with-open-items",
+      "requestedAt": "2026-08-25T21:55:00+02:00",
+      "approvedAt": "2026-08-26T01:30:00+02:00",
+      "approvedBy": "product owner",
+      "verification": {
+        "by": "independent review against live npm and the working tree",
+        "versionsChecked": 14,
+        "versionsExact": 14,
+        "confirmed": [
+          "typescript 7.0.2, vite 8.2.1, react-router 8.3.0, vitest 4.1.11 all match dist-tags.latest",
+          "react 19.2.8, zustand 5.0.15, date-fns 4.4.0, zod 4.4.3, prettier 3.9.6, jsdom 30.0.1, @vitejs/plugin-react 6.0.5 all exact",
+          "oxlint 1.79.0 and oxlint-tsgolint 7.0.2001 both published and real",
+          "typescript-eslint peers typescript >=4.8.4 <6.1.0 verbatim, and its own latest is 8.67.1-alpha.17 - the ERESOLVE against TS 7 is real",
+          "react-router engines node >=22.22.0 exact; host is v22.22.2",
+          "react-router-dom frozen at 7.18.2, confirming its removal in v8",
+          "NFR-F005-003 and NFR-F007-004 are both titled 'No caching', so the TanStack Query rejection is spec-grounded rather than preference",
+          "scope clean - 0 lines changed in app/, api-mock/, tests/, test/ and specs/features/"
+        ],
+        "errorsFound": [
+          {
+            "claim": "TypeScript 7.0.2 went GA five days ago",
+            "actual": "published 2026-07-08, which is 48 days before 2026-08-25; the 7.x line ran 7.0.1-rc on 2026-06-18 then 7.0.2",
+            "impact": "none on the decision - the substance that TS 7 is GA and newer than training data holds; the freshness claim was inflated"
+          },
+          {
+            "claim": "P-8 is 9 .then and 0 .catch",
+            "actual": "10 .then and 0 .catch across the five feature services, all ten real code and none in comments; the assessment's own P-8 figure of 9 is off by one",
+            "impact": "none on the decision - oxlint no-floating-promises still closes it. Recorded because the figure was quoted from the assessment rather than re-derived, in the same step whose P1 half built an entire section on re-deriving."
+          }
+        ]
+      },
+      "resolutions": {
+        "G-1": {
+          "item": "@playwright/test pinned to ^1.63.0-alpha-2026-07-29",
+          "ruling": "move to stable 1.62.1",
+          "rationale": "nothing in the harness requires the pre-release. The caret on a prerelease floats, and it already has - next moved to 1.63.0-alpha-2026-08-25 - which would undercut the determinism the §0.6 clock repair exists to buy. The Clock API landed in Playwright 1.45, so 1.62.1 carries it, and no harness code uses page.clock yet.",
+          "appliedBy": "Increment 0",
+          "sequencing": "change the version first and confirm the baseline still fails exactly 46 scenarios with the same datepicker-timeout signature, which isolates the downgrade as a no-op; only then apply the §0.6 clock repair and expect 235/235. Doing both at once gives a surprise two possible causes."
+        },
+        "§13-16": {
+          "item": "ADR-005 vs ADR-006 on both frameworks loaded simultaneously",
+          "ruling": "settled - ADR-005 governs. See humanGates.planReview.resolutions.adr005-vs-adr006-simultaneous-loading.",
+          "unblocks": "Increment 0"
+        },
+        "§13-15": {
+          "item": "assessment summary correction - 34 recorded vs 41 measured",
+          "ruling": "confirmed. Independent recount agrees with the increment plan exactly: 5 critical, 15 high, 18 medium, 3 low = 41 severity-bearing findings, plus 2 asset rows = 43 table rows. The summary block and this state file both carry the stale 34/5/13/13/3.",
+          "action": "correct specs/assessment/modernization.md and verifiedCounts as housekeeping; no increment is scoped by a finding count"
+        }
+      },
+      "stillOpen": [
+        "G-3 - ADR-015 / RISK-001 needs a named human owner, not a role. Note this repository is public.",
+        "G-2 - pin engines.node >= 22.22.0 in package.json. Uncontested but not formally decided; needed by Inc-0.",
+        "§13-11 - Q-7 ownership enforcement point",
+        "§13-12 - 401 / session-expiry policy",
+        "§13-14 - ADR-008 §5 extension permitting page-object URL re-pointing",
+        "§13-17 - suite clock policy: the pinned instant, and whether CI runs an unpinned canary"
+      ],
+      "artifacts": [
+        "specs/tech-stack.md",
+        "specs/adrs/adr-011-typescript-strict-mode.md",
+        "specs/adrs/adr-012-routing-real-paths.md",
+        "specs/adrs/adr-013-client-state-store.md",
+        "specs/adrs/adr-014-date-library.md",
+        "specs/adrs/adr-015-jwt-localstorage-accepted-risk.md",
+        "specs/adrs/adr-016-toolchain-vite-vitest-oxlint.md"
+      ],
+      "blocks": "Increment 0",
+      "note": "planReview is still pending with 6 outstanding decisions; tech-stack resolution proceeded at the product owner's direction. §13-16 (the ADR-005 vs ADR-006 conflict) must be settled before Inc-0 regardless of this gate.",
+      "openItems": [
+        {
+          "ref": "§13-11",
+          "item": "Q-7 ownership enforcement point - server-side filter vs client-side",
+          "reason": "a product and API-contract decision, not a package choice",
+          "neededBy": "the increment implementing trip ownership"
+        },
+        {
+          "ref": "§13-12",
+          "item": "401 / session-expiry policy",
+          "reason": "behaviour requiring Gherkin through a Step 1b gate; ADR-013 supplies the mechanism only",
+          "neededBy": "Inc-3 - supersedes 3 scenarios in Inc-3 and 2 in Inc-5"
+        },
+        {
+          "ref": "§13-14",
+          "item": "ADR-008 §5 extension to permit page-object URL re-pointing",
+          "reason": "amends ADR-008; needs the gate's authority",
+          "neededBy": "Inc-1"
+        },
+        {
+          "ref": "§13-15",
+          "item": "assessment summary correction - 34 recorded vs 41 measured",
+          "reason": "a correction to the assessment and state, not a stack choice",
+          "neededBy": "housekeeping"
+        },
+        {
+          "ref": "§13-16",
+          "item": "ADR-005 vs ADR-006 on \"both frameworks loaded simultaneously\"",
+          "reason": "blast radius is the whole plan",
+          "neededBy": "BEFORE Inc-0"
+        },
+        {
+          "ref": "§13-17",
+          "item": "suite clock policy - confirm the pinned instant and whether CI runs an unpinned canary",
+          "reason": "ADR-014 chooses a library that follows the clock; which instant is a gate call",
+          "neededBy": "Inc-0"
+        },
+        {
+          "ref": "G-1",
+          "item": "@playwright/test is pinned to a pre-release ^1.63.0-alpha-2026-07-29 while latest is 1.62.1 and next has moved to 1.63.0-alpha-2026-08-25; a caret range on a prerelease can float",
+          "reason": "NEW FINDING. Baseline harness code governed by ADR-008 - raised, not changed. Clock API is present in stable 1.62.1.",
+          "neededBy": "Inc-0"
+        },
+        {
+          "ref": "G-2",
+          "item": "pin engines.node >= 22.22.0 in package.json",
+          "reason": "react-router@8 requires it; the host clears it by two patch versions",
+          "neededBy": "Inc-0"
+        },
+        {
+          "ref": "G-3",
+          "item": "record the named human owner of ADR-015 / RISK-001",
+          "reason": "an accepted risk owned by a role rather than a person is half an owner",
+          "neededBy": "THIS GATE"
+        }
+      ]
     }
   },
   "testabilityGateReview": {
@@ -1096,9 +1447,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-25T16:55:00+02:00",
+  "lastUpdated": "2026-08-25T21:55:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-25T16:55:00+02:00",
+  "updatedAt": "2026-08-25T21:55:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -1130,5 +1481,47 @@
       "the 15 API-only scenarios were derived by resolving every step of every scenario (including Background) against tests/steps/*.js and inspecting each definition body for browser use; all 15 sit in authentication.feature",
       "flight:selected, itinerary:refresh and auth:login are all undelivered today because app/index.html:37 holds a single ui-view and ui-router destroys the outgoing controller before instantiating the incoming one"
     ]
-  }
+  },
+  "riskRegister": [
+    {
+      "id": "RISK-001",
+      "status": "OPEN",
+      "accepted": true,
+      "adr": "ADR-015",
+      "title": "JWT stored in localStorage, readable by any script on the origin",
+      "exposure": "a single successful XSS yields a valid 24h bearer token that cannot be revoked (server holds no session state; POST /api/auth/logout returns a message only)",
+      "acceptedBecause": [
+        "Q-12 - nothing is deployed",
+        "plan §1.2 - localStorage is origin-scoped and load-bearing for the no-bridge design",
+        "plan §4.4 - Inc-0 may not modify app/, and the AngularJS interceptor reads this key",
+        "ADR-005 - the server survives unchanged in structure; the real fix is server-side"
+      ],
+      "owner": "PRODUCT OWNER - NAME TO BE RECORDED AT THE TECH-STACK REVIEW GATE (gate item G-3)",
+      "ownerNamed": false,
+      "triggers": [
+        {
+          "id": 1,
+          "blocking": true,
+          "condition": "any deployment, or any reversal of Q-12 - review must complete BEFORE the first deploy"
+        },
+        {
+          "id": 2,
+          "blocking": true,
+          "condition": "any real user data or real credential entering the system"
+        },
+        {
+          "id": 3,
+          "blocking": false,
+          "condition": "completion of Inc-6 - the §1.2 and §4.4 constraints lift and ADR-005 follow-on Security path opens"
+        },
+        {
+          "id": 4,
+          "blocking": false,
+          "condition": "any increment lengthening the token life or widening its claims"
+        }
+      ],
+      "closureRequires": "a new ADR superseding ADR-015. A commit message, checklist tick or verbal decision does not close it.",
+      "joins": "ADR-005 post-migration Security path, alongside NFR-F001-002 (plaintext credentials) and NFR-F001-003 (literal JWT_SECRET)"
+    }
+  ]
 }

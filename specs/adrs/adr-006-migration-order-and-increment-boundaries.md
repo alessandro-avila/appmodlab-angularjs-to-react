@@ -1,6 +1,37 @@
 # ADR-006: Migration Order and Increment Boundaries
 
-- **Status:** accepted
+> [!IMPORTANT]
+> **Correction — one Consequences bullet is wrong.** The *Negative* bullet beginning *"The
+> application runs as a hybrid…"* states that **both frameworks are loaded simultaneously** and that
+> **the bundle is larger than either endpoint**. Both clauses are false, and they contradict
+> [ADR-005](adr-005-path-selection-modernize-to-react.md), which rejected running React inside the
+> AngularJS shell.
+>
+> Settled at the Plan Review gate, 2026-08-26: **ADR-005 governs.** The two stacks **never share a
+> document**. Each AngularJS component is fully rewritten in React 19 + TypeScript; both applications
+> live in the repo and both stay startable until cutover, but a page loads exactly one of them.
+>
+> The bullet is corrected as follows, not deleted:
+>
+> | Clause | Verdict |
+> |---|---|
+> | *"The application runs as a hybrid"* | ✅ **true** — both apps exist in the repo and both are startable from Inc-1 to Inc-5 |
+> | *"Both frameworks are loaded simultaneously"* | ❌ **false** — one origin, two documents, never co-loaded |
+> | *"the bundle is larger than either endpoint"* | ❌ **false** — there is no combined bundle; the React bundle never contains AngularJS |
+> | *"route transitions cross a boundary"* | ✅ **true**, but it is a **document** boundary — a full page load — not a framework boundary inside one page |
+>
+> **Why the bullet does not win.** It sits in a *Negative consequences* list: it describes a cost, it
+> does not take a decision. Reading it literally would reinstate the interop bridge that ADR-005
+> §2 rejected on cost grounds — a bundler forced into a client with no build step, a `$rootScope`
+> bridge across 29 emit sites, dual routing, and Restangular/`fetch` coexistence, all of it deleted
+> at cutover. A decision cannot be reversed by a consequence bullet in a downstream ADR.
+>
+> **Everything else in ADR-006 stands** — the module scores, the migration order, and the increment
+> boundaries are unaffected. See `specs/increment-plan.md` §1.2–§1.4 for the implemented coexistence
+> model and §1.7 for the escalation that produced this correction.
+
+- **Status:** accepted — **one Consequences bullet corrected 2026-08-26** (see the note above; the
+  decision itself is unchanged)
 - **Date:** 2026-08-06
 - **Deciders:** Product owner (hackathon), spec2cloud orchestrator
 - **Supersedes:** —
@@ -160,9 +191,13 @@ behaviour attached to it. It also contradicts ADR-005's per-FRD increment commit
 
 - Inc-0 produces no user-visible feature, so the first human gate reviews infrastructure only. The
   gate must be framed accordingly or it will read as "nothing happened".
-- The application runs as a **hybrid** — some routes React, some AngularJS — from Inc-1 to Inc-5.
+- ~~The application runs as a **hybrid** — some routes React, some AngularJS — from Inc-1 to Inc-5.
   Both frameworks are loaded simultaneously, the bundle is larger than either endpoint, and route
-  transitions cross a boundary. This is the accepted cost of incremental delivery.
+  transitions cross a boundary.~~ **Corrected 2026-08-26 — see the note at the top of this ADR.**
+  The application does run as a hybrid from Inc-1 to Inc-5 and route transitions do cross a
+  boundary, but it is a **document** boundary (a full page load), not a framework boundary inside
+  one page. The two stacks are never co-loaded and there is no combined bundle. This is the
+  accepted cost of incremental delivery.
 - Migrating hotel-booking early means accepting undiscovered scope early. This is deliberate, but it
   makes Inc-2's estimate the least reliable of the six.
 - expense's product decisions (Q-4, Q-5, Q-9, SEAM-4) sit unaddressed until the final increment, so
