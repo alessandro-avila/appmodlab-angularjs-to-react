@@ -32,7 +32,10 @@ After this, `app/` contains routing, three services, and nothing else worth keep
 ```bash
 git switch lab/12-deliver-inc4-travel-request
 git switch -c lab/13-deliver-inc5-expenses
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 

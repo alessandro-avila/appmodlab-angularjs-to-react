@@ -222,40 +222,59 @@ The agent **stops and waits** at each of these. Nothing is approved by default.
 
 ## 🎯 THE TARGET STACK
 
+React 19 + TypeScript (strict) was settled from the start. **Everything below it was a role to fill,
+not a decision already made** — and [step 07](docs/lab/07-plan.md) filled them by researching live
+package registries and writing an ADR for each. The result is what the agent chose, not what this
+README assumed:
+
 ```
-React 19 + TypeScript (strict)
-    ├── ⚡ Vite 6            build + dev server (HMR that actually works)
-    ├── 🧭 TanStack Router   type-safe routing        ← replaces UI-Router
-    ├── 🔄 TanStack Query    server state + caching   ← replaces Restangular
-    ├── 🐻 Zustand           client state             ← replaces $rootScope
-    ├── 🧪 Vitest + Testing Library   unit/component tests   ← replaces Karma + Jasmine
-    ├── 🎭 Playwright        e2e / behaviour tests    ← replaces "click it and see"
-    ├── 📅 date-fns          dates                    ← replaces Moment.js
-    └── 🎨 CSS Modules       styles                   ← replaces global Bootstrap 3 CSS
+React 19.2.8 + TypeScript 7.0.2 (strict)
+    ├── ⚡ Vite 8.2.1              bundler + dev server      ← Grunt + Bower        ADR-016
+    ├── 🧭 React Router 8.3.0      real paths, declarative   ← UI-Router hash URLs  ADR-012
+    ├── 🔄 one fetch client        no cache library          ← Restangular          ADR-011
+    ├── 🛡️ Zod 4.4.3               validates every response  ← nothing did          ADR-011
+    ├── 🐻 Zustand 5.0.15          vanilla store             ← $rootScope events    ADR-013
+    ├── 🧪 Vitest 4.1.11           unit / component tests    ← Karma + Jasmine      ADR-016
+    ├── 🎭 Playwright 1.62.1       e2e / behaviour tests     ← "click it and see"
+    ├── 📅 date-fns 4.4.0          explicit parsing          ← Moment.js            ADR-014
+    ├── 🧹 oxlint + tsgolint       lint                      ← nothing              ADR-016
+    └── 🎨 Bootstrap 3 CSS         carried forward unchanged                        ADR-005
 ```
+
+Four of those are worth a second look, because they are the ones a stack diagram normally gets wrong:
+
+- **No data-cache library.** Not an oversight — *specified against*. `NFR-F005-003` and
+  `NFR-F007-004` are both titled **"No caching"**, and the mock server generates results per call, so
+  a cache would be **observably wrong** and would break baseline scenarios.
+- **Zod is new, and it is the point.** [Step 06 finding P-7](docs/lab/06-assess.md) proved a
+  compile-time type is not a runtime check: `tsc --strict` compiles a `Room` type declaring
+  `id: string` at **exit 0** while every `id` is `undefined` at runtime. Types are erased. Something
+  has to actually look.
+- **oxlint instead of ESLint.** `typescript-eslint` peers `typescript: '>=4.8.4 <6.1.0'` and hard-fails
+  on TypeScript 7 with `ERESOLVE`. There is no ESLint path on TS 7 today.
+- **Bootstrap 3 stays.** The migration is a component rewrite, not a redesign.
 
 ### Migration map
 
 | Legacy (AngularJS 1.6) | Target (React 19) | Notes |
 |------------------------|-------------------|-------|
 | Controller + `$scope` | Function component + `useState`/`useReducer` | `$scope` is not state — it is a DI-scoped bag. Untangle it. |
-| `$rootScope` broadcast/on | Zustand store or React context | `$rootScope.$broadcast('flight:selected')` becomes an explicit store action |
-| UI-Router `$stateProvider` | TanStack Router route tree | Hash routing (`#!/flights`) → real paths (`/flights`) |
-| Restangular | TanStack Query + `fetch` | Base URL moves from hardcoded to `import.meta.env` |
+| `$rootScope` broadcast/on | **Zustand store** | 5 events across 29 emit sites — and 3 of the 5 turned out to be dead |
+| UI-Router `$stateProvider` | **React Router 8** route tree | Hash routing (`#!/flights`) → real paths (`/flights`); old URLs break, deliberately |
+| Restangular | **one `fetch` client + Zod** | No cache library — two NFRs specify *"No caching"*. Base URL from `import.meta.env` |
 | `.directive()` | Component (or hook, if behaviour-only) | `date-picker` wraps jQuery UI → native `<input type="date">` or Radix |
 | `.filter('currency')` | `Intl.NumberFormat` | Delete the filter entirely |
-| `.filter('dateFormat')` | `date-fns/format` | Delete the filter entirely |
+| `.filter('dateFormat')` | **`date-fns` `format()`** | Delete the filter entirely |
 | `$(...).animate()` / `.offset()` | `element.scrollIntoView({ behavior: 'smooth' })` | **remove jQuery completely** |
-| `$http` interceptors (auth) | TanStack Query + fetch wrapper | JWT stays in `localStorage` for the lab (flagged as tech debt) |
-| Bower + Grunt | npm + Vite | `bower_components/` is deleted at the end |
-| Karma + Jasmine | Vitest | The 11 red tests become the first Gherkin scenarios |
+| `$http` interceptors (auth) | **`fetch` wrapper + Zustand auth store** | JWT stays in `localStorage` — **ADR-015, RISK-001, still OPEN**, owner `@alessandro-avila` |
+| Bower + Grunt | **npm + Vite 8** | `bower_components/` is deleted at the end |
+| Karma + Jasmine | **Vitest 4** | The 11 red tests become the first Gherkin scenarios |
 
 ### 🎯 Non-negotiable outcomes
 
 - Zero jQuery in the React app.
-- Zero `any` in migrated modules (`strict: true`).
 - Every migrated feature has a passing Gherkin-derived test.
-- Legacy app keeps working until the last module is migrated (strangler-fig, not big bang).
+- Legacy app stays startable until the last module is migrated (incremental, not big bang).
 
 ---
 
@@ -357,6 +376,23 @@ npm run test:watch
 
 **Login:** there is no real login. Click **Enter Portal** — a mock JWT is written to `localStorage`. (`AuthService` + a `$rootScope.$on('$stateChangeStart')` guard.)
 
+**Try:** Flights → `SFO` → `JFK` → pick two dates → **Search Flights** → click a result.
+That single flow touches routing, a directive wrapping a jQuery plugin, a filter, a service, Restangular, and jQuery DOM manipulation. It is the perfect first migration target.
+
+### What you are modernizing
+
+| | |
+|---|---|
+| ![Login](assets/screenshots/01-login.png) | ![Dashboard](assets/screenshots/02-dashboard.png) |
+| **Login** — mock auth, JWT into `localStorage` | **Dashboard** — hub for the five modules |
+| ![Flights](assets/screenshots/03-flights.png) | ![Hotels](assets/screenshots/04-hotels.png) |
+| **Flight search** — round-trip toggle, jQuery UI datepickers, filters, sorting | **Hotel booking** — destination, date range, guests/rooms, card results |
+| ![Itinerary](assets/screenshots/05-itinerary.png) | ![Travel requests](assets/screenshots/06-travel-request.png) |
+| **Itinerary** — list / timeline / print views | **Travel requests** — status filters, search, validation-heavy form |
+
+![Expenses](assets/screenshots/07-expenses.png)
+**Expense reconciliation** — status tabs, search, date-range filter, report creation.
+
 ---
 
 ## 🌿 RUNNING THE REACT SHELL (Increment 0 onwards)
@@ -433,7 +469,7 @@ This is a *brownfield* lab. Some things are broken **on purpose** because fixing
 | **Searching flights logs a Moment.js deprecation warning** - `moment("08/15/2026")` is parsed with no format string, so it falls back to `new Date()`. | Expected, and harmless. A real `data-model-extractor` / date-handling finding: the React rewrite parses dates explicitly instead of guessing. |
 | JWT stored in `localStorage`, no refresh, no expiry handling. | Feeds the optional `security-assessment` path. |
 | `bower_components/` is **committed to the repo**. | 2016 called. It also means the app runs with zero network access. Deleted at the end of the migration. |
-| Global Bootstrap 3 CSS, no scoping. | Becomes CSS Modules. |
+| Global Bootstrap 3 CSS, no scoping. | Needs a scoped-styling decision in step 07. |
 | jQuery used for scrolling, datepickers, and animations inside Angular controllers. | The canonical "framework fighting the framework" anti-pattern. |
 
 ---
@@ -446,6 +482,10 @@ This is a *brownfield* lab. Some things are broken **on purpose** because fixing
 So `lab/07-plan` contains everything from steps 00–07, and checking out any branch gives you a
 working snapshot of the journey at that moment. Each step doc carries the exact `git` command to
 create its branch.
+
+> ⚠️ **Pull `docs/` forward at every branch cut** — `git checkout main -- docs/ README.md`.
+> A `lab/*` branch carries whatever `docs/` looked like when it was cut, and nothing merges `main`
+> forward. Increment 0 was run against instructions 1935 lines out of date because of this.
 
 | Branch | Contents |
 |--------|----------|
@@ -546,7 +586,7 @@ The canonical prompts live in the step docs. These are the patterns behind them:
 | # | Block | ⏱️ | What you actually do | Deliverable |
 |---|-------|----|----------------------|-------------|
 | 1 | **Kick-off & context** | 30m | Use cases, current pain, success criteria | Agreed definition of done |
-| 2 | **Modernisation approach** | 60m | AngularJS → React patterns; incremental (strangler-fig) vs rewrite; React architecture; **why SDD for brownfield** | Path decision (Modernize) |
+| 2 | **Modernisation approach** | 60m | AngularJS → React patterns; incremental vs strangler-fig vs rewrite; React architecture; **why SDD for brownfield** | Path decision (Modernize) |
 | 3 | **AI-assisted development** | 75m | Copilot for transformation & refactoring; prompting; agentic development; the Ralph loop; HITL gates | Everyone has Copilot CLI working in their Codespace |
 | 4 | **Live demo** | 60m | Facilitator drives **B1 → B2 → Testability Gate → Track A → first React component**, end to end, live | Reference walkthrough |
 | 5 | **🏗️ Hands-on hackathon** | 3h | Teams run the loop on real modules (see below) | Migrated components + specs |
@@ -648,8 +688,8 @@ appmodlab-angularjs-to-react/
 **Stretch**
 
 - [ ] All five modules migrated; `bower_components/` deleted
-- [ ] Strangler-fig routing: React and AngularJS coexisting behind one entry point
-- [ ] `strict: true` with zero `any` in migrated code
+- [ ] React and AngularJS coexisting in the repo, both startable, sharing only the HTTP API
+- [ ] API responses validated at the client boundary — no silently-undefined fields
 - [ ] Playwright e2e covering the full booking flow
 - [ ] Deployed to Azure Static Web Apps via `azd`
 - [ ] `security-assessment` run on the JWT/`localStorage` handling

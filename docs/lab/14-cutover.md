@@ -7,19 +7,30 @@
 
 ## 🎯 Goal
 
-Delete AngularJS.
+Delete AngularJS — **and build the one screen it still owns.**
 
-All five modules are React. What remains under `app/` is scaffolding for an application nobody
-runs: the module bootstrap, the router config, three services already replaced by stores and query
-hooks, and `index.html`. Alongside it sits Bower, Grunt, Karma, and a committed
-`bower_components/`.
+All five feature modules are React. What remains under `app/` is scaffolding for an application
+nobody runs — plus, uniquely, the **login screen**, which is still the real thing. Per **ADR-010**
+the authentication *surface* was deferred to this increment, because with no in-page bridge the login
+screen cannot move until `/` moves. Alongside the scaffolding sits Bower, Grunt, Karma, and a
+committed `bower_components/`.
 
-This increment removes all of it and makes React the single entry point. It is the only increment
-that is almost entirely deletion — which is exactly why it goes last and alone.
+So this increment is two jobs that only work together:
+
+1. **Build** the React login screen, and the sign-out control that has never existed anywhere
+   (`authentication.feature:124` — *"No screen offers a way to sign out"*).
+2. **Delete** everything AngularJS and make React the single entry point.
+
+It is the only increment where deletion and net-new behaviour land in the same PR — which is exactly
+why it goes last and alone.
 
 > The safety net is doing something different here. Through increments 1–5 the
 > `@existing-behavior` suite proved *"the migrated module behaves like the old one"*. Now it proves
 > *"nothing was still quietly depending on the old one"*. Same tests, different question.
+
+> **Watch the asymmetry.** Increments 1–5 mostly *preserved*. This one carries the largest net-new
+> Gherkin delta in the project, because the auth surface was never migrated — it was postponed.
+> Treat it as a feature increment that happens to end in a deletion, not as a cleanup.
 
 ---
 
@@ -37,20 +48,31 @@ that is almost entirely deletion — which is exactly why it goes last and alone
 ```bash
 git switch lab/13-deliver-inc5-expenses
 git switch -c lab/14-cutover
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 
 ## 🗣️ The prompt
 
 ```text
-Phase 2, final increment — cutover. Delete AngularJS.
+Phase 2, final increment — cutover. Build the login screen, then delete AngularJS.
 
-All five modules are React. Remove the legacy application and its entire build
-chain: app/, bower.json, .bowerrc, bower_components/, Gruntfile.js, the Karma
-config and specs, and every dependency in package.json that exists only to serve
-them. React becomes the single entry point, and npm start runs the mock API plus
-Vite.
+Order matters. Per ADR-010 the authentication surface was deferred to this
+increment, so AngularJS still owns sign-in. Build the React login screen and the
+sign-out control first, prove them green, and only then delete anything. The auth
+plumbing has been in place since increment 0; what is missing is the surface.
+
+Sign-out is net-new. It exists nowhere in the product today — authentication.feature
+asserts no screen offers it. Treat it as a new behaviour with its own scenarios, not
+as a port.
+
+Then remove the legacy application and its entire build chain: app/, bower.json,
+.bowerrc, bower_components/, Gruntfile.js, the Karma config and specs, and every
+dependency in package.json that exists only to serve them. React becomes the single
+entry point, and npm start runs the mock API plus Vite.
 
 The mock API stays exactly as it is. It was out of scope in step 05 and it still is.
 
@@ -148,6 +170,9 @@ specs/                            updated, not deleted
 > 🔴 **Blast radius: irreversible in spirit.** Recoverable from git, but this is the commit the
 > repo is judged on.
 
+- [ ] **The React login screen exists and works**, and the auth-surface Gherkin delta was reviewed
+      before any deletion happened (ADR-010)
+- [ ] **Sign-out exists** — net-new behaviour, with its own scenarios, not a port
 - [ ] `app/`, `bower.json`, `.bowerrc`, `bower_components/`, `Gruntfile.js` all gone
 - [ ] `grep -rn "angular\|bower\|grunt\|karma\|jasmine" --include=*.json --include=*.js .` returns
       nothing outside `specs/` and `docs/`
@@ -231,18 +256,31 @@ The journey, end to end:
 
 | From | To |
 |------|-----|
-| AngularJS 1.6.10, EOL 2022 | React 19 |
-| Bower + Grunt | Vite + npm |
-| UI-Router hash routes | TanStack Router |
-| Restangular | TanStack Query |
-| `$rootScope` event bus | typed stores + query invalidation |
+| AngularJS 1.6.10, EOL 2022 | React 19.2.8 + **TypeScript 7 strict** |
+| Bower + Grunt | Vite 8 + npm |
+| UI-Router hash routes | real paths through React Router 8 |
+| Restangular | one `fetch` client — **no data-cache library**, because two NFRs specify *"No caching"* |
+| `$rootScope` event bus | a Zustand store — and three of the five events turned out to be dead |
 | jQuery + jQuery UI in controllers | React, no jQuery |
-| Moment.js, loosely parsed | date-fns, explicitly parsed |
+| Moment.js, loosely parsed | `date-fns`, explicitly parsed (ADR-009) |
 | Karma + Jasmine, 11/11 red | Vitest + Playwright, green |
-| No specs | PRD, 6 FRDs, contracts, ADRs, a Gherkin baseline |
+| *nothing validated the API* | Zod at the boundary — because [P-7](06-assess.md) proved a type is not a runtime check |
+| No specs | PRD, 6 FRDs, contracts, 16 ADRs, a 235-scenario Gherkin baseline |
 
 Every behaviour change in that table is either invisible to users or written down in an ADR with
 a Gherkin delta. That is the actual deliverable — the React app is just what it looks like from
 the outside.
+
+### Tag the result
+
+`lab/14-cutover` accumulates all fourteen steps, so it *is* the finished application. Give it a name
+that does not require knowing the step numbering:
+
+```bash
+git branch lab/final-solution lab/14-cutover
+```
+
+One commit, two names. `lab/final-solution` is where anyone who just wants the working React +
+TypeScript app should start; `main` plus the `lab/NN-*` branches are where the reasoning lives.
 
 ← Back to [the walkthrough index](README.md)

@@ -47,7 +47,10 @@ migration is also the one where a mistake is loudest.
 ```bash
 git switch lab/08-deliver-inc0-shell
 git switch -c lab/09-deliver-inc1-flight-search
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 
@@ -73,9 +76,10 @@ includes the surprising things. If you find yourself fixing something the baseli
 pins, stop and tell me instead. Bug fixes are separate, deliberate increments.
 
 One thing spans the increment boundary: hotel-booking listens for flight:selected
-to pre-fill its search, and hotel-booking is still AngularJS. Implement the bridge
-the plan describes. If the plan does not describe one, stop and flag it rather than
-quietly dropping the behaviour.
+to pre-fill its search, and hotel-booking is still AngularJS. ADR-005 rejected an
+in-page bridge, so that journey is simply unserved until increment 2. Say so in the
+PR — do not build interop for it, and do not quietly drop the scenario. It is
+deferred, and the baseline scenario that covers it should be marked as such.
 
 Remove the AngularJS 'flights' state only after the React route is green, and delete
 app/components/flight-search/ in the same commit. Touch no other module.
@@ -116,7 +120,7 @@ src/
     ├── FilterPanel.tsx                     ← replaces filters + deep watch
     ├── ResultsTable.tsx                    ← replaces the ng-repeat + sort
     ├── FlightDetails.tsx                   ← scrollIntoView target
-    ├── use-flight-search.ts                ← TanStack Query hook
+    ├── use-flight-search.ts                ← data-fetching hook
     ├── filters.ts                          ← pure functions, unit-testable
     └── *.test.tsx / *.test.ts
 
@@ -135,7 +139,7 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 | Legacy | Where it goes | Note |
 |--------|---------------|------|
 | `flight-search.controller.js` | split across components + `filters.ts` | 258 lines of controller become several small units |
-| `flight-search.service.js` | `use-flight-search.ts` | Restangular → TanStack Query |
+| `flight-search.service.js` | `use-flight-search.ts` | Restangular → a `fetch` call + Zod parse; **no cache layer** |
 | `flight-search.template.html` | JSX across the components | |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |
@@ -181,7 +185,8 @@ digest cycle in React, badly.
 > 6. Did it remove the AngularJS `flights` route, and did it do so **last**?
 > 7. How it handled the `maxPrice` reset — preserved, or silently "fixed"?
 > 8. How it translated the three `$watch`es — `useMemo` or `useEffect`?
-> 9. **How `flight:selected` reaches the still-AngularJS hotel-booking** — the interop bridge
+> 9. **What it did about `flight:selected`** — the journey should be *explicitly deferred* to
+>    increment 2, not bridged and not silently dropped
 > 10. Anything it discovered that the FRD got wrong
 
 ---
@@ -192,9 +197,10 @@ digest cycle in React, badly.
 > you will get four more times. Be harder on this PR than on any other.
 
 - [ ] All `@existing-behavior` scenarios pass — for **every** module, not just flights
-- [ ] The only modified scenario is the date-parsing one, and ADR-008 explains it
+- [ ] The only modified scenario is the date-parsing one, and its ADR explains it
 - [ ] `grep -rn "jquery\|jQuery\|moment\|lodash\|restangular" src/` → nothing
 - [ ] `grep -rn ": any\|as any\|@ts-expect-error\|@ts-ignore" src/` → nothing
+- [ ] The flight response is validated before it is rendered — the generated type is not the check
 - [ ] The `maxPrice` reset still happens on every search — **surprising behaviour preserved**
 - [ ] Time buckets are still 6–12 / 12–18 / 18–6
 - [ ] Sorting still toggles direction on repeated header clicks
@@ -235,8 +241,8 @@ are separate, deliberate, and documented.**
 are different UX. The `@existing-behavior` scenario that types `08/15/2026` will fail against a
 native input expecting `2026-08-15`.
 
-That is not a regression — it is the ADR-008 delta showing up in a place the plan may not have
-anticipated. Update the scenario, note it in the ADR, move on. What you must **not** do is add a
+That is not a regression — it is the date-parsing ADR's delta showing up in a place the plan may not
+have anticipated. Update the scenario, note it in the ADR, move on. What you must **not** do is add a
 jQuery UI shim to make the old scenario pass.
 </details>
 

@@ -1,7 +1,7 @@
 # Step 04 · Green Baseline (Track A)
 
 > **Phase** B3 · Track A &nbsp;|&nbsp; **Branch** [`lab/04-green-baseline`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/04-green-baseline) &nbsp;|&nbsp; **Parent** `lab/03-testability-gate`
-> **Human gate** 🧑‍⚖️ Green Baseline (per feature) &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ Green Baseline (consolidated) &nbsp;|&nbsp; **Status** ✅ Verified — 235 scenarios green, one gate item open
 
 ---
 
@@ -36,7 +36,7 @@ Supporting: `playwright-cli` (drives the real browser), `e2e-generation` (POMs).
 
 ## ✅ Prerequisites
 
-- [ ] [Step 03](03-testability-gate.md) approved — Track A recorded in `state.json` and ADR-001
+- [ ] [Step 03](03-testability-gate.md) approved — Track A recorded in `state.json` and adr-003
 - [ ] `npm start` running: mock API on :3000, app on :8080
 - [ ] Playwright browsers installed (the dev container does this for you)
 
@@ -47,7 +47,10 @@ Supporting: `playwright-cli` (drives the real browser), `e2e-generation` (POMs).
 ```bash
 git switch lab/03-testability-gate
 git switch -c lab/04-green-baseline
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 
@@ -159,21 +162,27 @@ in which case delete it and say why.
 ## 📦 Expected artifacts
 
 ```
-specs/features/
-├── flight-search.feature               ← @existing-behavior @feature-flight-search
+specs/features/                          ← all tagged @existing-behavior at Feature level
+├── flight-search.feature                ← @feature-flight-search
 ├── hotel-booking.feature
 ├── itinerary.feature
 ├── travel-request.feature
-└── expense-reconciliation.feature
+├── expense-reconciliation.feature
+└── authentication.feature
 
-tests/  (or e2e/ — whatever tech-stack resolution lands on)
-├── steps/                              ← Cucumber step definitions
-├── pages/                              ← Page Object Models
-└── e2e/                                ← Playwright specs
+tests/
+├── pages/       ← 6 Page Object Models
+├── steps/       ← 6 Cucumber step-definition files
+└── support/     ← hooks.js (storage state, fixture restore), world.js
+cucumber.js                              ← runner config
 
-test/spec/flight-search.spec.js         ← CORRECTED: 11 red → green
-specs/frd-flight-search.md              ← updated with the reconciliation
+test/spec/flight-search.spec.js          ← RECONCILED: 11 → 19 passing
+specs/frd-*.md                           ← all 6 updated with a Green Baseline section
 ```
+
+> The `@existing-behavior` tag sits once per file at **Feature** level, where Gherkin scope rules
+> hand it to every scenario beneath. That satisfies the gate — do not expect it repeated per
+> scenario.
 
 ### A scenario that captures a quirk correctly
 
@@ -233,21 +242,130 @@ someone can decide about it, instead of six months later when a user notices the
 
 > If a baseline scenario is uncomfortable to write, that is usually a sign it is doing its job.
 
+### The same rule, now applied to two whole seams
+
+[ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md)
+accepted **SEAM-1** (travel policy is published, never enforced) and **SEAM-2** (no approve/reject
+endpoint exists) as *intended behaviour*. So they are not limitations to note in passing — they are
+behaviour the baseline must **assert as passing**, exactly like the `NaN` total:
+
+```gherkin
+@existing-behavior @feature-travel-request
+Scenario: A submitted request stays pending with no way to decide it
+  Given I have submitted a travel request
+  Then the request status is "pending"
+  And the approval chain lists "Mike Chen" as "Manager" with status "pending"
+  And no action is available to approve or reject it
+```
+
+That scenario is the ADR made executable. If someone later builds an approver UI, it fails — and
+the conversation happens at the right moment, with a decision record to point at.
+
+The other three seams are the opposite: **SEAM-3, SEAM-4 and SEAM-5 are defects with a target.**
+The baseline still captures them as-is — a booking that persists nothing, an itinerary that never
+shows it — because Track A snapshots the app as it is. They change later, under a red-green cycle,
+in their own increment.
+
+> **Watch this one.** Q-7 (data is private to its owner) cannot be baselined meaningfully: the
+> fixtures have a **single seeded owner**, so a filtering assertion passes whether or not filtering
+> exists. Verified in `api-mock/server.js` — every seeded trip, travel request and expense report
+> carries `userId: 1`; Mike Chen (`2`) exists as a login and owns nothing. ADR-001 flags it, and
+> **no FRD picked it up**. Either add a second owner to the fixtures or record explicitly that the
+> isolation scenarios are non-assertive — a green test that cannot fail is worse than no test,
+> because it reads like proof.
+
+### Two constraints the testability gate handed forward
+
+[Step 03](03-testability-gate.md#-outcome) scored the gate by *running* the app, and two of its
+findings are instructions for this step rather than facts about the last one.
+
+**C-1 — never reload inside a journey.** After a genuine page reload the token survives and the
+route guard admits the user, but `$rootScope.currentUser` is `null` and three controllers
+substitute a hardcoded identity — `'Demo User'` in travel-request and expense, `'You'` in
+itinerary. A scenario that reloads mid-flow therefore **stays logged in as nobody**, and every
+assertion on traveller name, submitter or comment author passes regardless of who authenticated.
+That is a false green of exactly the kind this step exists to prevent. Either avoid reloads inside
+a scenario, re-authenticate after one, or assert the fallback string deliberately and say why.
+
+**C-4 — the toast count and the list count legitimately differ.** On a search returning six flights
+priced 230–642 the toast reads "Found 6 flights" and the list renders four. The price slider is
+`step="50"` with a dynamic `min`, so `filters.maxPrice` snaps from 642 down to 630 and silently
+filters out the two dearest results, while the toast broadcasts the *unfiltered* count. Both
+numbers are correct for what they measure. A scenario that asserts them as one number will be
+flaky or wrong — assert them **separately**, and tag the discrepancy so the migration backlog
+inherits it.
+
 ---
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/03-testability-gate..lab/04-green-baseline`
-> 2. `specs/features/flight-search.feature` in full
-> 3. The final `test-runner` output — scenario/step counts, all green
-> 4. **Every assumption the agent had to correct** in A3. This is the most instructive part of
->    the whole walkthrough: it is a list of things a human would have got wrong too.
-> 5. The `npm test` output after the Karma reconciliation
-> 6. Which tests (if any) you deleted rather than rewrote, and why
-> 7. Any behaviour that could not be captured as a test
+> ✅ **Verified** — 7 commits on `lab/04-green-baseline`, one per feature plus a count
+> correction. All figures below were checked against the artifacts, not the run summary.
+
+**235 scenarios · 1 944 steps · all green · 11m 12s.** Karma 19/19. `git diff -- app/ api-mock/`
+is zero lines.
+
+| Feature | Scenarios | Steps | Headline finding |
+|---|---:|---:|---|
+| flight-search | 25 | 193 | Price slider `step=50` hides the two dearest flights while the toast still counts them |
+| hotel-booking | 25 | 189 | `ngRepeat:dupes` empties the room table — **no hotel can be booked through the UI at all** |
+| itinerary | 32 | 229 | Status filter and Add Note both entirely dead — scope shadowing |
+| travel-request | 45 | 431 | Search box inert — a `TypeError` escapes the digest, typing does nothing |
+| expense-reconciliation | 57 | 575 | Date filter is one-way; clearing both dates never un-filters |
+| authentication | 51 | 327 | Guard checks token *presence*, never validity — a rejected session renders as an empty account |
+| **Total** | **235** | **1 944** | |
+
+The room-table failure is worse than "duplicate ids". `hotel-booking.template.html:184` tracks by
+`room.id`, but the fixture at `api-mock/server.js` defines rooms as
+`{ type, price, available }` — **there is no `id` field**. All three rooms track as `undefined`,
+AngularJS throws `ngRepeat:dupes`, and the repeater renders nothing. It compounds finding #10:
+even if the rows appeared, `pricePerNight` would still read `NaN`.
+
+**Reproduction note.** The six files contain **204 authored** `Scenario:` / `Scenario Outline:`
+blocks; 235 is the count *after* outline expansion, which is what Cucumber reports. Both numbers
+are correct — they measure different things. Expect the discrepancy when you re-count by hand.
+
+### Three cross-cutting findings — decisions, not ports
+
+**1 · `ng-if` scope shadowing — 4 confirmed instances.** A non-dotted `ng-model` or `ng-click`
+inside an `ng-if` writes to a child scope, so the controller never observes it while the UI looks
+like it worked. `itinerary.template.html:188` binds `ng-model="newNote"` — undotted — and the
+controller's `newNote` stays empty forever. **React has no scope chain, so these controls begin
+working the moment they are migrated.** That is new behaviour arriving unrequested, and it needs
+specifying rather than porting.
+
+**2 · Four features ship a dead or trapped primary control** — itinerary filter, itinerary notes,
+request search, expense dates. Not one of them is a port; each is a net-new spec.
+
+**3 · Q-7 has zero baseline coverage, by necessity.** Every fixture is `userId: 1` and no endpoint
+filters by owner, so a manager's `GET /api/trips` is byte-identical to an employee's. Ownership
+isolation cannot be asserted against this app. It carries forward to Assess as an untested claim.
+
+### The Karma reconciliation — what actually happened
+
+`test/spec/flight-search.spec.js` went **11 → 19 `it()` blocks** (+193/−25) with **nothing
+deleted**. The one that looks missing was *inverted*: `should load popular routes on init`
+became `should not offer popular routes`, asserting `$scope.popularRoutes` is `undefined`.
+`getPopularRoutes()` exists on the service; no controller calls it. Only that one file changed
+under `test/`.
+
+⚠️ Two traceability gaps worth naming, because the lab is partly *about* traceability:
+
+- **ADR-002 Q-11 ruled this suite "preserved unmodified, not a migration target."** It was modified
+  anyway, and at review time **no superseding ADR existed**. An accepted decision had been
+  reversed silently.
+- The audit entry read `karma 19/19, legacy Jasmine specs untouched`. The file was rewritten.
+
+Neither affected the baseline's validity — `app/` is untouched and the suite is green — but both
+are exactly the kind of drift the ADR chain exists to prevent.
+
+**Resolved at the gate by [`adr-004-karma-reconciliation.md`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/04-green-baseline/specs/adrs/adr-004-karma-reconciliation.md).**
+Q-11's *premise* stands — the suite carried no authority, because the app issues
+`GET /api/flights?…` while the old specs demanded `POST /api/flights`. Both routes exist
+server-side, so those tests described a client that was designed and never written. Precisely
+because they had no authority, correcting them cannot corrupt the baseline. What changes is the
+*disposition*: the suite is promoted from historical artifact to green-baseline unit coverage.
+ADR-002 now carries a supersession notice, and the audit record is corrected.
 
 ---
 
@@ -255,21 +373,29 @@ someone can decide about it, instead of six months later when a user notices the
 
 > 🔴 **Blast radius if you rubber-stamp this: regressions ship undetected.**
 
-- [ ] **The tests actually pass.** Not "should pass". Paste the output.
-- [ ] Every scenario is tagged `@existing-behavior`
-- [ ] The three quirks are captured as scenarios: `maxPrice` reset, `returnDate` auto-shift,
-      scroll-on-select
-- [ ] **`git diff` shows zero changes under `app/`.** If the app changed, the baseline is
-      worthless — it is now testing something you invented.
-- [ ] The Karma reconciliation changed only `test/spec/flight-search.spec.js`, and each change
-      is explained in the FRD
-- [ ] No `test.skip()`, no `xit()`, no commented-out assertions
-- [ ] Scenarios use user vocabulary ("the maximum price filter"), not `$scope.filters.maxPrice`
-- [ ] **Broken outputs are asserted as broken.** If a scenario expects a sensible value where the
-      app produces `NaN`, an empty string or a stale number, the baseline is aspirational and the
-      behaviour change it should have caught will now pass silently.
-- [ ] Playwright storage state is reused — if every scenario logs in, the suite will be slow and
-      flaky
+- [x] **The tests actually pass.** 235 scenarios / 1 944 steps green in 11m 12s. The per-feature
+      step counts in `state.json` sum to exactly 1 944.
+- [x] Every scenario is tagged `@existing-behavior` — once per file at Feature level, inherited
+      by every scenario beneath
+- [x] ~~The three quirks~~ **Two of three** captured: `maxPrice` reset and the `returnDate`
+      auto-shift both have named scenarios. **Scroll-on-select is not asserted** — it is a 400 ms
+      presentation animation, handled in the harness as a timing concern. Defensible, but it is a
+      deliberate coverage gap rather than an oversight.
+- [x] **`git diff` shows zero changes under `app/`.** Verified directly against
+      `lab/03..lab/04` for both `app/` and `api-mock/` — zero lines, no untracked files.
+- [x] ⚠️ **The Karma reconciliation** changed only `test/spec/flight-search.spec.js` ✅, and the
+      contradiction with **ADR-002 Q-11** is now resolved by **ADR-004** — 0 tests deleted, 1
+      inverted, suite promoted to green-baseline unit coverage. **Closed.**
+- [x] No `test.skip()`, no `xit()`, no commented-out assertions — scanned all 22 test files and
+      6 feature files, zero hits
+- [x] Scenarios use user vocabulary — *"the maximum price filter no longer holds the value I set"*,
+      not `$scope.filters.maxPrice`
+- [x] **Broken outputs are asserted as broken.** This is the strongest part of the baseline.
+      Scenario titles state the defect outright: *"The hotel address is never shown"*,
+      *"Choosing a check-in after the check-out silently discards my check-out"*,
+      *"The departure date I searched for does not reach the results"*.
+- [x] Playwright storage state is reused — `hooks.js` loads it once and omits it only for
+      `@unauthenticated`
 
 ---
 

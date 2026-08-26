@@ -1,7 +1,7 @@
 # Step 06 · Phase A · Assess
 
 > **Phase** A · Assess &nbsp;|&nbsp; **Branch** [`lab/06-assess`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/06-assess) &nbsp;|&nbsp; **Parent** `lab/05-path-selection`
-> **Human gate** 🧑‍⚖️ Assessment Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ Assessment Review &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -30,7 +30,7 @@ Still no code changes. Findings and ADRs only.
 
 ## ✅ Prerequisites
 
-- [ ] [Step 05](05-path-selection.md) approved — Modernize recorded in ADR-002 and `state.json`
+- [ ] [Step 05](05-path-selection.md) approved — Modernize recorded in adr-005 and `state.json`
 - [ ] Green baseline exists for the features you intend to migrate
 - [ ] MCP servers reachable (`context7` in particular — React 19 and TanStack are newer than
       most training cutoffs)
@@ -42,7 +42,10 @@ Still no code changes. Findings and ADRs only.
 ```bash
 git switch lab/05-path-selection
 git switch -c lab/06-assess
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 
@@ -110,16 +113,16 @@ measurement — and it is far more interesting than a checklist the agent was ha
 
 ```
 specs/
-├── docs/assessment/
+├── assessment/
 │   └── modernization.md            ← findings, severity, evidence, module scoring
 └── adrs/
-    ├── adr-003-*.md                ← e.g. drop angular-ui-bootstrap
-    ├── adr-004-*.md                ← e.g. externalise API base URL
-    └── ...
+    ├── adr-006-migration-order-and-increment-boundaries.md
+    ├── adr-007-eliminating-direct-dom-manipulation.md
+    └── adr-008-testing-strategy-through-migration.md
 ```
 
-<sub>Exact paths depend on how `modernization-assessment` is configured — the shape matters more
-than the location.</sub>
+<sub>Paths and ADR subjects above are what this run actually produced. The shape matters more than
+the location — but note the assessment landed in `specs/assessment/`, not `specs/docs/assessment/`.</sub>
 
 ### The eight findings, with ground truth
 
@@ -134,7 +137,7 @@ Your marking scheme at the gate:
 | 5 | `moment()` without a format string | `flight-search.controller.js:47-48` on `$watch`; also `:107` (that one *does* format on output) | ⚠️ **Requires a decision** — see below |
 | 6 | JWT in `localStorage`, no expiry | `app/services/auth.service.js`, guard at `app/app.js:32` | ❌ **Survives unchanged** — deferred to the Security path |
 | 7 | `bower_components/` committed | repo root | ✅ Deleted at [cutover](14-cutover.md) |
-| 8 | `$rootScope` as an event bus | publishers/subscribers across controllers; `notification:add` handled at `app/app.js:44` | ✅ Becomes an explicit Zustand store |
+| 8 | `$rootScope` as an event bus | publishers/subscribers across controllers; `notification:add` handled at `app/app.js:44` | ✅ Becomes an explicit state store |
 
 <details>
 <summary><b>Finding 4 was rewritten after step 01 — and it changed the work</b></summary>
@@ -169,9 +172,62 @@ unless someone writes it down.
 | 12 | Stale total after emptying a report | `server.js:652` guards recalculation with `expenses.length > 0` | Server-side, so it survives the migration untouched unless someone decides otherwise. |
 | 13 | Itinerary notes overwrite each other | `POST /api/itinerary-items/:id/notes` assigns rather than appends | Plural route, scalar field. Fixing it is an API contract change. |
 | 14 | Currency stored, never honoured | `Expense.currency` read by no code; `totalAmount` sums mixed currencies unconverted | Either implement conversion or state that totals are single-currency. Silence is the one option that is wrong. |
+| 15 | Price slider hides the dearest results | `flight-search.template.html:129` hardcodes `step="50"` against a dynamic `min`/`max`; `controller.js:117` assigns the unrepresentable `priceRange.max` to the model | Found by [step 03](03-testability-gate.md#-outcome) *running* the app, not by extraction. A native React range input inherits the same snapping rule — reproducing the markup reproduces the bug. |
+| 16 | **Rooms never render — no hotel is bookable** | `hotel-booking.template.html:184` tracks by `room.id`; the fixture defines rooms as `{ type, price, available }` with **no `id`**. Three `undefined` keys → `ngRepeat:dupes` → the repeater renders nothing. | Found by [step 04](04-green-baseline.md#-outcome). A whole feature is unreachable through the UI. Decide whether the fixture gains an `id` or the template stops tracking — then finding 10 (`pricePerNight` → `NaN`) becomes reachable and needs its own answer. |
+| 17 | Four primary controls dead via `ng-if` scope shadowing | Undotted `ng-model`/`ng-click` inside `ng-if` writes to a child scope — e.g. `itinerary.template.html:188` binds `ng-model="newNote"` | **React has no scope chain, so these controls start working when migrated.** Itinerary filter, itinerary notes, request search and expense dates all arrive as new behaviour nobody asked for. Each needs a spec, not a port. |
+| 18 | Auth guard checks token presence, never validity | A garbage token opens the portal; a rejected session renders as an empty account | Found by [step 04](04-green-baseline.md#-outcome). Compounds C-1 — the guard admits, then `currentUser` is `null`, so the UI substitutes `'Demo User'`. |
 
-**None of these is resolved incidentally by moving to React.** That is what separates them from
-findings 1-8, and it is why they each need an ADR or an explicit deferral.
+Finding 15 was not in the B1 six. The testability gate produced it by driving a browser and
+**looking at the screenshot**: the toast reported six flights above a list rendering four. With
+`min=230` and `step=50` the highest value the control can hold is 630, so `filters.maxPrice` snaps
+down from 642 and the filter at `controller.js:156` drops two results, while the toast broadcasts
+the unfiltered count. Both numbers are correct for what they measure — which is precisely why
+neither a code read nor an accessibility snapshot caught it.
+
+Findings 16-18 came from step 04 the same way — by *executing* the app rather than reading it.
+Finding 17 is the one to sit with: it is the only defect in the table that the migration **fixes by
+accident**. AngularJS swallowed those four controls in a child scope; React has no scope chain, so
+they will simply start working. A port that reproduces the markup faithfully still changes the
+product's behaviour, and nobody asked it to.
+
+**A coverage gap you inherit, not a defect.** Q-7 — data is private to its owner — has **zero
+baseline scenarios**, and cannot have any. Every fixture is `userId: 1` and no endpoint filters by
+owner, so a manager's `GET /api/trips` is byte-identical to an employee's. The green baseline
+therefore protects nothing about ownership isolation. Treat it as untested when assessing.
+
+**With one exception, none of these is resolved incidentally by moving to React** — finding 17 is
+the exception, and it is *resolved* only in the sense that the control starts working, which is
+itself an unrequested change. That is what separates findings 9-18 from findings 1-8, and it is why
+they each need an ADR or an explicit deferral.
+
+### The workflow seams — a third scheme, and the hardest one
+
+Findings 1-8 are debt. Findings 9-18 are defects inside one module. The five seams the PRD raised in
+[step 02](02-b2-spec-enable.md#-what-it-found--the-part-that-actually-matters) are neither: each is a
+**transition the product implies and no code performs**, spanning two features, so no single module's
+assessment can see it.
+
+They matter here because the assessment produces the **migration order**, and a migration order built
+from module complexity alone will faithfully port five screens into a product where you still cannot
+get permission, be approved, or see what you booked.
+
+**Four of the five are already decided.** [ADR-001](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/02-b2-spec-enable/specs/adrs/adr-001-product-intent-decisions.md),
+accepted at the B2a gate, dispositioned every seam. The assessment's job is not to reopen them — it
+is to sequence the three that are in scope, and to **not** schedule work for the two that are not.
+
+| Seam | ADR-001 disposition | What the assessment must do |
+|------|--------------------|-----------------------------|
+| **SEAM-1** policy never enforced | **Accepted as-is** (Q-2 = display-only) | Nothing. No rules engine. Reporting it as a gap is re-litigating a closed decision. |
+| **SEAM-2** no approve/reject endpoint | **Accepted as-is** (Q-1 = manager is not an approver) | Nothing. Building it is new feature work and out of scope. |
+| **SEAM-3** bookings never persist | **Defect to fix** (Q-3) | The highest-value item in the migration — it is what makes the app feel real. Needs its own increment; changes the API contract. |
+| **SEAM-4** `approved` counted, never written | **Defect to fix** | Follows SEAM-3's persistence work and Q-4's vocabulary fix. Sequence it after both. |
+| **SEAM-5** spend never links to its request | **Defect to fix, non-blocking** | `linkToTravelRequest` acquires a caller — so it leaves the dead-code list below. Do not delete it. |
+
+- [ ] The assessment **applies** ADR-001 rather than rediscovering the seams. Findings that
+      recommend a policy engine or an approver UI are proposing scope the product owner already declined.
+- [ ] SEAM-3, SEAM-4 and SEAM-5 appear in the migration order with their dependency stated —
+      SEAM-4 after SEAM-3, not beside it.
+
 
 <details>
 <summary><b>Dead code the assessment should also confirm</b></summary>
@@ -180,11 +236,15 @@ Each appears **exactly once** in the repo, at its own definition — B1 verified
 check, and each one removes work from the migration:
 
 - `ApiService` (`api.service.js:9`) — registered, injected nowhere
-- `linkToTravelRequest` (`expense.service.js:107`) — the only writer of
-  `ExpenseReport.travelRequestId`, called by nothing, so the field is `null` in every seed
 - `travelPolicy.preferredHotels` (`server.js:266`) — read by nothing. Also worth noting: its
   values (`Marriott`, `Hilton`, `Hyatt`) match no exact member of `hotelNames`, so had anything
   compared them it would have matched nothing
+
+> **Not on this list any more:** `linkToTravelRequest` (`expense.service.js:107`). It is the only
+> writer of `ExpenseReport.travelRequestId` and today has no caller — but ADR-001 answered Q-5 with
+> *populate the link when a request exists*, so it acquires one. **Deleting it as dead code and
+> implementing SEAM-5 are opposite actions.** An assessment that lists it for removal has not read
+> the ADR.
 
 If the assessment reports any of these as *"needs migrating"*, it did not check whether anything
 calls them.
@@ -198,7 +258,7 @@ will notice.
 
 ### The `$rootScope` event map
 
-The assessment should produce something equivalent to this. It is the input to the Zustand store
+The assessment should produce something equivalent to this. It is the input to the state-store
 design in [step 08](08-deliver-inc0-shell.md):
 
 | Event | Published by | Consumed by |
@@ -233,10 +293,10 @@ The recommendation this lab expects:
 
 | # | Module | Why here |
 |---|--------|----------|
-| 0 | *(walking skeleton)* | No feature. Prove React + AngularJS coexist behind one entry point before betting a module on it. |
+| 0 | *(walking skeleton)* | No feature. Prove React runs against the same API, as a separate app, before betting a module on it. |
 | 1 | **flight-search** | Highest complexity **and** the best coverage. It touches routing, a directive, two filters, a service, Restangular, Lodash, Moment and jQuery — so migrating it forces every pattern decision at once, under the protection of the strongest part of the baseline. Get the hard one wrong early and cheaply. |
 | 2 | **hotel-booking** | Shares the date-picker pattern with flight-search. Second use validates the pattern instead of inventing a new one. |
-| 3 | **itinerary** | Subscribes to `itinerary:refresh`. Migrating it after flight-search proves the Zustand store replaced the event bus correctly across a module boundary. |
+| 3 | **itinerary** | Subscribes to `itinerary:refresh`. Migrating it after flight-search proves the state store replaced the event bus correctly across a module boundary. |
 | 4 | **travel-request** | Validation-heavy form + `approval-status.directive.js`. Different shape of problem; low coupling. |
 | 5 | **expense-reconciliation** | `currency-input.directive.js` + `currency.filter.js`. Last because it is the most self-contained — by now the patterns are settled. |
 
@@ -262,17 +322,156 @@ legitimate outcome — record it.
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/05-path-selection..lab/06-assess`
-> 2. The module scoring table
-> 3. **How many of the eight findings it caught unprompted** vs. only after being named
-> 4. The `$rootScope` event map — did it find a publisher with no subscriber?
-> 5. The proposed migration order and its justification. Did it agree with flight-search first?
-> 6. Which ADRs it wrote
-> 7. Anything it flagged that is **not** on the list above — the genuinely new findings are the
->    most interesting output of this step
+> ✅ **Verified** — branch [`lab/06-assess`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/06-assess) ·
+> [compare with `lab/05-path-selection`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/05-path-selection...lab/06-assess)
+
+```
+ .spec2cloud/audit.log                              |  18 ++
+ .spec2cloud/state.json                             | 162 +++++++++-
+ specs/adrs/adr-006-migration-order-…               | 183 ++++++++++++
+ specs/adrs/adr-007-eliminating-direct-dom-…        | 157 ++++++++++
+ specs/adrs/adr-008-testing-strategy-…              | 161 ++++++++++
+ specs/assessment/modernization.md                  | 329 +++++++++++++++++++++
+ 6 files changed, 1008 insertions(+), 2 deletions(-)
+```
+
+Assessment depth escalated **twice** — Level 1 returned 6 critical/high items against a threshold
+of 5; Level 2 surfaced *no build step / no module system / global mutable state* and escalated to
+**Level 3**. Scope held: **zero findings raised against `api-mock/`**, as ADR-005 requires.
+`git diff -- app/ api-mock/ test/` = **0 lines**.
+
+### The standout finding — and it was proved, not read
+
+**P-7.** `GET /api/hotels/:id/rooms` (`api-mock/server.js:403–411`) returns five room objects whose
+keys are `type, price, available, beds, maxGuests` — **there is no `id` field**. The template at
+`hotel-booking.template.html:184` iterates with `track by room.id`, so AngularJS derives five
+`undefined` keys, throws `ngRepeat:dupes`, and blanks the table.
+
+That is the **mechanism** behind step 04's "a hotel cannot be booked through the UI at all". The
+green baseline observed the symptom; the assessment queried the running API and found the cause.
+Every coordinate checks out against source.
+
+Its consequence is the sharpest thing in the report: **React tolerates duplicate keys with a console
+warning.** Migrating this module therefore *switches on a screen nobody has ever seen work* —
+undiscovered scope arriving at implementation time.
+
+### Migration order
+
+Six modules scored 1–5 across six dimensions, weighted ×2 on DOM entanglement, behavioural change
+and unproven surface (max 45). **All six weighted totals are arithmetically correct.**
+
+| # | Increment | Score | Why here |
+|---|---|---:|---|
+| 0 | shell + authentication | 29 | Hard prerequisite. No feature migrated. |
+| 1 | flight-search | **22** | Easiest *and* best covered — 25 scenarios plus the only 19 unit tests. |
+| 2 | hotel-booking | 34 | **Deliberately against its score** — carries the largest unknown (P-7). |
+| 3 | itinerary | 34 | Consumer of both booking flows; verifies SEAM-3 while that work is fresh. |
+| 4 | travel-request | 30 | Opens the request→expense chain; establishes form/modal patterns. |
+| 5 | expense-reconciliation | **37** | Hardest, most product decisions, depends on travel-request. |
+
+The two inversions are both argued rather than glossed. Hotel-booking jumps to 2nd so its unknown
+surfaces "at increment 2 of 6, not 6 of 6" — and flight-search still goes first so that *when* the
+surprise lands, it is unambiguously the module and not the new stack. Itinerary precedes the
+lower-scoring travel-request purely on dependency order.
+
+### What the measurements got exactly right
+
+| Claim | Verified |
+|---|---|
+| 95 lodash call sites | ✅ 95 |
+| 77 moment call sites | ✅ 77 |
+| 45 `<label>` elements, 34 without `for` | ✅ 45 total, 11 with `for` |
+| Zero `aria-*` attributes, one `alt` | ✅ 0 and 1 |
+| `track by room.id` at `hotel-booking.template.html:184` | ✅ exact line |
+| Rooms payload has no `id` (`server.js:403–411`) | ✅ exact range |
+| All six weighted module scores | ✅ all six recompute |
+| Every README debt item confirmed as the floor | ✅ 8 rows carry a `README` marker |
+
+**All eight ground-truth findings above came back confirmed**, each with file:line evidence — they
+form the floor, and the assessment then built on it rather than stopping there.
+
+### Three counting errors, one propagation — and one error of mine
+
+The report's own **Summary block contradicts its own tables**:
+
+| | Summary claims | Tables actually contain |
+|---|---:|---:|
+| Critical | 5 | **5** ✅ |
+| High | 13 | **15** |
+| Medium | 13 | **18** |
+| Low | 3 | **3** ✅ |
+| **Findings** | **34** | **41** |
+
+Add the two `*Asset*` rows (positive notes, not debt) and the tables hold **43 rows**. The
+consolidated chat summary reproduced the same "34" headline *directly above a category table whose
+own column sums to 43* — self-contradictory within a single message. Knock-on: **"26 of the 34 are
+new"** should read **33 of 41**, since exactly 8 rows carry the `README` marker.
+
+[Step 07](07-plan.md) re-derived all of this independently and landed on the identical
+5 / 15 / 18 / 3 → 41. Two agents measuring the same tables agreed; the summary block is simply stale.
+
+One further slip is more interesting, because it was **inherited, not made**:
+
+| Claim | Actual | Origin |
+|---|---|---|
+| P-5: "24 `$broadcast` sites" | **29** | ADR-005 → assessment |
+
+It was caught and documented in [step 05](05-path-selection.md). The assessment **re-stated it
+instead of re-deriving it**, so it has now travelled three hops: FRD → ADR-005 → assessment.
+B1's `architecture/overview.md` had the event count right all along.
+
+> A number that is wrong in an ADR does not stay in that ADR. It gets cited, and the citation looks
+> like corroboration. **Re-derive from source at every hop; never inherit a figure from a document.**
+
+#### The reviewer broke his own rule
+
+This page originally listed a **fourth** error: that the assessment's *"15 scenarios are server-only"*
+should read **19**. That correction was wrong, and step 07 disproved it.
+
+There are two different categories, and I collapsed them:
+
+| Category | Count | What it means |
+|---|---:|---|
+| **API-only** | **15** | Never touches a browser. All in `authentication.feature`. |
+| **`@bypasses-ui`** | **4** | Reaches past the interface *for setup*, then still drives a browser. |
+
+I added them and reported 19 as the server-only figure. They do not add — a `@bypasses-ui` scenario
+still needs a browser, which is the entire property the "server-only" number exists to express.
+
+Two things made it easy to get wrong, and both are worth knowing:
+
+- `itinerary.feature:27` reads `# Scenarios that reach past the interface are tagged @bypasses-ui.`
+  It is a **comment**. A raw tag count returns 5; the real tag count is 4.
+- The 15 sit in one section of `authentication.feature` that holds **16** expanded scenarios. The
+  sixteenth, *"The server can identify the holder of a token"* (`:274`), opens with
+  `Given I am signed in to the travel portal` — whose step definition calls `page.goto(…)`
+  (`flight-search.steps.js:39`). It boots a browser, so it is not API-only. 16 − 1 = 15.
+
+Step 07 got there by resolving **every step of every scenario** against `tests/steps/*.js` and
+reading the definition bodies. I got there by adding two numbers that looked related. The assessment
+was right; the reviewer was not.
+
+The lesson is the same one this page already teaches, aimed the other way: **a correction is a claim
+too, and it needs deriving from source exactly like the thing it corrects.** Being the one checking
+does not exempt you.
+
+Finally, **P-1 claims "46 direct DOM-manipulation sites"**. Measured: **40** jQuery `$(…)` call
+sites, zero `angular.element`, zero `document.querySelector`/`getElementById`. And the seven-category
+enumeration that **ADR-007 is built on sums to 27** — so between 13 and 19 sites are outside the
+categories the ADR decides. The categorisation approach is right; its coverage claim is not yet
+proven.
+
+### Three ADRs, and they stayed in their lane
+
+- **ADR-006** — migration order. Rejects easiest-first, hardest-first, riskiest-first, big-bang and
+  layer-first explicitly.
+- **ADR-007** — DOM elimination as **7 category decisions rather than 46 ad-hoc rewrites**.
+- **ADR-008** — testing strategy through the migration.
+
+ADR-007 and ADR-008 decide **patterns, not packages**. Bundler, router, date control and state
+library are all left to step 07, exactly as ADR-005 requires. That restraint is the single most
+reusable habit in this step: an assessment that names its packages has quietly done the planner's
+job for it, and done it without research.
 
 ---
 

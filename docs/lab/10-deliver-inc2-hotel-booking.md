@@ -7,15 +7,16 @@
 
 ## 🎯 Goal
 
-Migrate hotel-booking, and **close the bridge** you opened in increment 1.
+Migrate hotel-booking, and **restore the journey** that increment 1 broke.
 
-This is the increment where the strangler fig proves itself. `flight:selected` currently crosses
-from a React publisher to an AngularJS subscriber through whatever interop the plan specified.
-Once hotel-booking is React, that coupling becomes an ordinary store read — and the temporary
-bridge gets deleted.
+`flight:selected` is an AngularJS `$rootScope` event. Once flight-search moved to React, that
+publisher left the AngularJS app — and with no in-page bridge (ADR-005), the
+flight → hotel journey has been unserved ever since. Once hotel-booking is React too, the
+coupling becomes an ordinary store read and the journey works again, in one stack.
 
-If increment 1 was about proving one module can move, this one is about proving two modules can
-still **talk** while they are on different sides of the fence.
+If increment 1 was about proving one module can move, this one is about proving a **cross-feature
+journey** survives the move — the first real test of whether the baseline scenarios are
+re-pointable or merely re-runnable.
 
 ---
 
@@ -32,7 +33,10 @@ still **talk** while they are on different sides of the fence.
 ```bash
 git switch lab/09-deliver-inc1-flight-search
 git switch -c lab/10-deliver-inc2-hotel-booking
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 
@@ -48,10 +52,10 @@ inventing a second way to do something we already solved, stop and reuse the fir
 
 Two things are specific to this module.
 
-First, flight:selected. Both ends are now React, so delete the interop bridge from
-increment 1 and make the pre-fill a normal store read. The behaviour must not
-change: selecting a flight still fills in the destination city, the check-in date,
-and check-out three days later.
+First, flight:selected. Both ends are now React, so the pre-fill becomes a normal
+store read and the journey deferred in increment 1 is restored. The behaviour must
+match the baseline: selecting a flight still fills in the destination city, the
+check-in date, and check-out three days later.
 
 Second, the booking confirmation is a Bootstrap 3 jQuery modal —
 $('#bookingConfirmationModal').modal('show'). That is jQuery AND bootstrap.js, not
@@ -131,8 +135,9 @@ result, not to write the prompt:
 - [ ] All `@existing-behavior` scenarios pass, all five modules
 - [ ] **Flight → hotel pre-fill verified by hand**: search a flight, select it, go to hotels,
       check city + check-in + check-out (= depart + 3 days)
-- [ ] The increment-1 interop bridge is **deleted**, not orphaned
-- [ ] No jQuery, no `bootstrap.js` call, no Moment, no Lodash, no `any` in the new code
+- [ ] The flight → hotel journey deferred in increment 1 is **restored**, and the baseline
+      scenario that covers it is un-deferred
+- [ ] No jQuery, no `bootstrap.js` call, no Moment, no Lodash in the new code
 - [ ] Amenity filtering is still **AND**, not OR — easiest silent regression in this module
 - [ ] The featured-then-rating sort still produces the same order
 - [ ] **`totalPrice` at `:231` was handled deliberately** — either reproduced as `NaN` or fixed
@@ -157,13 +162,15 @@ hole worth fixing here.
 </details>
 
 <details>
-<summary><b>The bridge outlives its purpose</b></summary>
+<summary><b>Leaving the journey deferred</b></summary>
 
-Increment 1's interop shim becomes dead code the moment hotel-booking is React. Dead interop code
-is worse than most dead code: it looks load-bearing, so the next person leaves it, and it survives
-to cutover as a mysterious adapter nobody can delete confidently.
+Increment 1 deliberately left the flight → hotel pre-fill unserved, because ADR-005 rejected an
+in-page bridge and there was nowhere for the event to land. That was a defensible one-increment
+gap. It stops being defensible here — both ends are React, so the only thing standing between the
+user and the journey is someone remembering it was deferred.
 
-Delete it in this increment, while the reason is still obvious.
+A deferred scenario nobody un-defers is indistinguishable from a dropped one. Restore it in this
+increment, while the reason it was deferred is still fresh.
 </details>
 
 <details>

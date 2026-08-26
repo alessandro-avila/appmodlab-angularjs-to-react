@@ -96,9 +96,33 @@ gitGraph
 
 <sub>*(steps 10–13 elided from the diagram for readability — same pattern, one branch per module)*</sub>
 
+**`lab/final-solution` is a pointer, not a line of work.** Because every branch is cut from its
+predecessor, `lab/14-cutover` already *accumulates* all fourteen steps — it is the finished
+application. `lab/final-solution` is created at that same commit once step 14 is green, purely so
+that anyone landing on the repo can find the working React + TypeScript app without knowing the step
+numbering:
+
+```bash
+git branch lab/final-solution lab/14-cutover
+```
+
+Two branches, one commit, no divergence. If you want the journey, read `main` and walk the `lab/NN-*`
+branches in order. If you just want the modernized app, check out `lab/final-solution`.
+
 **Consequence worth internalising:** if step 01's extraction is wrong, every branch downstream
 carries the error. That is not a flaw in the tooling — it is *why* the Extraction Review gate
 exists, and why you should read the output rather than clicking approve.
+
+> ⚠️ **`docs/` lives on `main` — pull it forward at every branch cut.**
+>
+> ```bash
+> git checkout main -- docs/ README.md
+> ```
+>
+> A `lab/*` branch carries whatever `docs/` looked like when it was cut, and nothing merges `main`
+> forward. [Increment 0](08-deliver-inc0-shell.md#-outcome) was run against instructions **1935 lines
+> out of date**, which cost three deviations in the first increment that produced code. The line
+> above is now in every step's *Branch setup*.
 
 ---
 
@@ -110,23 +134,23 @@ exists, and why you should read the output rather than clicking approve.
 |---|------|-------|-----------|--------|
 | 00 | [spec2cloud init](00-spec2cloud-init.md) | B0 · Onboarding | — | ✅ Verified |
 | 01 | [B1 · Extract](01-b1-extract.md) | B1 · Extract | Extraction Review | ✅ Verified |
-| 02 | [B2 · Spec-Enable](02-b2-spec-enable.md) | B2 · Spec-Enable | PRD / FRD / Refinement Review | ⏳ Pending |
+| 02 | [B2 · Spec-Enable](02-b2-spec-enable.md) | B2 · Spec-Enable | PRD ✅ / FRD ✅ / Refinement ✅ | ✅ Verified |
 
 ### The fork in the road
 
 | # | Step | Phase | Human gate | Status |
 |---|------|-------|-----------|--------|
-| 03 | [Testability Gate](03-testability-gate.md) | Gate | Testability Gate | ⏳ Pending |
-| 04 | [Green Baseline](04-green-baseline.md) | Track A | Green Baseline | ⏳ Pending |
-| 05 | [Path Selection](05-path-selection.md) | Gate | Path Selection | ⏳ Pending |
+| 03 | [Testability Gate](03-testability-gate.md) | Gate | Testability Gate | ✅ Verified |
+| 04 | [Green Baseline](04-green-baseline.md) | Track A | Green Baseline | ✅ Verified |
+| 05 | [Path Selection](05-path-selection.md) | Gate | Path Selection | ✅ Verified |
 
 ### A → P → 2
 
 | # | Step | Phase | Human gate | Status |
 |---|------|-------|-----------|--------|
-| 06 | [Assess](06-assess.md) | A · Assess | Assessment Review | ⏳ Pending |
-| 07 | [Plan](07-plan.md) | P · Plan | Plan + Tech-Stack Review | ⏳ Pending |
-| 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 06 | [Assess](06-assess.md) | A · Assess | Assessment Review | ✅ Verified |
+| 07 | [Plan](07-plan.md) | P · Plan | Plan ✅ / Tech-Stack ✅ | ✅ Verified |
+| 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 09 | [Increment 1 — flight-search](09-deliver-inc1-flight-search.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ⏳ Pending |
@@ -167,9 +191,9 @@ Plus the cross-cutting pieces that get **dissolved** rather than migrated:
 | `app/directives/approval-status.directive.js` | Becomes a presentational component |
 | `app/filters/currency.filter.js` | Deleted — `Intl.NumberFormat` |
 | `app/filters/date-format.filter.js` | Deleted — `date-fns/format` |
-| `app/services/api.service.js` | Becomes a fetch wrapper + TanStack Query hooks |
-| `app/services/auth.service.js` | Becomes a Zustand store |
-| `app/app.routes.js` | Becomes a TanStack Router route tree |
+| `app/services/api.service.js` | Becomes a fetch wrapper + data-fetching hooks |
+| `app/services/auth.service.js` | Becomes an auth store |
+| `app/app.routes.js` | Becomes a router route tree |
 
 ---
 
