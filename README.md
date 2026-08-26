@@ -222,38 +222,53 @@ The agent **stops and waits** at each of these. Nothing is approved by default.
 
 ## 🎯 THE TARGET STACK
 
-React 19 + TypeScript (strict) is settled — everything below it is a **role to fill**, not a
-decision already made. `tech-stack-resolution` in [step 07](docs/lab/07-plan.md) picks the actual
-libraries and writes an ADR for each; the named candidates are what a 2026 React project would
-plausibly reach for, and are there so you can tell whether the agent researched or just agreed.
+React 19 + TypeScript (strict) was settled from the start. **Everything below it was a role to fill,
+not a decision already made** — and [step 07](docs/lab/07-plan.md) filled them by researching live
+package registries and writing an ADR for each. The result is what the agent chose, not what this
+README assumed:
 
 ```
-React 19 + TypeScript (strict)
-    ├── ⚡ bundler + dev server    replaces Grunt + Bower        e.g. Vite
-    ├── 🧭 router                  replaces UI-Router            e.g. TanStack Router, React Router
-    ├── 🔄 data-fetching client    replaces Restangular          e.g. TanStack Query, SWR
-    ├── 🐻 state store             replaces $rootScope events    e.g. Zustand, Redux Toolkit, context
-    ├── 🧪 unit/component tests    replaces Karma + Jasmine      e.g. Vitest + Testing Library
-    ├── 🎭 e2e / behaviour tests   replaces "click it and see"   Playwright (already in the repo)
-    ├── 📅 date library            replaces Moment.js            e.g. date-fns, Day.js
-    └── 🎨 style scoping           replaces global Bootstrap 3   e.g. CSS Modules, Tailwind
+React 19.2.8 + TypeScript 7.0.2 (strict)
+    ├── ⚡ Vite 8.2.1              bundler + dev server      ← Grunt + Bower        ADR-016
+    ├── 🧭 React Router 8.3.0      real paths, declarative   ← UI-Router hash URLs  ADR-012
+    ├── 🔄 one fetch client        no cache library          ← Restangular          ADR-011
+    ├── 🛡️ Zod 4.4.3               validates every response  ← nothing did          ADR-011
+    ├── 🐻 Zustand 5.0.15          vanilla store             ← $rootScope events    ADR-013
+    ├── 🧪 Vitest 4.1.11           unit / component tests    ← Karma + Jasmine      ADR-016
+    ├── 🎭 Playwright 1.62.1       e2e / behaviour tests     ← "click it and see"
+    ├── 📅 date-fns 4.4.0          explicit parsing          ← Moment.js            ADR-014
+    ├── 🧹 oxlint + tsgolint       lint                      ← nothing              ADR-016
+    └── 🎨 Bootstrap 3 CSS         carried forward unchanged                        ADR-005
 ```
+
+Four of those are worth a second look, because they are the ones a stack diagram normally gets wrong:
+
+- **No data-cache library.** Not an oversight — *specified against*. `NFR-F005-003` and
+  `NFR-F007-004` are both titled **"No caching"**, and the mock server generates results per call, so
+  a cache would be **observably wrong** and would break baseline scenarios.
+- **Zod is new, and it is the point.** [Step 06 finding P-7](docs/lab/06-assess.md) proved a
+  compile-time type is not a runtime check: `tsc --strict` compiles a `Room` type declaring
+  `id: string` at **exit 0** while every `id` is `undefined` at runtime. Types are erased. Something
+  has to actually look.
+- **oxlint instead of ESLint.** `typescript-eslint` peers `typescript: '>=4.8.4 <6.1.0'` and hard-fails
+  on TypeScript 7 with `ERESOLVE`. There is no ESLint path on TS 7 today.
+- **Bootstrap 3 stays.** The migration is a component rewrite, not a redesign.
 
 ### Migration map
 
 | Legacy (AngularJS 1.6) | Target (React 19) | Notes |
 |------------------------|-------------------|-------|
 | Controller + `$scope` | Function component + `useState`/`useReducer` | `$scope` is not state — it is a DI-scoped bag. Untangle it. |
-| `$rootScope` broadcast/on | State store or React context | `$rootScope.$broadcast('flight:selected')` becomes an explicit store action |
-| UI-Router `$stateProvider` | Router route tree | Hash routing (`#!/flights`) → real paths (`/flights`) |
-| Restangular | Data-fetching client + `fetch` | Base URL moves from hardcoded to `import.meta.env` |
+| `$rootScope` broadcast/on | **Zustand store** | 5 events across 29 emit sites — and 3 of the 5 turned out to be dead |
+| UI-Router `$stateProvider` | **React Router 8** route tree | Hash routing (`#!/flights`) → real paths (`/flights`); old URLs break, deliberately |
+| Restangular | **one `fetch` client + Zod** | No cache library — two NFRs specify *"No caching"*. Base URL from `import.meta.env` |
 | `.directive()` | Component (or hook, if behaviour-only) | `date-picker` wraps jQuery UI → native `<input type="date">` or Radix |
 | `.filter('currency')` | `Intl.NumberFormat` | Delete the filter entirely |
-| `.filter('dateFormat')` | Date library `format()` | Delete the filter entirely |
+| `.filter('dateFormat')` | **`date-fns` `format()`** | Delete the filter entirely |
 | `$(...).animate()` / `.offset()` | `element.scrollIntoView({ behavior: 'smooth' })` | **remove jQuery completely** |
-| `$http` interceptors (auth) | Fetch wrapper + data-fetching client | JWT stays in `localStorage` for the lab (flagged as tech debt) |
-| Bower + Grunt | npm + bundler | `bower_components/` is deleted at the end |
-| Karma + Jasmine | Unit/component test runner | The 11 red tests become the first Gherkin scenarios |
+| `$http` interceptors (auth) | **`fetch` wrapper + Zustand auth store** | JWT stays in `localStorage` — **ADR-015, RISK-001, still OPEN**, owner `@alessandro-avila` |
+| Bower + Grunt | **npm + Vite 8** | `bower_components/` is deleted at the end |
+| Karma + Jasmine | **Vitest 4** | The 11 red tests become the first Gherkin scenarios |
 
 ### 🎯 Non-negotiable outcomes
 

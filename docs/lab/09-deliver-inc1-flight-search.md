@@ -136,7 +136,7 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 | Legacy | Where it goes | Note |
 |--------|---------------|------|
 | `flight-search.controller.js` | split across components + `filters.ts` | 258 lines of controller become several small units |
-| `flight-search.service.js` | `use-flight-search.ts` | Restangular → the data-fetching client |
+| `flight-search.service.js` | `use-flight-search.ts` | Restangular → a `fetch` call + Zod parse; **no cache layer** |
 | `flight-search.template.html` | JSX across the components | |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |

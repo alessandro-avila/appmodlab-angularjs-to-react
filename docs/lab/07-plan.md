@@ -1,7 +1,7 @@
 # Step 07 · Phase P · Plan
 
 > **Phase** P · Plan &nbsp;|&nbsp; **Branch** [`lab/07-plan`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/07-plan) &nbsp;|&nbsp; **Parent** `lab/06-assess`
-> **Human gates** 🧑‍⚖️ Plan Review · Tech-Stack Review &nbsp;|&nbsp; **Status** 🔄 P1 verified · P2 pending
+> **Human gates** 🧑‍⚖️ Plan Review ✅ · Tech-Stack Review ✅ &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -129,27 +129,37 @@ Stop at the Tech-Stack Review gate.
 ```
 
 <details>
-<summary><b>A reference mapping, if you want to check its work</b></summary>
+<summary><b>A reference mapping, and what it actually chose</b></summary>
 
-Not part of the prompt — the agent should derive this. Use it to mark the result:
+The middle column is what the prompt deliberately did **not** say — the agent had to derive it. The
+right column is the answer it came back with, so you can see where the prediction held and where it
+did not:
 
-| Legacy | Expected target |
-|--------|-----------------|
-| AngularJS 1.6.10 | React 19 |
-| Grunt + Bower | a bundler + npm |
-| angular-ui-router 0.4.3 | a router |
-| Restangular 1.6.1 | a data-fetching client + `fetch` |
-| `$rootScope` event bus | a state store |
-| Karma 1.7 + Jasmine 2.8 | a unit/component runner + Testing Library |
-| "click it and see" | Playwright |
-| Moment.js 2.18 | a date library, parsing explicitly |
-| global Bootstrap 3 CSS | scoped styles |
-| angular-ui-bootstrap | dropped entirely |
-| — | ESLint flat config; response shapes validated at the API boundary |
+| Legacy | Expected role | What it chose |
+|--------|---------------|---------------|
+| AngularJS 1.6.10 | React 19 | React **19.2.8** ✅ |
+| Grunt + Bower | a bundler + npm | **Vite 8.2.1** ✅ |
+| angular-ui-router 0.4.3 | a router | **React Router 8.3.0**, declarative ✅ |
+| Restangular 1.6.1 | a data-fetching client + `fetch` | **one `fetch` client, no library** ⚠️ |
+| `$rootScope` event bus | a state store | **Zustand 5.0.15**, vanilla store ✅ |
+| Karma 1.7 + Jasmine 2.8 | a unit runner + Testing Library | **Vitest 4.1.11** + Testing Library ✅ |
+| "click it and see" | Playwright | Playwright **1.62.1** — pin corrected, see G-1 ✅ |
+| Moment.js 2.18 | a date library, parsing explicitly | **date-fns 4.4.0** ✅ |
+| global Bootstrap 3 CSS | scoped styles | **Bootstrap 3, carried forward unchanged** ❌ |
+| angular-ui-bootstrap | dropped entirely | dropped ✅ |
+| — | ESLint flat config; responses validated at the boundary | **oxlint + tsgolint** ❌ · **Zod** ✅ |
 
-The right-hand column is deliberately role-shaped. ADR-005 left bundler, router and date control
-as follow-on ADRs, so the *names* are this step's output, not its input — that is exactly the
-judgement you are here to review.
+**Three rows did not go as predicted, and all three are the interesting ones:**
+
+- **No data-fetching library.** The prediction assumed one. Two NFRs titled *"No caching"* say
+  otherwise, against a server that generates results per call.
+- **Bootstrap 3 stays.** "Scoped styles" assumed a styling migration. This is a component rewrite,
+  not a redesign — nothing in the FRDs asks for it.
+- **oxlint, not ESLint.** Nobody predicted this, because it depends on a fact you only find by
+  querying the registry: `typescript-eslint` caps `typescript` at `<6.1.0`.
+
+That last row is the argument for the research step in one line. **A prediction made from training
+data would have written `eslint.config.js` into Increment 0 and hit `ERESOLVE` on day one.**
 
 </details>
 
@@ -362,9 +372,144 @@ figure as a **range (65–69)** rather than picking answers to close it. Only on
 a loosely worded consequence, corrected by note rather than edit). The 7-increment shape stands. The
 14 reproduced defects are authorised now.
 
-### P2 — Tech stack
+### P2 — Tech stack · ✅ Verified
 
-> ⏳ **Pending.**
+```
+ .spec2cloud/audit.log                       |   +47
+ .spec2cloud/state.json                      |  +100
+ specs/adrs/adr-011-typescript-strict-mode.md
+ specs/adrs/adr-012-routing-real-paths.md
+ specs/adrs/adr-013-client-state-store.md
+ specs/adrs/adr-014-date-library.md
+ specs/adrs/adr-015-jwt-localstorage-accepted-risk.md
+ specs/adrs/adr-016-toolchain-vite-vitest-oxlint.md
+ specs/tech-stack.md                         | 245 lines
+```
+
+`app/`, `api-mock/`, `test/`, `tests/` and `specs/features/` — **0 lines changed**.
+
+| Concern | Choice | Version |
+|---|---|---|
+| Language | **TypeScript, `strict`** | 7.0.2 |
+| UI | React + React DOM | 19.2.8 |
+| Routing | `react-router`, declarative | 8.3.0 |
+| Client state | `zustand` (vanilla store) | 5.0.15 |
+| Dates | `date-fns` + native `Intl` | 4.4.0 |
+| **Response validation** | `zod` | 4.4.3 |
+| **Data fetching** | **one `fetch` client — no library** | — |
+| Bundler | `vite` (Rolldown + Oxc) | 8.2.1 |
+| Unit runner | `vitest` | 4.1.11 |
+| **Linter** | **`oxlint` + `oxlint-tsgolint`** | 1.79.0 · 7.0.2001 |
+| Styling | Bootstrap 3 CSS, carried forward | 3.3.7 |
+
+### The research was real — I checked all of it
+
+Every version claim was verified against live npm. **14 of 14 exact.** Not "close" — exact, including
+`oxlint-tsgolint@7.0.2001`, which is not a version anyone guesses.
+
+The load-bearing claims held too:
+
+| Claim | Verified |
+|---|---|
+| `typescript-eslint` peers `typescript: '>=4.8.4 <6.1.0'` | ✅ verbatim — and its own latest is `8.67.1-alpha.17` |
+| `react-router` engines `node: '>=22.22.0'` | ✅ exact; host is v22.22.2 |
+| `react-router-dom` removed in v8 | ✅ frozen at 7.18.2 |
+| `NFR-F005-003` / `NFR-F007-004` justify no cache | ✅ both literally titled *"No caching"* |
+
+**The ESLint finding is the one that changed a decision.** TypeScript 7 is outside
+`typescript-eslint`'s peer range, so `npm` fails with `ERESOLVE`. ESLint cannot parse `.ts` without
+it. There is therefore **no ESLint path on TS 7 today** — hence `oxlint` + `oxlint-tsgolint`, which
+also fires `no-floating-promises` and mechanically closes finding **P-8**.
+
+That is a dependency conflict you meet on day one of Increment 0 or you meet it now, in research.
+
+### Two things it proved rather than described
+
+**P-7, executed.** It compiled a cast to a `Room` type declaring `id: string` under `tsc --strict`
+— **exit 0** — while every `r.id` was `undefined` at runtime and the `Set` size collapsed to 1. That
+is the duplicate-key set behind `ngRepeat:dupes`, reproduced through a *"typed"* client. **The
+compiler agreed with the bug.** ADR-011 says so in those words, then puts validation in the API
+client and infers the type *from* the schema so the two cannot drift.
+
+**Day.js, disqualified by measurement.** Two probes made it look safe. A third — the day-first
+discriminator `09/08/2026` as `dd/MM/yyyy` — showed it **silently ignoring the format string**.
+That is Moment's exact failure mode, and it is the whole reason ADR-009 exists. `date-fns` won on a
+measurement, not a download count.
+
+> Both of these are the same habit: where behaviour was decidable, it ran the code instead of
+> reading the docs. It also corrected itself once — the first two Day.js probes were not
+> discriminating, and it said so.
+
+### What it refused to buy
+
+Every rejection is argued from an FRD, an ADR or a measurement — never popularity:
+
+- **TanStack Query / SWR / any cache** — *specified against.* Two NFRs say **"No caching"**, and the
+  server generates results per call. A cache would be **observably wrong** and would break baseline
+  scenarios. *(This is also why naming TanStack Query in these docs earlier would have been wrong.)*
+- **UI kit** — `angular-ui-bootstrap` had **zero** usages. Replacing an unused dependency is pure addition.
+- **Form library** — deferred to Inc-4, *"when the travel-request form is visible"*.
+- **TanStack Router** — seven flat, parameter-free paths. Codegen for the least demanding routing problem available.
+- **React Compiler** — no performance requirement exists, and ADR-005 rejected the Performance path.
+
+### Two errors
+
+| Claim | Actual |
+|---|---|
+| TypeScript 7.0.2 *"GA five days ago"* | published **2026-07-08 — 48 days** before the run |
+| P-8 is *"9 `.then`, 0 `.catch`"* | **10** `.then`, 0 `.catch` — all ten real code, none in comments |
+
+Neither changes a decision. The second is the interesting one: **P-8's own figure is off by one, and
+P2 quoted it instead of counting.** In the same step whose P1 half built an entire section on
+re-deriving. The discipline did not survive the boundary between two prompts.
+
+### The gate: three findings it would not decide alone
+
+It raised **G-1, G-2, G-3** — distinct from the `§13` items, which were *known* hand-offs. These were
+new, and it raised them rather than acting:
+
+**G-1 — the Playwright pin, and it was already bleeding.** `package.json` pins
+`^1.63.0-alpha-2026-07-29`. Stable is 1.62.1, and `next` had **already moved** to
+`1.63.0-alpha-2026-08-25` — which that caret accepts. A floating test harness directly undercuts the
+determinism §0.6's clock repair exists to buy. **Resolved: stable 1.62.1** (Clock API landed in 1.45,
+so nothing is lost).
+
+> Sequence it deliberately: change the version **first** and confirm the baseline still fails exactly
+> 46 with the same datepicker signature — that isolates the downgrade as a no-op. *Then* apply the
+> clock repair. Both at once gives a surprise two possible causes.
+
+**G-3 — ADR-015 needs a person, not a role.** The JWT stays in `localStorage`: readable by any script
+on the origin, valid 24h, **unrevocable** (the server holds no session state). That acceptance rests
+entirely on Q-12 — *nothing is deployed*. The ADR is blunt about what follows:
+
+> *"A risk whose justification is 'nobody can reach it' must be re-examined the instant somebody can,
+> and the only mechanism that guarantees re-examination is a written owner and a written trigger."*
+
+So it is a deferred decision with a tripwire, and a tripwire needs somewhere to fire.
+**Resolved: `@alessandro-avila`**, recorded in the ADR and `riskRegister`, `ownerNamed: true`.
+
+**Naming the owner does not close the risk.** `RISK-001` stays `OPEN`; closure requires a new ADR
+superseding ADR-015. Trigger 2 is the one to watch here — it is blocking, and it covers *"a demo
+against a live audience with attendee-supplied data."* On a hackathon stage, that fires.
+
+### §1.7 settled — ADR-005 governs
+
+The conflict P1 escalated is resolved: **the two stacks never share a document.** Each AngularJS
+component is fully rewritten in React 19 + TypeScript; both apps live in the repo and stay startable
+until cutover, but a page loads exactly one of them.
+
+ADR-006's contradicting text was corrected **in place, not erased** — struck through, with the
+correction beside it:
+
+| Clause | Verdict |
+|---|---|
+| *"runs as a hybrid"* | ✅ true |
+| *"both frameworks loaded simultaneously"* | ❌ false |
+| *"the bundle is larger than either endpoint"* | ❌ false — there is no combined bundle |
+| *"route transitions cross a boundary"* | ✅ true — a **document** boundary, a full page load |
+
+Its decision, module scores, migration order and increment boundaries are untouched. **Increment 0 is
+unblocked.**
 
 ---
 

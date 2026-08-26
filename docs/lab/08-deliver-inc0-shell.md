@@ -138,12 +138,12 @@ src/                                ← or wherever tech-stack.md put it
 │   └── expenses.tsx                ← placeholder
 ├── lib/
 │   ├── api-client.ts               ← fetch wrapper, VITE_API_URL, Bearer token
-│   └── query-client.ts
+│   └── schemas.ts                  ← Zod schemas; types are INFERRED from these (ADR-011)
 ├── stores/
 │   ├── auth-store.ts               ← replaces auth.service.js + auth:login/auth:logout
 │   └── notification-store.ts       ← replaces notification:add
-└── types/
-    └── api.ts                      ← generated from specs/contracts/api/*.yaml
+└── contracts/
+    └── api.ts                      ← z.infer<> re-exports, so type and check cannot drift
 
 vite.config.ts
 tsconfig.json                       ← strict: true
@@ -214,8 +214,12 @@ toast component subscribed to it.
       it had decayed to 189/235 with zero code changes
 - [ ] `npm test` (Karma) still green from step 04
 - [ ] `tsconfig.json` has `strict: true`; `grep -rn ': any\|as any' src/` returns nothing
+- [ ] `npx oxlint src/` is clean — **not** ESLint; `typescript-eslint` caps `typescript` at `<6.1.0`
+      and hard-fails on TS 7 (ADR-016)
+- [ ] `engines.node` is pinned `>= 22.22.0` in `package.json` — React Router 8 requires it (G-2)
+- [ ] `@playwright/test` is on stable **1.62.1**, not a floating `^…-alpha` (G-1)
 - [ ] The API client validates the response before returning it — a generated type is not a runtime
-      guarantee (step 06, **P-7**)
+      guarantee (step 06, **P-7**). Types are `z.infer<>`d from the schema, not declared alongside it
 - [ ] No hardcoded `http://localhost:3000` anywhere in `src/` — it comes from
       `import.meta.env.VITE_API_URL`
 - [ ] `.env.example` is committed; a real `.env` is **not**
