@@ -1,33 +1,35 @@
 /**
- * Page Object for the Flight Search screen of the legacy AngularJS portal.
+ * Page Object for the Flight Search screen.
  *
- * Two deliberate design choices, both forced by how the legacy app is built:
+ * RE-POINTED IN INCREMENT 1 from the AngularJS screen to the React route
+ * (ADR-008 §5, increment-plan §1.4: "the page object changes the URL it opens
+ * and the selectors it uses. The feature file and the step definitions do not
+ * change unless a scenario is superseded.")
  *
- * 1. Dates are driven through the jQuery UI calendar widget, never by typing.
- *    The inputs are plain text fields upgraded by `$('#departDate')
- *    .datepicker(...)`; a typed value never fires `onSelect`, so the Angular
- *    model would stay null while the field looked filled. The open calendar
- *    also swallows pointer events (constraint C-2 in ADR-003), so it is
- *    dismissed with Escape before anything else is clicked.
+ * Three things changed and nothing else:
  *
- * 2. A few assertions read the Angular scope rather than the DOM. They are
- *    limited to values the screen genuinely does not render — chiefly the
- *    numeric `filters.maxPrice` behind the range slider and the
- *    `priceRange.max` it is derived from. Everything a user can see is
- *    asserted through the DOM.
+ * 1. THE URL. `/#!/flights` on the legacy static server becomes the real path
+ *    `/flights` on the front door. React routes are real paths, because a
+ *    fragment is never sent to the server and route ownership would otherwise
+ *    be inexpressible (ADR-012, increment-plan §1.2).
+ *
+ * 2. DATE ENTRY. The jQuery UI calendar is gone (ADR-007 category 1), so
+ *    `pickDate` sets a native <input type="date"> instead of walking a widget.
+ *    That also removes constraint C-2 — there is no in-page popup left to
+ *    swallow pointer events — so `dismissDatePicker` becomes a no-op, kept only
+ *    so the step definitions do not have to change.
+ *
+ * 3. STATE READING. A few assertions read values the screen genuinely does not
+ *    render — chiefly the numeric `filters.maxPrice` behind the range slider and
+ *    the `priceRange` it derives from. AngularJS exposed these through
+ *    `angular.element(...).scope()`. React publishes the same SCOPE-SHAPED
+ *    snapshot at `window.__flightSearch.scope` (see `src/lib/test-seam.ts`), so
+ *    `readScope(pick)` keeps working with the exact same `pick` functions the
+ *    step definitions already pass.
+ *
+ * Everything a user can see is still asserted through the DOM.
  */
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** Runs in the browser: walk up from the form to the flight-search scope. */
-function scopeReader(pickSource) {
-  /* global angular, document */
-  let sc = angular.element(document.querySelector('form') || document.body).scope();
-  while (sc && !sc.searchParams) sc = sc.$parent;
-  if (!sc) return null;
-  // eslint-disable-next-line no-new-func
-  return new Function('sc', 'return (' + pickSource + ')(sc);')(sc);
-}
+const { BASE_URL } = require('../support/world');
 
 class FlightSearchPage {
   constructor(page) {
@@ -38,7 +40,6 @@ class FlightSearchPage {
     this.cabinClass = page.locator('#cabinClass');
     this.searchButton = page.getByRole('button', { name: /Search Flights/i });
     this.overlay = page.locator('#search-overlay');
-    this.picker = page.locator('#ui-datepicker-div');
     this.results = page.locator('.list-group a.list-group-item');
     this.detailsPanel = page.locator('#flight-details');
   }
@@ -46,20 +47,29 @@ class FlightSearchPage {
   // ---------------------------------------------------------------- navigation
 
   async open() {
-    await this.page.goto('http://localhost:8080/#!/flights', { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/flights`, { waitUntil: 'domcontentloaded' });
     await this.searchButton.waitFor({ state: 'visible' });
-    // The datepickers are wired inside a $timeout(..., 0); wait for that.
+    // Wait for the React route to publish its state — the equivalent of the
+    // legacy wait for the datepickers wired inside a $timeout(..., 0).
     await this.page.waitForFunction(
-      () => !!(window.jQuery && window.jQuery('#departDate').data('datepicker')),
-      null, { timeout: 15000 }
+      () => !!(window.__flightSearch && window.__flightSearch.scope),
+      null,
+      { timeout: 15000 }
     );
   }
 
-  /** Read a value out of the flight-search scope. `pick` is a fn of the scope. */
+  /**
+   * Read a value out of the flight-search state. `pick` is a fn of the scope.
+   *
+   * The published snapshot carries the same property names the AngularJS scope
+   * did — searchParams, filters, priceRange, flights, filteredFlights,
+   * airlines, sortField, sortReverse, isLoading, hasSearched — so every `pick`
+   * written against the legacy app keeps working unchanged.
+   */
   async readScope(pick) {
     return this.page.evaluate(
-      ({ src, pickSrc }) => new Function('pickSource', 'return (' + src + ')(pickSource);')(pickSrc),
-      { src: scopeReader.toString(), pickSrc: pick.toString() }
+      (pickSrc) => new Function('sc', 'return (' + pickSrc + ')(sc);')(window.__flightSearch.scope),
+      pick.toString()
     );
   }
 
@@ -87,82 +97,86 @@ class FlightSearchPage {
   }
 
   /**
-   * Pick a date through the calendar widget. `date` is 'mm/dd/yyyy'.
-   * Returns without leaving the calendar open.
+   * Set a date. `date` is 'mm/dd/yyyy', the format the scenarios are written in.
    *
-   * The day is selected with a dispatched click rather than a real one. Once
-   * search results are on screen the calendar's lower rows are covered by the
-   * results list — the widget renders at z-index 1 while Bootstrap's list items
-   * sit above it — so a genuine pointer click never reaches those days. That
-   * overlap is real and is asserted on its own terms in the scenario "Once
-   * results are shown, the end of the month cannot be clicked"; dispatching the
-   * event here keeps it from blocking every other scenario that merely needs a
-   * date.
+   * A native date input holds `yyyy-mm-dd` in its value, so the scenario's
+   * calendar date is converted here rather than in the step definitions.
+   * Filling it fires the input event React listens for, which is what a user
+   * typing or picking from the browser calendar produces — and is the behaviour
+   * the legacy screen could NOT deliver, because a typed value never reached the
+   * AngularJS model.
    */
   async pickDate(field, date) {
     const [month, day, year] = date.split('/').map(Number);
-    await this.page.locator(`#${field}`).click();
-    await this.picker.waitFor({ state: 'visible' });
-
-    for (let hop = 0; hop < 48; hop++) {
-      const title = (await this.picker.locator('.ui-datepicker-title').innerText()).trim();
-      const [monthName, yearText] = title.split(/\s+/);
-      const shownMonth = MONTHS.indexOf(monthName) + 1;
-      const shownYear = Number(yearText);
-      if (shownMonth === month && shownYear === year) break;
-      const forward = year > shownYear || (year === shownYear && month > shownMonth);
-      await this.picker.locator(forward ? 'a.ui-datepicker-next' : 'a.ui-datepicker-prev').click();
-    }
-
-    await this.picker
-      .locator('td[data-handler="selectDay"] a')
-      .filter({ hasText: new RegExp(`^${day}$`) })
-      .dispatchEvent('click');
-    await this.dismissDatePicker();
+    const pad = (n) => String(n).padStart(2, '0');
+    await this.page.locator(`#${field}`).fill(`${year}-${pad(month)}-${pad(day)}`);
+    await this.page.waitForFunction(
+      ({ id, expected }) => {
+        const el = document.getElementById(id);
+        return !!el && el.value === expected;
+      },
+      { id: field, expected: `${year}-${pad(month)}-${pad(day)}` },
+      { timeout: 5000 }
+    );
   }
 
-  /** The open calendar intercepts clicks (C-2). Always close it before acting. */
-  async dismissDatePicker() {
-    if (await this.picker.isVisible().catch(() => false)) {
-      await this.page.keyboard.press('Escape');
-      await this.picker.waitFor({ state: 'hidden' }).catch(() => {});
-    }
+  /** Used by the net-new "typed departure date" scenario. */
+  async typeDate(field, date) {
+    await this.pickDate(field, date);
   }
 
   /**
-   * What the date field actually shows. Angular re-renders the model into the
-   * text input, so this is a raw JavaScript Date string
-   * ("Tue Aug 25 2026 00:00:00 GMT+0200 ..."), not "08/25/2026".
+   * Kept as a no-op so the step definitions do not change.
+   *
+   * The legacy jQuery UI calendar rendered inside the document and swallowed
+   * pointer events, so every scenario had to dismiss it before clicking
+   * anything (constraint C-2 in ADR-003). A native date input renders its
+   * calendar outside the document, so nothing needs dismissing.
+   */
+  async dismissDatePicker() {
+    /* C-2 no longer exists — see the note above. */
+  }
+
+  /**
+   * What the date field actually shows.
+   *
+   * SUPERSEDED BEHAVIOUR (ADR-009): the legacy field was a text input that
+   * AngularJS re-rendered from a bound Date, so this returned
+   * "Tue Aug 25 2026 00:00:00 GMT+0200 (...)". A native date input returns the
+   * calendar date as `yyyy-mm-dd`.
    */
   async dateFieldText(field) {
     return this.page.locator(`#${field}`).inputValue();
   }
 
-  /** The same field parsed to mm/dd/yyyy, for readable assertions. */
+  /** The same field as mm/dd/yyyy, for readable assertions. */
   async dateFieldAsCalendarDate(field) {
     const raw = await this.dateFieldText(field);
     if (!raw) return null;
-    const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) return null;
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(parsed.getMonth() + 1)}/${pad(parsed.getDate())}/${parsed.getFullYear()}`;
+    // Parsed explicitly rather than through `new Date(raw)`: an ISO date string
+    // is parsed as UTC, which shifts the day in negative offsets. ADR-009 is
+    // about exactly this class of implicit parse, and it applies to the harness
+    // as much as to the application.
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    if (!match) return null;
+    const [, year, month, day] = match;
+    return `${month}/${day}/${year}`;
   }
 
   // ------------------------------------------------------------------- search
 
   async search() {
-    await this.dismissDatePicker();
     await this.searchButton.click();
   }
 
   async waitForResults() {
     await this.page.waitForFunction(
       () => {
-        let sc = angular.element(document.querySelector('form') || document.body).scope();
-        while (sc && !sc.searchParams) sc = sc.$parent;
+        const sc = window.__flightSearch && window.__flightSearch.scope;
         return !!sc && sc.isLoading === false && sc.hasSearched === true;
       },
-      null, { timeout: 25000 }
+      null,
+      { timeout: 25000 }
     );
     await this.overlay.waitFor({ state: 'hidden' }).catch(() => {});
   }
@@ -170,6 +184,24 @@ class FlightSearchPage {
   async searchAndWait() {
     await this.search();
     await this.waitForResults();
+  }
+
+  /**
+   * Wait for an in-flight request to settle.
+   *
+   * Added in Increment 1 so the `I book the selected flight` step no longer has
+   * to reach into the framework itself — see the note in
+   * `tests/steps/flight-search.steps.js`.
+   */
+  async waitForIdle() {
+    await this.page.waitForFunction(
+      () => {
+        const sc = window.__flightSearch && window.__flightSearch.scope;
+        return !!sc && sc.isLoading === false;
+      },
+      null,
+      { timeout: 20000 }
+    );
   }
 
   // ------------------------------------------------------------------ results
@@ -188,10 +220,8 @@ class FlightSearchPage {
   }
 
   /**
-   * Every visible result row, parsed into plain data.
-   * The row shows airline, flight number, departure and arrival times, duration,
-   * stop count and price — but no date; the date appears only once a flight is
-   * selected, in the details panel.
+   * Every visible result row, parsed into plain data. The DOM structure is
+   * carried over from the legacy template unchanged, so this parser is too.
    */
   async resultRows() {
     return this.results.evaluateAll((nodes) =>
@@ -273,8 +303,10 @@ class FlightSearchPage {
     return (await box.innerText()).trim();
   }
 
-  /** Notifications accumulate in $rootScope and are never dismissed. */
   async notifications() {
+    // Matches BOTH notification areas. This step is shared with the four
+    // modules still served by AngularJS, whose area is `.notification-area`
+    // (`app/index.html:41-45`); the React shell carries the same class.
     return this.page.locator('.notification-area .alert').allInnerTexts();
   }
 
@@ -288,22 +320,26 @@ class FlightSearchPage {
   }
 
   /**
-   * Start recording $rootScope broadcasts so a scenario can assert that the
-   * app told other components something happened. The legacy app talks to
-   * itself over the root scope event bus; there is no other observable trace.
+   * Start recording announcements the app makes to the rest of the system.
+   *
+   * The legacy app talked to itself over the `$rootScope` event bus; React
+   * announces through `src/lib/test-seam.ts`. In BOTH cases nothing consumes
+   * `itinerary:refresh` — the announcement is the behaviour, and the consumer
+   * arrives in Increment 3 (ADR-013).
    */
   async recordBroadcast(eventName) {
     await this.page.evaluate((name) => {
-      const rootScope = angular.element(document.body).injector().get('$rootScope');
-      window.__broadcasts = window.__broadcasts || {};
-      window.__broadcasts[name] = 0;
-      rootScope.$on(name, () => { window.__broadcasts[name] += 1; });
+      window.__flightSearch = window.__flightSearch || { scope: null, events: {} };
+      window.__flightSearch.events[name] = 0;
     }, eventName);
   }
 
   async broadcastCount(eventName) {
     return this.page.evaluate(
-      (name) => (window.__broadcasts && window.__broadcasts[name]) || 0,
+      (name) =>
+        (window.__flightSearch &&
+          window.__flightSearch.events &&
+          window.__flightSearch.events[name]) || 0,
       eventName
     );
   }
@@ -328,80 +364,36 @@ class FlightSearchPage {
 
   /**
    * Move the range slider. Playwright's fill() rejects range inputs, so the
-   * value is set and the events Angular listens for are dispatched, which is
-   * what a real drag produces.
+   * value is set and the events React listens for are dispatched, which is what
+   * a real drag produces.
+   *
+   * React tracks the DOM value internally, so the native value setter is used
+   * rather than `el.value = v` — otherwise React sees no change and skips the
+   * re-render.
    */
   async setMaxPrice(value) {
     await this.page.locator('input[type="range"]').evaluate((el, v) => {
-      el.value = String(v);
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(el, String(v));
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     }, value);
   }
 
-  /**
-   * Hit-test every selectable day against the flight the user has selected.
-   * Bootstrap gives the selected row `z-index: 2` while the calendar widget
-   * renders at `z-index: 1`, so the selected row paints over it.
-   */
-  async unreachableCalendarDays(field) {
-    await this.page.locator(`#${field}`).click();
-    await this.picker.waitFor({ state: 'visible' });
-    const result = await this.page.evaluate(() => {
-      const days = [...document.querySelectorAll('#ui-datepicker-div td[data-handler="selectDay"] a')];
-      const selectedRow = document.querySelector('.list-group a.list-group-item.active');
-      const intersects = (a, b) =>
-        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-
-      const blocked = [];
-      const overlapping = [];
-      days.forEach((a) => {
-        const box = a.getBoundingClientRect();
-        if (selectedRow && intersects(box, selectedRow.getBoundingClientRect())) {
-          overlapping.push(a.textContent.trim());
-        }
-        const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-        if (!(top === a || a.contains(top))) {
-          blocked.push({
-            day: a.textContent.trim(),
-            coveredBy: top ? top.tagName.toLowerCase() : null,
-            coveredByClass: top ? String(top.className) : null,
-            coveredBySelectedFlight: !!(top && top.closest('.list-group a.list-group-item.active'))
-          });
-        }
-      });
-
-      return {
-        total: days.length,
-        blocked,
-        overlapping,
-        hasSelectedRow: !!selectedRow,
-        viewport: { width: window.innerWidth, height: window.innerHeight }
-      };
-    });
-    await this.dismissDatePicker();
-    return result;
-  }
-
   async filterByAirline(airline) {
-    await this.page.locator('select[ng-model="filters.airline"]').selectOption(airline);
+    await this.page.locator('[data-testid="filter-airline"]').selectOption(airline);
   }
 
   async filterByStops(value) {
-    await this.page.locator('select[ng-model="filters.stops"]').selectOption(String(value));
+    await this.page.locator('[data-testid="filter-stops"]').selectOption(String(value));
   }
 
   async filterByDepartureTime(value) {
-    await this.page.locator('select[ng-model="filters.departTimeRange"]').selectOption(value);
+    await this.page.locator('[data-testid="filter-depart-time"]').selectOption(value);
   }
 
   // ------------------------------------------------------------------ sorting
 
-  /**
-   * The sort buttons are matched on their visible label rather than an exact
-   * accessible name: "Price" carries a trailing space from the sort-direction
-   * icon inside it, which an exact match will not accept.
-   */
   async sortBy(label) {
     await this.page.getByRole('button', { name: label }).click();
   }

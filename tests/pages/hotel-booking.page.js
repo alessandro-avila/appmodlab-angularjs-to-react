@@ -19,6 +19,8 @@
  * rows at all, so the booking path has no user-facing entry point. It is used by
  * exactly one scenario, which is tagged @bypasses-ui and says so in its name.
  */
+const { BASE_URL } = require('../support/world');
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -59,7 +61,7 @@ class HotelBookingPage {
   // ---------------------------------------------------------------- navigation
 
   async open() {
-    await this.page.goto('http://localhost:8080/#!/hotels', { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/#!/hotels`, { waitUntil: 'domcontentloaded' });
     await this.searchButton.waitFor({ state: 'visible' });
     // The datepickers are wired inside a $timeout(..., 0); wait for that.
     await this.page.waitForFunction(

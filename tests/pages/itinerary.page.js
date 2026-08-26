@@ -11,6 +11,8 @@
  * sits inside an ng-if and therefore has a CHILD scope. The difference is the
  * whole story of the dead filter, so both are exposed separately.
  */
+const { BASE_URL } = require('../support/world');
+
 class ItineraryPage {
   constructor(page) {
     this.page = page;
@@ -28,7 +30,7 @@ class ItineraryPage {
   }
 
   async open() {
-    await this.page.goto('http://localhost:8080/#!/itinerary', { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/#!/itinerary`, { waitUntil: 'domcontentloaded' });
     await this.container.waitFor({ state: 'visible', timeout: 20000 });
     await this.details.waitFor({ state: 'visible', timeout: 20000 });
     // selectTrip() animates a jQuery scroll after the details render; let it settle.

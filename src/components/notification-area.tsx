@@ -6,7 +6,7 @@
  * closing P-5's unbounded array.
  */
 import type { ReactElement } from 'react';
-import { useNotificationStore, notificationStore, type NotificationType } from '../stores/notification-store';
+import { useNotificationStore, type NotificationType } from '../stores/notification-store';
 
 /** Bootstrap 3 alert classes — ADR-005 carries Bootstrap 3 forward unchanged. */
 const ALERT_CLASS: Record<NotificationType, string> = {
@@ -22,18 +22,19 @@ export function NotificationArea(): ReactElement | null {
   if (notifications.length === 0) return null;
 
   return (
-    <div className="container" data-testid="notification-area">
+    <div className="container notification-area" data-testid="notification-area">
       {notifications.map((n) => (
         <div key={n.id} className={`alert ${ALERT_CLASS[n.type]}`} data-testid="notification">
-          <span data-testid="notification-message">{n.message}</span>
-          <button
-            type="button"
-            className="close"
-            aria-label="Dismiss notification"
-            onClick={() => notificationStore.getState().dismiss(n.id)}
-          >
-            &times;
-          </button>
+          {/*
+            NO DISMISS CONTROL, deliberately. The legacy notification area
+            (`app/index.html:41-45`) is an ng-repeat of plain alerts —
+            "notifications accumulate in $rootScope and are never dismissed",
+            as the baseline page object records. A close button would add text
+            to the alert's innerText, and scenarios assert that text exactly
+            (`the notification counts every flight that was found` compares it
+            with strict equality). Dismissal is not a behaviour this app has.
+          */}
+          {n.message}
         </div>
       ))}
     </div>

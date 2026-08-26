@@ -22,7 +22,7 @@ migration is also the one where a mistake is loudest.
 ## 🧰 Skills invoked
 
 | Step | Skill | Notes |
-|------|-------|-------|
+| --- | --- | --- |
 | 1 | `gherkin-generation` | Only if the increment introduces a **delta** — here it does |
 | 2 | `test-generation` | Red tests first |
 | 3 | `contract-generation` | Types for `/api/flights` |
@@ -137,19 +137,19 @@ app/app.routes.js                           ← `flights` state removed, LAST
 Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 
 | Legacy | Where it goes | Note |
-|--------|---------------|------|
+| --- | --- | --- |
 | `flight-search.controller.js` | split across components + `filters.ts` | 258 lines of controller become several small units |
 | `flight-search.service.js` | `use-flight-search.ts` | Restangular → a `fetch` call + Zod parse; **no cache layer** |
-| `flight-search.template.html` | JSX across the components | |
+| `flight-search.template.html` | JSX across the components |  |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |
 | `date-format.filter.js` | **dissolved** | `date-fns` `format()` |
 | `$('#search-overlay').fadeIn/fadeOut` | React state | loading is state, not a DOM effect |
-| `$('html,body').animate(scrollTop)` | `scrollIntoView({behavior:'smooth'})` | |
-| `.addClass('has-error').delay(3000)` | validation state + CSS | |
-| `_.uniq/_.map/_.minBy/_.maxBy` | `Set`, `map`, `reduce` | |
-| `$watch` × 3 | derived state / effects | |
-| `$broadcast('notification:add')` | notification store | |
+| `$('html,body').animate(scrollTop)` | `scrollIntoView({behavior:'smooth'})` |  |
+| `.addClass('has-error').delay(3000)` | validation state + CSS |  |
+| `_.uniq/_.map/_.minBy/_.maxBy` | `Set`, `map`, `reduce` |  |
+| `$watch` × 3 | derived state / effects |  |
+| `$broadcast('notification:add')` | notification store |  |
 | `$broadcast('itinerary:refresh')` | query invalidation | `queryClient.invalidateQueries` is the idiomatic replacement |
 
 > **`itinerary:refresh` deserves a thought.** The AngularJS version tells the itinerary controller
@@ -161,7 +161,7 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 The three watchers are where the subtle bugs live. Translate them deliberately:
 
 | Watcher | Lines | React equivalent |
-|---------|-------|------------------|
+| --- | --- | --- |
 | `departDate` → push `returnDate` +1 day | 45–53 | derive in the change handler, not an effect — effects that write state that triggers effects are how you get loops |
 | `tripType` → null `returnDate` | 55–59 | change handler |
 | `filters` (deep) → re-filter | 62–66 | **not an effect at all** — filtered results are `useMemo` over `results` and `filters` |
@@ -198,8 +198,8 @@ digest cycle in React, badly.
 
 - [ ] All `@existing-behavior` scenarios pass — for **every** module, not just flights
 - [ ] The only modified scenario is the date-parsing one, and its ADR explains it
-- [ ] `grep -rn "jquery\|jQuery\|moment\|lodash\|restangular" src/` → nothing
-- [ ] `grep -rn ": any\|as any\|@ts-expect-error\|@ts-ignore" src/` → nothing
+- [ ] `grep -rn "jquery|jQuery|moment|lodash|restangular" src/` → nothing
+- [ ] `grep -rn ": any|as any|@ts-expect-error|@ts-ignore" src/` → nothing
 - [ ] The flight response is validated before it is rendered — the generated type is not the check
 - [ ] The `maxPrice` reset still happens on every search — **surprising behaviour preserved**
 - [ ] Time buckets are still 6–12 / 12–18 / 18–6

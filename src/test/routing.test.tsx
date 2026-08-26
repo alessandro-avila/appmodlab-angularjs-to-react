@@ -26,10 +26,12 @@ function renderAt(path: string): ReactElement {
   ) as unknown as ReactElement;
 }
 
-const GUARDED = ['/dashboard', '/flights', '/hotels', '/itinerary', '/travel-request', '/expenses'];
+const GUARDED = ['/dashboard', '/hotels', '/itinerary', '/travel-request', '/expenses'];
+/** Migrated routes render a real screen rather than a placeholder. */
+const GUARDED_MIGRATED = [{ path: '/flights', testId: 'flight-search' }];
 
 describe('router guard — a stranger is sent to login (app/app.js:32-37)', () => {
-  for (const path of GUARDED) {
+  for (const path of [...GUARDED, ...GUARDED_MIGRATED.map((r) => r.path)]) {
     it(`redirects ${path} to the login screen with no token`, () => {
       renderAt(path);
       expect(screen.getByTestId('login')).toBeInTheDocument();
@@ -45,11 +47,21 @@ describe('router guard — a stranger is sent to login (app/app.js:32-37)', () =
 
 describe('router guard — a signed-in user reaches every guarded route', () => {
   for (const path of GUARDED) {
-    it(`renders ${path} with a token present`, () => {
+    it(`renders the ${path} placeholder with a token present`, () => {
       authStore.getState().setSession('jwt-abc', SARAH);
       renderAt(path);
       expect(screen.getByTestId('placeholder')).toBeInTheDocument();
       expect(screen.getByTestId('placeholder')).toHaveAttribute('data-route', path);
+    });
+  }
+
+  for (const { path, testId } of GUARDED_MIGRATED) {
+    it(`renders the MIGRATED ${path} screen with a token present`, () => {
+      // Increment 1 replaced this placeholder with the real React screen.
+      authStore.getState().setSession('jwt-abc', SARAH);
+      renderAt(path);
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
+      expect(screen.queryByTestId('placeholder')).not.toBeInTheDocument();
     });
   }
 
@@ -81,9 +93,11 @@ describe('route tree — mirrors all seven UI-Router states', () => {
     expect(screen.getByTestId('shell-status')).toHaveTextContent('ok');
   });
 
-  it('the health route reports every ledger row as AngularJS-owned', () => {
+  it('the health route reports each ledger row against its current owner', () => {
     renderAt('/__shell');
-    for (const state of ['login', 'dashboard', 'flights', 'hotels', 'itinerary', 'travelRequest', 'expenses']) {
+    // Increment 1 moved exactly one row.
+    expect(screen.getByTestId('ledger-owner-flights')).toHaveTextContent('react');
+    for (const state of ['login', 'dashboard', 'hotels', 'itinerary', 'travelRequest', 'expenses']) {
       expect(screen.getByTestId(`ledger-owner-${state}`)).toHaveTextContent('angularjs');
     }
   });

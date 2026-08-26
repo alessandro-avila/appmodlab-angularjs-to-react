@@ -206,11 +206,31 @@ Feature: Hotel booking
   # Cross-feature coupling
   # ---------------------------------------------------------------------------
 
+  @deferred-to-inc-2
   Scenario: Selecting a flight does not carry the destination over to hotels
     # The hotel controller listens for a "flight:selected" event to pre-fill the
     # city and the dates. The two screens are separate routes, so the hotel
     # controller does not exist when the event is broadcast and is created fresh
     # afterwards. The pre-fill can never happen.
+    #
+    # -- Increment 1 note -------------------------------------------------------
+    # After Inc-1, flight search is React and hotel booking is still AngularJS.
+    # ADR-005 rejected an in-page interop bridge, so this journey is DEFERRED and
+    # remains unserved until Increment 2 migrates hotel booking. No interop is
+    # built for it.
+    #
+    # The outcome is unchanged and the assertions below are untouched: the
+    # legacy emitter is gone, and the AngularJS listener that survives is never
+    # reached — previously because the two controllers were never alive together,
+    # now because nothing broadcasts. The scenario therefore still PASSES, and it
+    # is tagged rather than dropped so the deferral is visible.
+    #
+    # ADR-013 maps `flight:selected` to NO store concern: it is deliberately
+    # dropped, not ported. Increment 2 must satisfy this scenario BY
+    # CONSTRUCTION — there is no pre-fill mechanism at all — rather than by
+    # accident. Making the pre-fill work would be an unauthorised behaviour
+    # change (increment-plan §2.4).
+    # ---------------------------------------------------------------------------
     Given I have selected a flight to "Boston" on the flight search page
     When I go to the hotel booking page
     Then the destination city is empty

@@ -51,14 +51,14 @@ export interface LedgerRow {
 /**
  * All seven UI-Router states from app/app.routes.js, mirrored.
  *
- * Every row is `angularjs` in Increment 0. That is the deliverable: the React
- * app owns NO product route a user can reach (plan §4.1), so all 235 baseline
- * scenarios keep hitting the legacy app and keep passing unchanged.
+ * Increment 1 moved the FIRST row: `/flights` is now owned by React. Every
+ * other row is still AngularJS, so the remaining 4 feature modules and the
+ * login/dashboard pair keep answering exactly as before.
  */
 export const ROUTE_LEDGER: readonly LedgerRow[] = [
   { path: '/login', legacyState: 'login', legacyHash: '#!/login', owner: 'angularjs', migratesIn: 'Inc-6', requireAuth: false },
   { path: '/dashboard', legacyState: 'dashboard', legacyHash: '#!/dashboard', owner: 'angularjs', migratesIn: 'Inc-6', requireAuth: true },
-  { path: '/flights', legacyState: 'flights', legacyHash: '#!/flights', owner: 'angularjs', migratesIn: 'Inc-1', requireAuth: true },
+  { path: '/flights', legacyState: 'flights', legacyHash: '#!/flights', owner: 'react', migratesIn: 'Inc-1', requireAuth: true },
   { path: '/hotels', legacyState: 'hotels', legacyHash: '#!/hotels', owner: 'angularjs', migratesIn: 'Inc-2', requireAuth: true },
   { path: '/itinerary', legacyState: 'itinerary', legacyHash: '#!/itinerary', owner: 'angularjs', migratesIn: 'Inc-3', requireAuth: true },
   { path: '/travel-request', legacyState: 'travelRequest', legacyHash: '#!/travel-request', owner: 'angularjs', migratesIn: 'Inc-4', requireAuth: true },

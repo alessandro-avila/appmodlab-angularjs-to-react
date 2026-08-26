@@ -88,16 +88,59 @@ Feature: Flight search
     When I switch the trip type to "oneway"
     Then the return date is empty
 
-  Scenario: A chosen date is shown as a raw date string, not as a calendar date
+  @inc-1
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-009 (explicit date parsing) — the one behaviour change
+  # authorised for this increment.
+  #
+  # The legacy field was <input type="text"> with ng-model bound to a Date object.
+  # AngularJS re-rendered the model over the text the datepicker had written, so
+  # the field displayed Date.prototype.toString():
+  #   "Tue Aug 25 2026 00:00:00 GMT+0200 (Central European Summer Time)"
+  # Date entry is now a native date input whose value is parsed with an explicit
+  # format, so the field holds a calendar date and never a raw Date string.
+  # ---------------------------------------------------------------------------
+  Scenario: A chosen date is shown as a calendar date
     When I choose "08/25/2026" as the departure date
-    Then the departure date field reads "Tue Aug 25 2026" followed by a time and time zone
+    Then the departure date field reads the calendar date "08/25/2026"
 
-  Scenario: The flight I selected covers the date calendar
+  @inc-1
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED as a direct consequence of replacing the jQuery UI datepicker with
+  # a native date input (ADR-007 category 1). This is not a separate decision: it
+  # is unavoidable once the widget changes.
+  #
+  # The legacy scenario asserted a z-index artefact. The jQuery UI calendar was a
+  # div rendered INSIDE the document at z-index 1, and the selected result row
+  # (Bootstrap .list-group-item.active, z-index 2) painted over it, so the days
+  # behind the row could not be clicked. A native date input renders its calendar
+  # outside the document, where no page element can cover it, so the artefact
+  # cannot occur and date entry stays reachable with a flight selected.
+  # ---------------------------------------------------------------------------
+  Scenario: The flight I selected does not block date entry
     Given I have searched "SFO" to "JFK" as a round trip
     And I have selected the first flight offered
-    When I open the departure date calendar
-    Then the days behind the selected flight cannot be clicked
-    And the days clear of the selected flight can still be clicked
+    When I change the departure date to "08/25/2026"
+    Then the departure date field reads the calendar date "08/25/2026"
+
+  @inc-1
+  # ---------------------------------------------------------------------------
+  # NET-NEW (ADR-009 item 5: "Typing works. The React date input is controlled,
+  # so typing updates the model.")
+  #
+  # There is no baseline for this because the legacy screen could not do it. The
+  # date fields were plain text inputs upgraded by $('#departDate').datepicker();
+  # a typed value never fired onSelect, so the AngularJS model stayed null while
+  # the field looked filled, and the search was then refused for a date the user
+  # could see on screen. tests/pages/flight-search.page.js:6-11 records exactly
+  # this, and it is why the baseline always drove dates through the calendar.
+  # ---------------------------------------------------------------------------
+  Scenario: A typed departure date is accepted
+    Given I have entered "SFO" as the origin and "JFK" as the destination
+    And the trip type is "oneway"
+    When I type "08/25/2026" into the departure date field
+    And I search
+    Then flight results are shown
 
   # ---------------------------------------------------------------------------
   # The maximum price filter

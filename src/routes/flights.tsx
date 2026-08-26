@@ -1,16 +1,14 @@
 /**
- * FLIGHT SEARCH ROUTE — placeholder.
+ * FLIGHTS ROUTE — migrated to React in Increment 1.
  *
- * Mirrors the legacy `flights` state (app/app.routes.js), which today loads
- * `components/...` via templateUrl and its AngularJS controller.
- *
- * Increment 0 migrates nothing. This route is replaced with the real screen in
- * **Inc-1**, at which point the ledger row for `/flights` flips to
- * `owner: 'react'` and the front door stops proxying it to :8080.
+ * The placeholder is replaced by the real screen. The ledger row for `/flights`
+ * flips to `owner: 'react'` in the same increment, which is what stops the front
+ * door redirecting this path to `/#!/flights` and starts Vite serving the React
+ * document for it.
  */
 import type { ReactElement } from 'react';
-import { Placeholder } from './placeholder';
+import { FlightSearch } from '../features/flight-search/FlightSearch';
 
 export function Flights(): ReactElement {
-  return <Placeholder path="/flights" title="Flight Search" />;
+  return <FlightSearch />;
 }

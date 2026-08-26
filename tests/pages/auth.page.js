@@ -4,7 +4,7 @@
  * login template in app/app.routes.js. This page object therefore works across
  * whichever screen a scenario happens to be on.
  */
-const BASE = 'http://localhost:8080';
+const { BASE_URL: BASE } = require('../support/world');
 
 const STATES = {
   login: '#!/login',

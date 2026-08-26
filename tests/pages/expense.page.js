@@ -5,6 +5,8 @@
  * does today. Where a control is inert, the accessor exposes the evidence rather
  * than hiding it — see readAlertScope() and dateRangeModel().
  */
+const { BASE_URL } = require('../support/world');
+
 'use strict';
 
 const ROOT = '.container-fluid';
@@ -28,7 +30,7 @@ class ExpensePage {
   // ---------- navigation ----------
 
   async open() {
-    await this.page.goto('http://localhost:8080/#!/expenses', { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/#!/expenses`, { waitUntil: 'domcontentloaded' });
     await this.page.waitForSelector(ROOT + ' table.table tbody tr, h4:has-text("No expense reports found")', { timeout: 20000 });
     await this.settle();
   }

@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
   "currentPhase": "2-increment-delivery",
-  "currentStep": "Increment 0 (walking skeleton) implemented; awaiting PR Review gate",
-  "status": "React 19 + TypeScript 7 shell running alongside AngularJS behind a single-origin front door. No feature migrated. Baseline restored from 188/235 to green by the clock pin.",
+  "currentStep": "Increment 1 (flight-search) implemented; awaiting PR Review gate",
+  "status": "flight-search migrated to React. 236/236 baseline green, including the 4 modules still served by AngularJS. AngularJS flights state and component deleted after the React route went green.",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -1349,6 +1349,76 @@
         "plan §13 item 14 — ADR-008 §5 extension for page-object URL re-pointing, needed by Inc-1",
         "planReview gate remains pending with its 6 decisions"
       ]
+    },
+    "inc1PrReview": {
+      "status": "approved-with-open-items",
+      "requestedAt": "2026-08-26T18:30:00+02:00",
+      "approvedAt": "2026-08-26T19:40:00+02:00",
+      "approvedBy": "product owner",
+      "blocks": "Increment 2 — hotel-booking",
+      "independentVerification": {
+        "by": "reviewer, re-executed rather than read",
+        "baseline": "236 scenarios, 236 passed, 1952/1952 steps, 17m19s on freshly restarted servers",
+        "unit": "npm test (vitest) 155/155",
+        "typecheck": "tsc --noEmit exit 0",
+        "lint": "npm run shell:lint exit 0",
+        "build": "vite build, 484 modules, exit 0",
+        "scope": "app/components/{hotel-booking,itinerary,travel-request,expense-reconciliation} and api-mock/ all untouched",
+        "libraries": "zero imports of jquery, moment, lodash or restangular in src/; zero escape hatches across ': any', 'as any', '@ts-ignore', '@ts-expect-error', '@ts-nocheck'",
+        "gherkinDelta": "2 SUPERSEDE + 1 NET-NEW, both supersedes plan-authorised; hotel-booking.feature scenario tagged @deferred-to-inc-2 with reasoning in-file and assertions untouched; 235 -> 236"
+      },
+      "resolutions": {
+        "C-4": {
+          "ruling": "PRESERVED - the divergence from plan §5.3 is confirmed and endorsed.",
+          "rationale": "The increment brief authorised only ADR-009 and said to stop and report anything else. Preserving keeps Increment 1 a single-change migration whose delta is minimal and auditable, and escalating a contradiction between the plan and the brief rather than silently choosing was the correct behaviour.",
+          "disposition": "C-4 and the 'Confirmation: undefined' defect are both candidates for a later, deliberate bug-fix increment. Neither is tech debt: each is reproduced on purpose, pinned by a test, and dated.",
+          "reproducedBy": "snapToStep() in src/features/flight-search/flight-search-model.ts, which replicates the AngularJS input[range] clamp"
+        },
+        "confirmation-undefined": {
+          "ruling": "stays a separate bug-fix increment, reproduced deliberately and pinned by a unit test",
+          "detail": "controller:220 read booking.confirmationCode while POST /api/flights/:id/book returns confirmationNumber. The baseline asserts only the prefix, so it passed either way and never caught it."
+        },
+        "step-definition-change": {
+          "ruling": "accepted",
+          "detail": "flight-search.steps.js:474 polled the AngularJS scope inline in a step definition - the only place framework coupling escaped the page object. It could not survive the migration. Replaced with this.flights.waitForIdle(); the asserted condition is unchanged."
+        },
+        "karma-removal": {
+          "ruling": "confirmed - authorised by increment-plan §5 and ADR-008 §2",
+          "detail": "19 assertions retired against 68 replacements, mapping in docs/architecture/karma-retirement.md. One mapping inverts deliberately: Karma #17 becomes an assertion that flight:selected is NOT announced, because ADR-013 drops the event and asserting its absence is what stops it being reimplemented."
+        },
+        "harness-repoint": {
+          "ruling": "confirmed - plan §4.2 deferred work, landing here because Inc-1 is the first increment that needs it",
+          "detail": "localStorage is origin-scoped, so storage state captured on :8080 was invisible to the React route. The suite now drives the front door, which serves both apps on one origin."
+        }
+      },
+      "newFinding": {
+        "id": "BASELINE-ISOLATION",
+        "severity": "medium",
+        "raisedBy": "reviewer, during independent verification",
+        "summary": "The baseline is not hermetic for expense-reconciliation. A first run against a mock API that had been live across several prior suites failed expense-reconciliation.feature:213; a clean run on restarted servers passed 236/236.",
+        "mechanism": "The expense scenarios mutate server state but carry ZERO @mutates-fixture tags. The restore hook in tests/support/hooks.js covers itinerary only (FIXTURE_DEFAULTS = [{ id: 'item-4' }]). api-mock/server.js holds expenseReports in a plain in-memory array at :222 and exposes no reset endpoint.",
+        "impact": "Pre-existing and unrelated to Increment 1, but it makes long-lived-server runs order-dependent and will matter most at Increment 5, which migrates expense-reconciliation.",
+        "recommendation": "Either tag the mutating expense scenarios @mutates-fixture and extend the restore hook, or restart the mock API between full runs. Not blocking Increment 2."
+      },
+      "openItems": [
+        "C-4 PRESERVED against plan §5.3, which authorises superseding it under ADR-006 — confirm the divergence, or authorise the supersede as its own increment",
+        "a step definition had to change (the step-A1 Angular leak at flight-search.steps.js:474) — confirm the ADR-008 §5 extension covers it",
+        "the booking notification reads \"Confirmation: undefined\" — reproduced deliberately; confirm it stays a separate bug-fix increment",
+        "Karma devDependencies removed (karma, karma-jasmine, karma-chrome-launcher, jasmine-core) and npm test now runs vitest — confirm",
+        "the whole baseline harness now drives the front door (:5173) rather than :8080 — this was plan §4.2 deferred work; confirm the re-point"
+      ],
+      "inheritedGateItemsResolved": {
+        "resolvedAt": "2026-08-26",
+        "resolvedBy": "Increment 0 PR Review gate",
+        "note": "Verified still intact after Increment 1 — none were disturbed by this increment.",
+        "items": {
+          "plan §13-16": "ADR-005 GOVERNS — the two stacks never share a document. Unblocked Inc-0. (I incorrectly repeated this as open in my Inc-1 summary.)",
+          "plan §13-15": "assessment recount confirmed at 41 (5/15/18/3).",
+          "G-1": "@playwright/test pinned EXACTLY as 1.63.0-alpha-2026-07-29, caret removed — verified still caret-free.",
+          "G-2": "engines.node >= 22.22.0 — verified present.",
+          "G-3": "RISK-001 owner is @alessandro-avila, ownerNamed true. Risk remains OPEN, correctly: naming an owner does not close it."
+        }
+      }
     }
   },
   "testabilityGateReview": {
@@ -1482,9 +1552,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-26T13:30:00+02:00",
+  "lastUpdated": "2026-08-26T18:30:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-26T13:30:00+02:00",
+  "updatedAt": "2026-08-26T18:30:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -1667,6 +1737,136 @@
       "knownAcceptedIssues": {
         "viteConfigLoaderWarning": "vite build emits a forward-compat notice that src/lib/route-ledger.ts and front-door.ts are ESM loaded as CommonJS. The fix Vite suggests — \"type\": \"module\" — would break six legacy CommonJS files (Gruntfile.js, cucumber.js, api-mock/server.js, test/karma.conf.js, tests/support/*.js) and therefore the legacy app and both existing suites. The configs were renamed to .mts, which removed the warning for the config files themselves; the two imported .ts modules cannot be fixed without the breaking change. Accepted and documented.",
         "bootstrapBundledIntoReactBuild": "vite build inlines Bootstrap 3 CSS (112 kB) because index.html references /bower_components/... which resolves on disk. Harmless under Q-12 (no deployment; the dev server is the real artifact) but noted."
+      }
+    },
+    "inc-1": {
+      "name": "flight-search — first feature migrated",
+      "status": "implemented; awaiting PR Review gate",
+      "completedAt": "2026-08-26T18:30:00+02:00",
+      "gherkinDelta": {
+        "supersede": 2,
+        "preserve": 21,
+        "netNew": 1,
+        "before": 235,
+        "after": 236,
+        "writtenBeforeCode": true,
+        "superseded": {
+          "flight-search.feature:91": {
+            "was": "A chosen date is shown as a raw date string, not as a calendar date",
+            "now": "A chosen date is shown as a calendar date",
+            "authorisedBy": "ADR-009 — the one behaviour change authorised for this increment"
+          },
+          "flight-search.feature:95": {
+            "was": "The flight I selected covers the date calendar",
+            "now": "The flight I selected does not block date entry",
+            "authorisedBy": "ADR-007 cat 1 — an unavoidable consequence of the instructed native date input, not a separate decision. The legacy scenario asserted a z-index artefact between the in-document jQuery UI popup and the selected row; a native date input renders its calendar outside the document."
+          }
+        },
+        "netNewScenarios": {
+          "A typed departure date is accepted": "ADR-009 item 5. No baseline exists: the legacy text field never delivered a typed value to the model, which is why the baseline always drove dates through the calendar widget."
+        }
+      },
+      "divergenceFromPlan": {
+        "item": "plan §5.3 authorises superseding :118 and :123 (C-4, the price-slider snap) under ADR-006",
+        "decision": "PRESERVED instead — C-4 is reproduced exactly",
+        "reason": "the increment brief authorised ONLY ADR-009 and said to stop and report anything else rather than fix it. C-4 is precisely the \"surprising thing\" class that instruction covers. snapToStep() in the model reproduces the AngularJS input[range] clamp so the filter still settles below the dearest flight and the notification still counts flights the list hides.",
+        "raisedForGate": true
+      },
+      "removedLibraries": {
+        "verified": "zero imports of jquery, jquery-ui, moment, lodash or restangular anywhere in src/; the only textual matches are comments citing the legacy source",
+        "replacements": {
+          "jQuery UI datepicker": "native <input type=\"date\"> (ADR-007 cat 1)",
+          "jQuery .animate scroll": "element.scrollIntoView, feature-detected",
+          "jQuery fadeIn/fadeOut": "conditional render",
+          "Moment.js": "date-fns with explicit parse formats (ADR-009/ADR-014)",
+          "Lodash": "native array methods",
+          "Restangular": "Increment 0's single API client",
+          "$rootScope": "React state + the notification store (ADR-013)",
+          "currency": "Intl.NumberFormat"
+        }
+      },
+      "defectsReproducedDeliberately": {
+        "booking confirmation reads \"undefined\"": "controller:220 reads booking.confirmationCode; the payload carries confirmationNumber. The baseline scenario asserts only the PREFIX so it never caught this. Reading the right field would be an unauthorised user-visible change. Pinned by a unit test.",
+        "C-4 price-slider snap": "see divergenceFromPlan",
+        "no flight number": "the API sends none; feature:177",
+        "departure date does not reach results": "the generator stamps today regardless; feature:62",
+        "flight:selected dropped": "ADR-013 — no store concern. Asserted ABSENT by a unit test so it cannot be reimplemented by accident."
+      },
+      "crossIncrementDeferral": {
+        "scenario": "hotel-booking.feature:209 — Selecting a flight does not carry the destination over to hotels",
+        "tag": "@deferred-to-inc-2",
+        "status": "PASSES unchanged; assertions untouched",
+        "note": "ADR-005 rejected an in-page bridge, so the journey is unserved until Inc-2 migrates hotel booking. No interop was built. The scenario was tagged and annotated rather than dropped."
+      },
+      "karmaRetirement": {
+        "authorisedBy": "ADR-008 §2",
+        "retired": 19,
+        "replacements": 68,
+        "mapping": "docs/architecture/karma-retirement.md",
+        "invertedAssertion": "Karma #17 \"should select a flight and broadcast event\" is replaced by an assertion that the event is NOT announced — flight:selected is dropped per ADR-013, and asserting the absence is what stops it being reimplemented later.",
+        "npmTestNowRuns": "vitest run",
+        "removedDevDeps": [
+          "karma",
+          "karma-jasmine",
+          "karma-chrome-launcher",
+          "jasmine-core"
+        ],
+        "deletedFiles": [
+          "test/spec/flight-search.spec.js",
+          "test/karma.conf.js"
+        ]
+      },
+      "harnessRepoint": {
+        "reason": "localStorage is ORIGIN-SCOPED. The storage state was captured on :8080, so the React route on :5173 saw no token, the guard bounced every scenario to login, and the feature timed out. This was plan §4.2 deferred work landing here because Inc-1 is the first increment that needs it.",
+        "change": "the whole suite now drives the FRONT DOOR (:5173), which serves both applications on one origin",
+        "filesChanged": [
+          "tests/support/world.js (BASE_URL -> front door, LEGACY_URL added)",
+          "tests/pages/flight-search.page.js (re-pointed to React)",
+          "tests/pages/{expense,hotel-booking,itinerary}.page.js (origin literal -> BASE_URL)",
+          "tests/pages/auth.page.js (origin literal -> BASE_URL)",
+          "tests/steps/flight-search.steps.js (see stepDefinitionChange)"
+        ]
+      },
+      "stepDefinitionChange": {
+        "finding": "STEP-A1 BUG. flight-search.steps.js:474-481 polled the AngularJS scope INLINE inside a step definition rather than through the page object. It was the only place Angular coupling escaped the page object, and it could not survive the migration.",
+        "fix": "replaced with a page-object call, this.flights.waitForIdle(). The asserted condition is unchanged.",
+        "note": "plan §1.4 says step definitions should not change when a module migrates. This one had to, because the baseline put framework detail in the wrong layer. Raised for the gate."
+      },
+      "myOwnBugsCaughtByTheSuite": {
+        "notification selector": "re-pointed to a React-only data-testid, which broke the SHARED step for 7 scenarios in expense-reconciliation and travel-request. Fixed by matching .notification-area, which both shells carry.",
+        "JSX whitespace": "JSX strips newlines between elements, so the result row textContent read \"5h 47m1 stop\" and broke the word boundary the baseline row parser matches on. The legacy template had newlines. Fixed with explicit whitespace.",
+        "ng-show vs conditional render": "used conditional rendering for the return-date field where the legacy uses ng-show. ng-show HIDES without removing, and the scenario reads the field value, so the element must exist. Fixed.",
+        "Intl grouping": "Intl.NumberFormat groups thousands by default (\"$1,250\") but the legacy renders plain concatenation (\"$1250\"). Caught by comparing against the real Moment/AngularJS output rather than trusting the reading. Fixed with useGrouping:false. Would have surfaced on the details-panel total.",
+        "scrollIntoView in jsdom": "not implemented in jsdom; now feature-detected."
+      },
+      "verification": {
+        "typecheck": "tsc --noEmit (TypeScript 7.0.2 strict) -> exit 0",
+        "lint": "oxlint --type-aware -> exit 0",
+        "unit": "npm test (vitest) -> 9 files, 155 tests, all passed",
+        "build": "vite build -> exit 0",
+        "baseline": "236 scenarios, 236 passed; 1952 steps, 1952 passed; 17m45s",
+        "reactGreenBeforeDeletion": "26/26 flight-search scenarios green BEFORE the AngularJS state was removed (plan §2.3)",
+        "escapeHatches": "no ': any', @ts-ignore, @ts-expect-error or @ts-nocheck anywhere in src/",
+        "scope": "the other four AngularJS modules, api-mock/, bower.json, .bowerrc, Gruntfile.js and bower_components/ are all untouched"
+      },
+      "deleted": [
+        "app/components/flight-search/ (controller 258, service 77, template 269)",
+        "app/directives/date-picker.directive.js (Q-10: 0 consumers, re-verified)",
+        "the 'flights' state from app/app.routes.js",
+        "the two flight-search <script> tags and the date-picker <script> tag from app/index.html",
+        "test/ (Karma spec + conf)"
+      ],
+      "navbarNote": "app/index.html's Flights entry was rewritten from ui-sref to href='/flights' and KEPT, not deleted — a user on an unmigrated AngularJS screen must still reach migrated routes, and that navbar is the only chrome those screens have.",
+      "exitCriteriaReVerified": {
+        "at": "2026-08-26T18:50:00+02:00",
+        "sixRemainingAngularStates": "all render, ZERO page errors (dashboard, hotels, itinerary, travel-request, expenses, login)",
+        "deletedAssets404": [
+          "components/flight-search/flight-search.controller.js",
+          "directives/date-picker.directive.js"
+        ],
+        "scriptTags": "29 -> 26",
+        "navbar": "intact; Flights rewritten to href='/flights', a real path crossing to React",
+        "retiredHashUrl": "#!/flights now falls back to #!/login via urlRouterProvider.otherwise('/login'), identical to any unknown state — consistent with authentication.feature:72"
       }
     }
   }

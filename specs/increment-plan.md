@@ -374,7 +374,15 @@ increment that owns its feature file. See §3.1.
 - **A user crossing a boundary pays a full page load.** Accepted; Q-12 means there is no production
   traffic to care.
 
-### 1.7 A conflict between ADR-005 and ADR-006 that the gate must settle
+### 1.7 A conflict between ADR-005 and ADR-006 — ✅ SETTLED 2026-08-26
+
+> ✅ **Settled at the Plan Review gate: ADR-005 governs.** The two stacks never share a document.
+> Each AngularJS component is fully rewritten in React 19 + TypeScript; both applications live in
+> the repo and stay startable until cutover, but a page loads exactly one of them. A correction note
+> is on ADR-006 and its affected bullet is struck through in place — the decision, module scores,
+> migration order and increment boundaries are all unchanged. **This unblocked Increment 0.**
+>
+> The analysis below stands as written; only its final paragraph is superseded.
 
 ADR-006 *Consequences* states: *"The application runs as a hybrid — some routes React, some
 AngularJS — from Inc-1 to Inc-5. **Both frameworks are loaded simultaneously, the bundle is larger
@@ -387,8 +395,9 @@ two bundles, one origin, never co-loaded. Under this plan the React bundle never
 and the legacy page never loads React, so *"the bundle is larger than either endpoint"* is simply
 not true of either artifact.
 
-If the reviewer intends ADR-006 literally, §1.2–§1.4 are wrong and the plan must be re-run. Flagged
-in §14.
+~~If the reviewer intends ADR-006 literally, §1.2–§1.4 are wrong and the plan must be re-run.
+Flagged in §14.~~ **The reviewer did not: §1.2–§1.4 stand, and Increments 0 and 1 were both built
+on them.**
 
 ---
 
@@ -1726,6 +1735,22 @@ that does not, does not go in the stack.
       approved "235 green", which is **189/235** today (§0.6)
 
 ### Six decisions the gate must make
+
+> [!IMPORTANT]
+> **Resolved at the Plan Review gate, 2026-08-26.** Decisions **1, 2 and 3 are closed**; 4, 5 and 6
+> remain open and are product calls. The authoritative record is `.spec2cloud/state.json` →
+> `humanGates.planReview.resolutions`.
+>
+> | # | Status |
+> |---|---|
+> | **1 · §1.7** | ✅ **ADR-005 GOVERNS.** The two stacks never share a document. ADR-006 carries a correction note; its affected bullet is struck through in place. **Increment 0 was unblocked by this.** |
+> | **2 · §10.1** | ✅ **7 increments confirmed** — cutover carries the authentication surface per ADR-010. No Inc-5b. |
+> | **3 · §12** | ✅ **The 14 reproduced defects are authorised.** |
+> | 4 · §7.5 | ⏳ open — product decision |
+> | 5 · §1.5 | ⏳ open — product decision |
+> | 6 · §11.3 | ⏳ open — product decision |
+>
+> The questions are left as written below, because a resolved question still has to be readable.
 
 1. **§1.7 — ADR-005 vs ADR-006 on "both frameworks loaded simultaneously".** This plan implements
    ADR-005's reading. If ADR-006 was meant literally, §1.2–§1.4 are wrong and the plan must be

@@ -6,6 +6,7 @@
  */
 const assert = require('assert');
 const { Given, When, Then } = require('@cucumber/cucumber');
+const { BASE_URL } = require('../support/world');
 
 /**
  * Fixed dates used whenever a scenario does not name one. "Today" in the lab
@@ -37,7 +38,11 @@ const toMinutes = (label) => {
 // ---------------------------------------------------------------- background
 
 Given('I am signed in to the travel portal', async function () {
-  await this.page.goto('http://localhost:8080/#!/dashboard', { waitUntil: 'domcontentloaded' });
+  // Increment 1: driven through the front door rather than the legacy server
+  // directly, so the session this asserts is the one BOTH applications share.
+  // localStorage is origin-scoped, so a token on :8080 would be invisible to
+  // the React route (increment-plan §1.2).
+  await this.page.goto(`${BASE_URL}/#!/dashboard`, { waitUntil: 'domcontentloaded' });
   const token = await this.page.evaluate(() => localStorage.getItem('authToken'));
   assert.ok(token, 'expected an auth token from the stored session');
 });
@@ -243,18 +248,29 @@ Then('the return date is empty', async function () {
   assert.strictEqual(raw, '');
 });
 
-Then('the departure date field reads {string} followed by a time and time zone',
-  async function (prefix) {
-    const raw = await this.flights.dateFieldText('departDate');
-    assert.ok(
-      raw.startsWith(prefix),
-      `expected the field to start with "${prefix}", got "${raw}"`
-    );
-    assert.ok(
-      /\d{2}:\d{2}:\d{2}\s+GMT[+-]\d{4}/.test(raw),
-      `expected a time and time zone in the field, got "${raw}"`
+// The step for the SUPERSEDED scenario "A chosen date is shown as a raw date
+// string" is retired with it. The legacy field was a text input that AngularJS
+// re-rendered from a bound Date, so it displayed Date.prototype.toString();
+// explicit date parsing (ADR-009) replaces that with a calendar date.
+Then('the departure date field reads the calendar date {string}',
+  async function (expected) {
+    const shown = await this.flights.dateFieldAsCalendarDate('departDate');
+    assert.strictEqual(
+      shown, expected,
+      `expected the departure field to read ${expected}, got ${shown}`
     );
   });
+
+// NET-NEW (ADR-009 item 5). The legacy screen could not do this at all: a typed
+// value never fired the datepicker's onSelect, so the model stayed null while
+// the field looked filled.
+When('I type {string} into the departure date field', async function (date) {
+  await this.flights.typeDate('departDate', date);
+});
+
+When('I search', async function () {
+  await this.flights.searchAndWait();
+});
 
 // ----------------------------------------------------- the max price filter
 
@@ -411,46 +427,11 @@ Then('the details of that flight are shown', async function () {
   assert.ok(details.duration, 'details should show the duration');
 });
 
-When('I open the departure date calendar', async function () {
-  this.memory.calendar = await this.flights.unreachableCalendarDays('departDate');
-  this.attach(JSON.stringify(this.memory.calendar), 'application/json');
-});
-
-Then('the days behind the selected flight cannot be clicked', async function () {
-  const { overlapping, blocked, hasSelectedRow } = this.memory.calendar;
-  assert.ok(hasSelectedRow, 'expected a flight to be selected');
-  assert.ok(
-    overlapping.length > 0,
-    'expected the calendar to reach over the selected flight; the layout no longer produces the overlap this scenario is about'
-  );
-  const blockedDays = new Set(blocked.map((d) => d.day));
-  overlapping.forEach((day) => {
-    assert.ok(blockedDays.has(day), `day ${day} sits over the selected flight but is still clickable`);
-  });
-  blocked
-    .filter((d) => overlapping.includes(d.day))
-    .forEach((d) => {
-      assert.ok(
-        d.coveredBySelectedFlight,
-        `day ${d.day} should be covered by the selected flight row, was covered by "${d.coveredByClass}"`
-      );
-    });
-});
-
-Then('the days clear of the selected flight can still be clicked', async function () {
-  const { total, overlapping, blocked } = this.memory.calendar;
-  const blockedDays = new Set(blocked.map((d) => d.day));
-  const clear = total - overlapping.length;
-  assert.ok(clear > 0, 'expected some days to be clear of the selected flight');
-  blocked.forEach((d) => {
-    assert.ok(
-      overlapping.includes(d.day),
-      `day ${d.day} is unreachable but does not sit over the selected flight`
-    );
-  });
-  assert.strictEqual(blockedDays.size, overlapping.length,
-    'exactly the days over the selected flight should be unreachable');
-});
+// The three steps for the SUPERSEDED scenario "The flight I selected covers the
+// date calendar" are retired with it. They hit-tested the jQuery UI calendar —
+// a div rendered INSIDE the document at z-index 1 — against the selected result
+// row that painted over it. A native date input renders its calendar outside the
+// document, so there is no in-page popup left to cover and nothing to hit-test.
 
 Then('no result carries a flight number', async function () {
   const rows = await this.flights.resultRows();
@@ -471,14 +452,13 @@ Then('the details name the airline followed by an empty flight number', async fu
 When('I book the selected flight', async function () {
   await this.flights.recordBroadcast('itinerary:refresh');
   await this.flights.book();
-  await this.page.waitForFunction(
-    () => {
-      let sc = angular.element(document.querySelector('form') || document.body).scope();
-      while (sc && !sc.searchParams) sc = sc.$parent;
-      return !!sc && sc.isLoading === false;
-    },
-    null, { timeout: 20000 }
-  );
+  // Increment 1: this wait used to reach into `angular.element(...).scope()`
+  // INLINE, here in the step definition, rather than through the page object.
+  // That was the one place Angular coupling escaped the page object, and it
+  // could not survive the migration. It is now a page-object call, which is
+  // where every other framework detail already lived (increment-plan §1.4).
+  // The condition asserted is unchanged: wait until the screen is not loading.
+  await this.flights.waitForIdle();
 });
 
 Then('I see a notification containing {string}', async function (fragment) {
