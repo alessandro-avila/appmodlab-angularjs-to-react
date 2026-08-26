@@ -3,6 +3,9 @@
   "version": "1.6.0",
   "description": "GlobalTravel Corp - Corporate Travel Booking Portal",
   "private": true,
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "scripts": {
     "start": "concurrently -k -n api,web -c cyan,green \"npm:api\" \"npm:serve\"",
     "api": "node api-mock/server.js",
@@ -11,11 +14,27 @@
     "build": "npm run clean && grunt build",
     "test": "karma start test/karma.conf.js --single-run",
     "test:watch": "karma start test/karma.conf.js",
-    "test:baseline": "cucumber-js"
+    "test:baseline": "cucumber-js",
+    "shell:dev": "vite",
+    "shell:build": "vite build",
+    "shell:preview": "vite preview",
+    "shell:test": "vitest run",
+    "shell:test:watch": "vitest",
+    "shell:typecheck": "tsc --noEmit",
+    "shell:lint": "oxlint --type-aware src vite.config.mts vitest.config.mts",
+    "shell:format": "prettier --check \"src/**/*.{ts,tsx}\" \"*.mts\" \"tsconfig.json\"",
+    "shell:verify": "npm run shell:typecheck && npm run shell:lint && npm run shell:test && npm run shell:build"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.0",
-    "@playwright/test": "^1.63.0-alpha-2026-07-29",
+    "@playwright/test": "1.63.0-alpha-2026-07-29",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.5",
+    "@types/node": "22.19.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
     "concurrently": "^9.1.2",
     "grunt": "^1.0.4",
     "grunt-contrib-concat": "^1.0.1",
@@ -25,14 +44,26 @@
     "grunt-contrib-uglify": "^3.4.0",
     "grunt-contrib-watch": "^1.1.0",
     "jasmine-core": "^2.8.0",
+    "jsdom": "30.0.1",
     "karma": "^1.7.1",
     "karma-chrome-launcher": "^2.2.0",
-    "karma-jasmine": "^1.1.2"
+    "karma-jasmine": "^1.1.2",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2",
+    "vite": "8.2.1",
+    "vitest": "4.1.11"
   },
   "dependencies": {
     "body-parser": "^1.20.0",
     "cors": "^2.8.5",
     "express": "^4.18.0",
-    "jsonwebtoken": "^9.0.0"
+    "jsonwebtoken": "^9.0.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router": "8.3.0",
+    "zod": "4.4.3",
+    "zustand": "5.0.15"
   }
 }

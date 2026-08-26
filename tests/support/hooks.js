@@ -20,6 +20,48 @@ const { ExpensePage } = require('../pages/expense.page');
 const AUTH_STATE = path.join(__dirname, '..', '.auth', 'state.json');
 const HEADED = process.env.BASELINE_HEADED === '1';
 
+/**
+ * THE SUITE CLOCK — pinned. (Increment plan §0.6, Increment 0 Task 0.)
+ *
+ * The baseline was approved at 235/235 on 2026-08-06 and decayed on its own to
+ * 188/235 by 2026-08-26, with `git diff app/` and `git diff api-mock/` both
+ * EMPTY. Not one line of application source changed. The suite broke because
+ * of the calendar.
+ *
+ * Root cause: the jQuery UI datepickers are configured `minDate: 0` (departure,
+ * check-in, expense date) and `minDate: 1` (return, check-out), so every past
+ * day of the current month renders as `td.ui-datepicker-unselectable` with no
+ * `<a>` inside. The baseline hard-codes ABSOLUTE dates in August 2026 — 10, 12,
+ * 13, 15, 20, 21, 25, 26 — across both the feature files and the step
+ * definitions. On 2026-08-06 all eight were in the future. By 2026-08-26 seven
+ * were in the past, and `pickDate` waited 30s for a locator that would never
+ * appear. Every failure carried the identical signature:
+ *   `locator.dispatchEvent: Timeout 30000ms exceeded ... waiting for
+ *    locator('#ui-datepicker-div')`.
+ *
+ * The rejected repair was relative dates: it reads like the obvious fix, but it
+ * edits ASSERTIONS, not just inputs — `flight-search.feature:76` asserts the
+ * return date becomes "08/26/2026", `:93` asserts the field reads
+ * "Tue Aug 25 2026", and `hotel-booking.feature:48` and `:67` assert specific
+ * rendered dates. Rewriting those `Then` literals is exactly the kind of
+ * baseline edit ADR-008 §7 exists to prevent.
+ *
+ * The chosen repair pins the browser clock instead. It touches ONE file, ZERO
+ * feature files, ZERO step definitions and ZERO assertions, so Increment 0's
+ * Gherkin delta stays a literal 0 / 235 / 0 and the application's behaviour is
+ * untouched — `minDate: 0` is correct and intentional.
+ *
+ * CONSEQUENCE THE GATE MUST ACCEPT (plan §0.6 point 3): a frozen clock means
+ * the suite stops exercising "today"-relative behaviour — `daysUntil`,
+ * `daysSinceSubmission`, "this month's spending"
+ * (`expense-reconciliation.feature:61`) and the trip-status recomputation
+ * (`itinerary.feature:46`). Those scenarios currently pass BECAUSE the fixtures
+ * are stale relative to now; pinning to 2026-08-06 restores exactly the world
+ * they were authored against. Whether CI should also run an unpinned canary on
+ * a cadence is open as plan §13 item 17.
+ */
+const SUITE_CLOCK = process.env.BASELINE_CLOCK || '2026-08-06T09:00:00.000Z';
+
 let browser;
 let authToken;
 
@@ -53,6 +95,9 @@ Before(async function ({ pickle }) {
     ...(anonymous ? {} : { storageState: AUTH_STATE }),
     viewport: { width: 1280, height: 720 }
   });
+  // Pin the clock BEFORE any page exists, so the datepickers initialise against
+  // the pinned date rather than the wall clock. See SUITE_CLOCK above.
+  await this.context.clock.install({ time: new Date(SUITE_CLOCK) });
   this.page = await this.context.newPage();
   this.consoleErrors = [];
   this.page.on('console', (msg) => {

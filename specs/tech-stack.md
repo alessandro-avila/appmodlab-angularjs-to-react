@@ -156,6 +156,21 @@ compiler agree with the bug. The schema is what disagrees with it.
 
 ## 6. Open for the Tech-Stack Review gate
 
+> [!NOTE]
+> **Resolved at the gate on 2026-08-26.** The three rows below marked ✅ are closed; the authoritative
+> record is `.spec2cloud/state.json` → `humanGates`. This section is kept as written so the gate's
+> inputs stay visible alongside its outputs.
+>
+> | Item | Ruling |
+> |---|---|
+> | **§13-16** | ✅ **Settled — ADR-005 governs.** The two stacks never share a document. A correction note is on ADR-006 and the affected bullet is struck through in place. **Increment 0 is unblocked.** |
+> | **G-1** | ✅ **Resolved — move `@playwright/test` to stable 1.62.1.** Not "leave the caret and rely on `--save-exact`": the caret itself is the finding, and it survives in `package.json` regardless of how new packages are installed. |
+> | **G-3** | ✅ **Resolved — owner is `@alessandro-avila`**, recorded in ADR-015 and `riskRegister`. Naming the owner does **not** close RISK-001, which stays `OPEN`. |
+>
+> Also settled at the Plan Review gate: the 7-increment shape, and the 14 reproduced defects
+> authorised. **Still open:** §13-11, §13-12, §13-14, §13-17 and **G-2**, plus three product
+> decisions from the increment plan. None blocks Increment 0.
+
 Items §13 hands to this phase that are **not** stack decisions, plus items this phase discovered.
 None is decided here.
 

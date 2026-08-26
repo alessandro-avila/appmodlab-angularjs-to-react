@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
-  "currentPhase": "P-tech-stack",
-  "currentStep": "both Phase P gates approved with open items; ADR-005 vs ADR-006 settled in favour of ADR-005 -> Increment 0 is unblocked",
-  "status": "target stack resolved; 6 ADRs; every legacy technology has a named replacement or an explicit DROPPED; all versions installed and executed together rather than quoted; 14/14 versions independently re-verified against live npm",
+  "currentPhase": "2-increment-delivery",
+  "currentStep": "Increment 0 (walking skeleton) implemented; awaiting PR Review gate",
+  "status": "React 19 + TypeScript 7 shell running alongside AngularJS behind a single-origin front door. No feature migrated. Baseline restored from 188/235 to green by the clock pin.",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -1149,8 +1149,14 @@
           "rationale": "ADR-005 is the path-selection decision that authorised the migration and ADR-006 is downstream of it. The conflicting text sits in ADR-006's Negative consequences list, so it describes a cost rather than taking a decision, and reading it literally would reinstate the interop bridge ADR-005 rejected on cost grounds.",
           "appliedTo": "specs/adrs/adr-006-migration-order-and-increment-boundaries.md - correction note added at the top and the affected bullet struck through in place; the decision itself is unchanged and no other ADR-006 content was touched",
           "correction": {
-            "true": ["the application runs as a hybrid from Inc-1 to Inc-5", "route transitions cross a boundary - but a document boundary, i.e. a full page load, not a framework boundary inside one page"],
-            "false": ["both frameworks are loaded simultaneously", "the bundle is larger than either endpoint - there is no combined bundle"]
+            "true": [
+              "the application runs as a hybrid from Inc-1 to Inc-5",
+              "route transitions cross a boundary - but a document boundary, i.e. a full page load, not a framework boundary inside one page"
+            ],
+            "false": [
+              "both frameworks are loaded simultaneously",
+              "the bundle is larger than either endpoint - there is no combined bundle"
+            ]
           },
           "unblocks": "Increment 0"
         },
@@ -1320,6 +1326,29 @@
           "neededBy": "THIS GATE"
         }
       ]
+    },
+    "inc0PrReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-26T13:30:00+02:00",
+      "artifacts": [
+        "src/**",
+        "vite.config.mts",
+        "vitest.config.mts",
+        "tsconfig.json",
+        "index.html",
+        ".env.example",
+        "docs/architecture/strangler-fig-entry-point.md",
+        "tests/support/hooks.js (clock pin only)",
+        "package.json (additions only)"
+      ],
+      "blocks": "Increment 1 — flight-search",
+      "openItems": [
+        "ADR-007 shared components deferred out of Inc-0 — confirm or require them now",
+        "plan §13 item 17 — confirm the pinned clock instant and the CI canary policy",
+        "plan §13 item 16 — the ADR-005 vs ADR-006 conflict is STILL unsettled and was required before Inc-0",
+        "plan §13 item 14 — ADR-008 §5 extension for page-object URL re-pointing, needed by Inc-1",
+        "planReview gate remains pending with its 6 decisions"
+      ]
     }
   },
   "testabilityGateReview": {
@@ -1453,9 +1482,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-25T21:55:00+02:00",
+  "lastUpdated": "2026-08-26T13:30:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-25T21:55:00+02:00",
+  "updatedAt": "2026-08-26T13:30:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -1531,5 +1560,114 @@
       "closureRequires": "a new ADR superseding ADR-015. A commit message, checklist tick or verbal decision does not close it.",
       "joins": "ADR-005 post-migration Security path, alongside NFR-F001-002 (plaintext credentials) and NFR-F001-003 (literal JWT_SECRET)"
     }
-  ]
+  ],
+  "increments": {
+    "inc-0": {
+      "name": "Walking skeleton — the React shell",
+      "status": "implemented; awaiting PR Review gate",
+      "startedAt": "2026-08-26T09:00:00+02:00",
+      "completedAt": "2026-08-26T13:30:00+02:00",
+      "featuresMigrated": 0,
+      "gherkinDelta": {
+        "supersede": 0,
+        "preserve": 235,
+        "netNew": 0,
+        "featureFilesChanged": 0
+      },
+      "task0_clockPin": {
+        "rationale": "increment plan §0.6 — the suite decayed on its own with zero application-source changes",
+        "beforeRun": {
+          "scenarios": 235,
+          "passed": 188,
+          "failed": 47,
+          "durationMs": 1933817,
+          "date": "2026-08-26"
+        },
+        "planPredicted": {
+          "onDate": "2026-08-23",
+          "passed": 189,
+          "failed": 46
+        },
+        "decayConfirmed": "one more calendar day (25) drifted into the past between 08-23 and 08-26, so exactly one more scenario broke - the predicted pattern, continuing",
+        "failureSignature": "all 47 identical: locator.dispatchEvent Timeout 30000ms waiting for #ui-datepicker-div day cell",
+        "repair": "ctx.clock.install({ time: 2026-08-06T09:00:00Z }) in tests/support/hooks.js",
+        "filesChanged": 1,
+        "featureFilesChanged": 0,
+        "assertionsChanged": 0,
+        "clockApiComparison": "probed setFixedTime vs install against the running legacy app: both restore all 8 required calendar days and both leave real setTimeout working (the legacy 3s has-error flash). install() chosen per plan §0.6 because it advances naturally from the pin, matching \"the world they were authored against\"",
+        "openForGate": "plan §13 item 17 — confirm the pinned instant and whether CI runs an unpinned canary"
+      },
+      "strangerFig": {
+        "design": "one origin (Vite :5173) holding a route ledger; no in-page interop bridge",
+        "whyOneOrigin": "the JWT lives in localStorage, which is origin-scoped (plan §1.2)",
+        "ledger": "src/lib/route-ledger.ts — read by BOTH vite.config.mts and src/App.tsx so they cannot disagree",
+        "rule": "src/lib/front-door.ts — extracted from the config specifically so it is unit-testable",
+        "bugFoundAndFixed": "first implementation proxied real paths to :8080 and returned 404 for all six product routes, because AngularJS expresses every state as a FRAGMENT under / and the legacy static server has no /flights resource. Fixed with a 302 redirect to the legacyHash form (302 not 301: the mapping is temporary)",
+        "incrementMechanic": "flip owner on one ledger row; the address a user types is identical before and after",
+        "documentation": "docs/architecture/strangler-fig-entry-point.md",
+        "verifiedEndToEnd": [
+          "front door serves the legacy app at /",
+          "sign-in through the front door writes authToken (235 chars)",
+          "typing the real path /flights lands on the legacy flight-search screen",
+          "the React shell at /__shell sees the SAME authToken — one origin proven",
+          "GET /api/auth/me through the front door returns 200 Sarah Johnson",
+          "the legacy app is still directly reachable on :8080"
+        ]
+      },
+      "portsOfSubstance": {
+        "authStore": {
+          "from": "app/services/auth.service.js",
+          "to": "src/stores/auth-store.ts + src/lib/auth-service.ts",
+          "localStorageKey": "authToken — UNCHANGED, asserted as a literal in the test suite",
+          "keyMatters": "written by auth.service.js:22, seeded by test/spec/flight-search.spec.js:24, captured in the Playwright storage state",
+          "defectsDeliberatelyReproduced": [
+            "isAuthenticated() tests token PRESENCE not validity (Known Limitation 8) — a junk token opens every screen; Q-8/ADR-010 fix it in Inc-6",
+            "currentUser is in-memory only and does NOT survive reload (ADR-003 C-1) — the GET /api/auth/me repair lands in Inc-6"
+          ],
+          "guard": "$stateChangeStart (app/app.js:32-37) -> src/components/require-auth.tsx, using Navigate replace to mirror event.preventDefault()"
+        },
+        "notificationStore": {
+          "from": "app/app.js:44-50 notification:add handler",
+          "to": "src/stores/notification-store.ts",
+          "preserved": "append order, type || 'info' default, new Date() timestamp",
+          "oneDeliberateDifference": "the array is BOUNDED at 5 (closes P-5). Safe in Inc-0 because React owns no route any scenario reaches"
+        }
+      },
+      "decisionsApplied": {
+        "ADR-011": "TypeScript 7.0.2 strict + noUncheckedIndexedAccess + exactOptionalPropertyTypes; zod validates every response in the one API client",
+        "ADR-012": "react-router 8.3.0 declarative mode, real paths, Vite dev server as the front door",
+        "ADR-013": "zustand vanilla stores — required because the API client and 401 handler are NOT components",
+        "ADR-016": "Vite 8 + Vitest 4 + oxlint (not ESLint, which ERESOLVEs against TypeScript 7)"
+      },
+      "divergenceFromLabDoc": "docs/lab/08 illustrates TanStack Router + query-client.ts. ADR-012 rejected TanStack Router (seven flat parameter-free paths do not justify a codegen step) and tech-stack.md §4 excludes every data cache because NFR-F005-003 and NFR-F007-004 both state \"No caching\". The lab doc defers to tech-stack.md (\"or wherever tech-stack.md put it\"), so the approved stack was followed.",
+      "notBuiltDeliberately": {
+        "ADR-007 shared components (date input, modal, scroll, validation)": "plan §4.2 lists them for Inc-0, but the increment brief scoped this increment to the two ports plus the skeleton. They have no consumer until Inc-1 migrates flight-search. Raised for the gate.",
+        "sign-out control": "plan §4.2 — shipping it early turns authentication.feature:124 red one increment at a time; it is Inc-6 net-new",
+        "Q-8 credential form": "net-new, Inc-6 (ADR-010). The React login route mirrors the legacy Enter Portal button exactly",
+        "date-fns": "ADR-014 chose it, but Inc-0 has no date input yet; adding it now would be an unused dependency"
+      },
+      "verification": {
+        "typecheck": "tsc --noEmit (TypeScript 7.0.2, strict) -> exit 0",
+        "lint": "oxlint --type-aware -> exit 0, 0 warnings (3 no-unsafe-optional-chaining warnings found in my own tests and fixed properly, not suppressed)",
+        "shellTests": "vitest run -> 7 files, 85 tests, all passed",
+        "build": "vite build -> exit 0, 175 modules",
+        "karma": "npm test -> 19 of 19 SUCCESS (unchanged)",
+        "escapeHatches": "grep for ': any', @ts-ignore, @ts-expect-error, @ts-nocheck, eslint-disable across src/ -> NONE",
+        "hardcodedUrls": "every localhost:3000 occurrence in src/ is a comment quoting the legacy defect or a test input; zero executable"
+      },
+      "failureConditions": {
+        "app/ unmodified": "PASS — git diff 0 lines",
+        "api-mock/ unmodified": "PASS — git diff 0 lines",
+        "test/ unmodified": "PASS — git diff 0 lines",
+        "bower.json / .bowerrc / Gruntfile.js / bower_components/ untouched": "PASS — git diff 0 lines",
+        "specs/features/ byte-identical": "PASS — git diff 0 lines, Gherkin delta is a literal 0/235/0",
+        "package.json additions only": "PASS — 0 removed, 0 changed; 8 legacy scripts byte-identical; 12 scripts added",
+        "no pre-existing dependency drifted": "PASS — package-lock diff shows 0 removed and 0 version-changed, including @playwright/test at 1.63.0-alpha-2026-07-29 (gate item G-1 did not materialise)"
+      },
+      "knownAcceptedIssues": {
+        "viteConfigLoaderWarning": "vite build emits a forward-compat notice that src/lib/route-ledger.ts and front-door.ts are ESM loaded as CommonJS. The fix Vite suggests — \"type\": \"module\" — would break six legacy CommonJS files (Gruntfile.js, cucumber.js, api-mock/server.js, test/karma.conf.js, tests/support/*.js) and therefore the legacy app and both existing suites. The configs were renamed to .mts, which removed the warning for the config files themselves; the two imported .ts modules cannot be fixed without the breaking change. Accepted and documented.",
+        "bootstrapBundledIntoReactBuild": "vite build inlines Bootstrap 3 CSS (112 kB) because index.html references /bower_components/... which resolves on disk. Harmless under Q-12 (no deployment; the dev server is the real artifact) but noted."
+      }
+    }
+  }
 }

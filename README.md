@@ -357,6 +357,51 @@ npm run test:watch
 
 **Login:** there is no real login. Click **Enter Portal** — a mock JWT is written to `localStorage`. (`AuthService` + a `$rootScope.$on('$stateChangeStart')` guard.)
 
+---
+
+## 🌿 RUNNING THE REACT SHELL (Increment 0 onwards)
+
+From Increment 0 the React client runs **alongside** the AngularJS app behind a
+single entry point — the *front door*. The legacy commands above are unchanged.
+
+```bash
+npm start              # legacy AngularJS (:8080) + mock API (:3000)  ← still required
+npm run shell:dev      # the front door (:5173)                       ← browse here
+
+npm run shell:test     # Vitest — the React shell suite
+npm run shell:typecheck # tsc --noEmit, TypeScript strict
+npm run shell:lint     # oxlint, type-aware
+npm run shell:build    # production build → dist-react/
+npm run shell:verify   # typecheck + lint + test + build, in order
+```
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| **Front door** | http://localhost:5173 | **one origin**; routes between both apps |
+| React shell health | http://localhost:5173/__shell | non-product route; shows the route ledger |
+| Legacy app | http://localhost:8080 | still works standalone, unchanged |
+| Mock API | http://localhost:3000/api | unchanged |
+
+**Both servers must be running.** The front door proxies everything it does not
+own to `:8080` and `:3000`.
+
+Copy `.env.example` to `.env` first — the API base URL comes from the
+environment, never from source (finding **A-5**).
+
+> **How the front door works — and how a route moves from AngularJS to React —
+> is documented in
+> [`docs/architecture/strangler-fig-entry-point.md`](docs/architecture/strangler-fig-entry-point.md).**
+> Increments 1–5 all depend on it.
+
+### Where the two test suites live
+
+| Suite | Command | Covers | Status |
+|-------|---------|--------|--------|
+| Karma + Jasmine | `npm test` | the 19 legacy AngularJS tests | unchanged, still green — retired in Inc-1 per ADR-008 §2 |
+| Vitest | `npm run shell:test` | the React shell | new |
+| Cucumber + Playwright | `npm run test:baseline` | the 235-scenario green baseline | unchanged; runs against `:8080` directly, **not** through the front door |
+
+
 **Try:** Flights → `SFO` → `JFK` → pick two dates → **Search Flights** → click a result.
 That single flow touches routing, a directive wrapping a jQuery plugin, a filter, a service, Restangular, and jQuery DOM manipulation. It is the perfect first migration target.
 
