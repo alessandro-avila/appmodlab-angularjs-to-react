@@ -63,6 +63,11 @@ blocking — cancelling must still require an explicit confirm.
 Remove the AngularJS 'travelRequest' state only after the React route is green,
 delete app/components/travel-request/ and the directive in the same commit.
 
+The search box does nothing today — a TypeError escapes the digest, so typing has
+no effect. React will make it work by accident. That is a user-visible behaviour
+change: keep it inert if a baseline scenario pins it, and stop and ask if none
+does. Do not silently ship a working search box.
+
 Paste the unit run, the full @existing-behavior suite across all five modules, and
 the build. Stop at the PR Review gate.
 ```

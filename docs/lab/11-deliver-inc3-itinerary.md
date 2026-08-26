@@ -66,6 +66,13 @@ accidentally make it as loose as everything else.
 Remove the AngularJS 'itinerary' state only after the React route is green, delete
 app/components/itinerary/ in the same commit.
 
+This module has controls that do nothing today. React will make some of them work
+by accident — it has no scope chain, so an ng-model trapped in an ng-if child
+scope becomes an ordinary piece of state. That is a user-visible behaviour change
+and it needs authorising, not inheriting. Where a baseline scenario pins a control
+as dead, keep it dead and say so. Where none does, stop and ask before making it
+work.
+
 Paste the unit run, the full @existing-behavior suite across all five modules, and
 the build. Stop at the PR Review gate.
 ```
