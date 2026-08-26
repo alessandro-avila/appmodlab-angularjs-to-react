@@ -1237,10 +1237,16 @@
           "item": "assessment summary correction - 34 recorded vs 41 measured",
           "ruling": "confirmed. Independent recount agrees with the increment plan exactly: 5 critical, 15 high, 18 medium, 3 low = 41 severity-bearing findings, plus 2 asset rows = 43 table rows. The summary block and this state file both carry the stale 34/5/13/13/3.",
           "action": "correct specs/assessment/modernization.md and verifiedCounts as housekeeping; no increment is scoped by a finding count"
+        },
+        "G-3": {
+          "item": "ADR-015 / RISK-001 needs a named human owner rather than a role",
+          "ruling": "resolved - @alessandro-avila recorded as accountable owner",
+          "rationale": "the acceptance of RISK-001 is contingent on Q-12, so the ADR is a deferred decision with a tripwire. Triggers 1 and 2 are blocking, and trigger 2 explicitly covers a demo against a live audience with attendee-supplied data - a realistic hackathon scenario. Without a person to ask, the trigger fires into a void.",
+          "appliedTo": "specs/adrs/adr-015-jwt-localstorage-accepted-risk.md - owner row and gate checklist; riskRegister.owner and ownerNamed",
+          "note": "this names the owner, it does not close the risk. RISK-001 stays OPEN and closure still requires a new ADR superseding ADR-015."
         }
       },
       "stillOpen": [
-        "G-3 - ADR-015 / RISK-001 needs a named human owner, not a role. Note this repository is public.",
         "G-2 - pin engines.node >= 22.22.0 in package.json. Uncontested but not formally decided; needed by Inc-0.",
         "§13-11 - Q-7 ownership enforcement point",
         "§13-12 - 401 / session-expiry policy",
@@ -1496,8 +1502,10 @@
         "plan §4.4 - Inc-0 may not modify app/, and the AngularJS interceptor reads this key",
         "ADR-005 - the server survives unchanged in structure; the real fix is server-side"
       ],
-      "owner": "PRODUCT OWNER - NAME TO BE RECORDED AT THE TECH-STACK REVIEW GATE (gate item G-3)",
-      "ownerNamed": false,
+      "owner": "@alessandro-avila",
+      "ownerNamed": true,
+      "ownerRecordedAt": "2026-08-26T10:45:00+02:00",
+      "ownerRecordedBy": "Tech-Stack Review gate, item G-3",
       "triggers": [
         {
           "id": 1,

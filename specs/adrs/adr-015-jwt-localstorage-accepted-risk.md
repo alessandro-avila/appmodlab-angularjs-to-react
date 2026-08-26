@@ -128,7 +128,7 @@ mechanism that guarantees re-examination is a written owner and a written trigge
 
 | | |
 |---|---|
-| **Accountable owner** | **The product owner** — the named human decider of record for ADR-001, ADR-002 and this gate. **The Tech-Stack Review gate must record that person's name against this ADR in `state.json`.** An ADR whose owner is a role rather than a person is half an owner. |
+| **Accountable owner** | **[@alessandro-avila](https://github.com/alessandro-avila)** — the named human decider of record for ADR-001, ADR-002 and this gate. Recorded at the Tech-Stack Review gate on 2026-08-26; `riskRegister.ownerNamed` is now `true`. An ADR whose owner is a role rather than a person is half an owner. |
 | **Review artefact** | A new ADR superseding this one. Closing this risk by any other means — a commit message, a checklist tick, a verbal decision — does not close it. |
 | **Trigger 1** | **Any deployment, or any reversal of Q-12.** Blocking: the review must complete *before* the first deploy, not after. |
 | **Trigger 2** | **Any real user data or real credential entering the system**, including a demo against a live audience with attendee-supplied data. |
@@ -216,6 +216,10 @@ argument ADR-005 used to reject the parallel Security path.
 
 The Tech-Stack Review gate must do all three, or this ADR has not achieved its purpose:
 
-- [ ] Record the accountable owner's **name** — not the role — against this ADR in `state.json`.
-- [ ] Confirm the four triggers, and specifically that **Trigger 1 is blocking**.
-- [ ] Confirm the risk is carried as **open** in `state.json`, not as a decision that closes it.
+- [x] Record the accountable owner's **name** — not the role — against this ADR in `state.json`.
+      → **[@alessandro-avila](https://github.com/alessandro-avila)**, recorded 2026-08-26.
+- [x] Confirm the four triggers, and specifically that **Trigger 1 is blocking**.
+      → Confirmed. Triggers 1 and 2 are both blocking; 3 and 4 are not.
+- [x] Confirm the risk is carried as **open** in `state.json`, not as a decision that closes it.
+      → `riskRegister.RISK-001.status` is `OPEN` with `accepted: true`. Closure requires a new ADR
+      superseding this one; a commit message, checklist tick or verbal decision does not close it.
