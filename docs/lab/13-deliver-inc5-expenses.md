@@ -24,6 +24,13 @@ After this, `app/` contains routing, three services, and nothing else worth keep
 - [ ] [Step 12](12-deliver-inc4-travel-request.md) merged and green
 - [ ] `specs/features/expense-reconciliation.feature` green
 - [ ] `app/app.routes.js` now has exactly one feature state left
+- [ ] ⚠️ **`BASELINE-ISOLATION` applies most sharply here.** The expense scenarios mutate server
+      state but carry **zero `@mutates-fixture` tags**, the restore hook in `hooks.js` covers
+      itinerary only, and `api-mock/server.js:222` holds `expenseReports` in an in-memory array with
+      no reset endpoint. **Restart the mock API before every full run**, and consider tagging the
+      mutating scenarios and extending the restore hook as part of this increment — it is the module
+      the gap is about. See
+      [step 09](09-deliver-inc1-flight-search.md#-new-finding--the-baseline-is-not-hermetic).
 
 ---
 
@@ -68,6 +75,10 @@ code, and the currency filter in the same commit.
 
 This is the last feature module, so after it is green, tell me what is left under
 app/ and what still depends on it.
+
+The date filter is one-way today: clearing both dates never un-filters. React will
+make it work by accident. That is a user-visible behaviour change — keep it broken
+if a baseline scenario pins it, and stop and ask if none does.
 
 Paste the unit run, the full @existing-behavior suite across all five modules, and
 the build. Stop at the PR Review gate.

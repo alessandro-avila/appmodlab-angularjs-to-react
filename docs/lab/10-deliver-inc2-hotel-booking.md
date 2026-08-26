@@ -23,8 +23,12 @@ re-pointable or merely re-runnable.
 ## ✅ Prerequisites
 
 - [ ] [Step 09](09-deliver-inc1-flight-search.md) merged and green
-- [ ] The `flight:selected` bridge is documented — you are about to remove it
+- [ ] `hotel-booking.feature:209` is tagged `@deferred-to-inc-2` — **this increment must make it pass
+      by construction**, with both endpoints in React and no interop built
 - [ ] `specs/features/hotel-booking.feature` green from [step 04](04-green-baseline.md)
+- [ ] **Restart the mock API before the full baseline run.** It holds fixtures in an in-memory array
+      with no reset endpoint, and a long-lived server makes runs order-dependent — see
+      [`BASELINE-ISOLATION`](09-deliver-inc1-flight-search.md#-new-finding--the-baseline-is-not-hermetic)
 
 ---
 
@@ -52,10 +56,15 @@ inventing a second way to do something we already solved, stop and reuse the fir
 
 Two things are specific to this module.
 
-First, flight:selected. Both ends are now React, so the pre-fill becomes a normal
-store read and the journey deferred in increment 1 is restored. The behaviour must
-match the baseline: selecting a flight still fills in the destination city, the
-check-in date, and check-out three days later.
+First, flight:selected. Do NOT restore the pre-fill. hotel-booking.feature:209
+asserts the destination does not carry over, and that scenario is PRESERVE — the
+event maps to no store concern per ADR-013, and increment plan §2.4 requires this
+increment to satisfy :209 BY CONSTRUCTION, meaning there is no pre-fill mechanism
+at all rather than one that happens not to fire. The pre-fill is dead code today:
+the two controllers are never alive at the same time, so the listener never runs.
+A React store would make it work by accident, and that is an unauthorised
+user-visible behaviour change. If you find yourself building a way for the flight
+to reach the hotel search, stop.
 
 Second, the booking confirmation is a Bootstrap 3 jQuery modal —
 $('#bookingConfirmationModal').modal('show'). That is jQuery AND bootstrap.js, not

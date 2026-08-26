@@ -1,7 +1,7 @@
 # Step 09 · Increment 1 — flight-search
 
 > **Phase** 2 · Deliver (increment 1) &nbsp;|&nbsp; **Branch** [`lab/09-deliver-inc1-flight-search`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/09-deliver-inc1-flight-search) &nbsp;|&nbsp; **Parent** `lab/08-deliver-inc0-shell`
-> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -22,7 +22,7 @@ migration is also the one where a mistake is loudest.
 ## 🧰 Skills invoked
 
 | Step | Skill | Notes |
-| --- | --- | --- |
+|------|-------|-------|
 | 1 | `gherkin-generation` | Only if the increment introduces a **delta** — here it does |
 | 2 | `test-generation` | Red tests first |
 | 3 | `contract-generation` | Types for `/api/flights` |
@@ -137,19 +137,19 @@ app/app.routes.js                           ← `flights` state removed, LAST
 Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 
 | Legacy | Where it goes | Note |
-| --- | --- | --- |
+|--------|---------------|------|
 | `flight-search.controller.js` | split across components + `filters.ts` | 258 lines of controller become several small units |
 | `flight-search.service.js` | `use-flight-search.ts` | Restangular → a `fetch` call + Zod parse; **no cache layer** |
-| `flight-search.template.html` | JSX across the components |  |
+| `flight-search.template.html` | JSX across the components | |
 | `date-picker.directive.js` | **dissolved** | native `<input type="date">` |
 | `currency.filter.js` | **dissolved** | `Intl.NumberFormat` |
 | `date-format.filter.js` | **dissolved** | `date-fns` `format()` |
 | `$('#search-overlay').fadeIn/fadeOut` | React state | loading is state, not a DOM effect |
-| `$('html,body').animate(scrollTop)` | `scrollIntoView({behavior:'smooth'})` |  |
-| `.addClass('has-error').delay(3000)` | validation state + CSS |  |
-| `_.uniq/_.map/_.minBy/_.maxBy` | `Set`, `map`, `reduce` |  |
-| `$watch` × 3 | derived state / effects |  |
-| `$broadcast('notification:add')` | notification store |  |
+| `$('html,body').animate(scrollTop)` | `scrollIntoView({behavior:'smooth'})` | |
+| `.addClass('has-error').delay(3000)` | validation state + CSS | |
+| `_.uniq/_.map/_.minBy/_.maxBy` | `Set`, `map`, `reduce` | |
+| `$watch` × 3 | derived state / effects | |
+| `$broadcast('notification:add')` | notification store | |
 | `$broadcast('itinerary:refresh')` | query invalidation | `queryClient.invalidateQueries` is the idiomatic replacement |
 
 > **`itinerary:refresh` deserves a thought.** The AngularJS version tells the itinerary controller
@@ -161,7 +161,7 @@ Nothing here is a 1:1 port. Most of the legacy pieces stop existing as pieces:
 The three watchers are where the subtle bugs live. Translate them deliberately:
 
 | Watcher | Lines | React equivalent |
-| --- | --- | --- |
+|---------|-------|------------------|
 | `departDate` → push `returnDate` +1 day | 45–53 | derive in the change handler, not an effect — effects that write state that triggers effects are how you get loops |
 | `tripType` → null `returnDate` | 55–59 | change handler |
 | `filters` (deep) → re-filter | 62–66 | **not an effect at all** — filtered results are `useMemo` over `results` and `filters` |
@@ -174,20 +174,138 @@ digest cycle in React, badly.
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/08-deliver-inc0-shell..lab/09-deliver-inc1-flight-search`
-> 2. The Gherkin delta — did it write the modified date-parsing scenario **before** the code?
-> 3. Vitest output
-> 4. Playwright `@existing-behavior` output, **all five modules**
-> 5. Did any jQuery / Moment / Lodash / Restangular survive? (`grep -rn "jquery\|moment\|lodash\|restangular" src/`)
-> 6. Did it remove the AngularJS `flights` route, and did it do so **last**?
-> 7. How it handled the `maxPrice` reset — preserved, or silently "fixed"?
-> 8. How it translated the three `$watch`es — `useMemo` or `useEffect`?
-> 9. **What it did about `flight:selected`** — the journey should be *explicitly deferred* to
->    increment 2, not bridged and not silently dropped
-> 10. Anything it discovered that the FRD got wrong
+> ✅ **Verified** — branch [`lab/09-deliver-inc1-flight-search`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/09-deliver-inc1-flight-search) ·
+> [compare with `lab/08-deliver-inc0-shell`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/08-deliver-inc0-shell...lab/09-deliver-inc1-flight-search)
+
+**53 files, +4860 / −1883.** The first module to actually move.
+
+### I re-executed everything
+
+| Check | Result |
+|---|---|
+| **Full `@existing-behavior` suite** | ✅ **236 scenarios, 236 passed · 1952/1952 steps · 17m19s** |
+| `npm test` — now Vitest | ✅ 155/155 |
+| `tsc --noEmit` | ✅ exit 0 |
+| `npm run shell:lint` | ✅ exit 0 |
+| `vite build` | ✅ 484 modules, exit 0 |
+| Four unmigrated modules + `api-mock/` | ✅ untouched |
+| jQuery · jQuery UI · Moment · Lodash · Restangular | ✅ **zero imports** — remaining text matches are comments citing legacy source |
+| Escape hatches | ✅ zero across all five patterns |
+
+`/flights` now returns **200** from the front door where Increment 0 returned a 302. That is the
+route ledger flip working — and it really was **one word**: `owner: 'angularjs'` → `'react'`.
+
+### The Gherkin delta, written before the code
+
+| Verdict | Scenario | Authority |
+|---|---|---|
+| **SUPERSEDE** | `:91` *raw date string* → *shown as a calendar date* | **ADR-009** — the one authorised change |
+| **SUPERSEDE** | `:95` *flight covers the date calendar* → *does not block date entry* | unavoidable consequence of the instructed native date input (ADR-007 cat 1) |
+| **NET-NEW** | *A typed departure date is accepted* | ADR-009 — the legacy field is `<input type="text">`, so typing never fired `onSelect` and the model silently stayed null |
+
+235 → **236**. All three tagged `@inc-1`.
+
+And `hotel-booking.feature:209` — the `flight:selected` journey — is tagged `@deferred-to-inc-2`
+**with the reasoning written into the file, assertions untouched, and still passing.** No interop was
+built. The emitter is gone; the AngularJS listener survives and still never fires. Increment 2 must
+satisfy it *by construction*.
+
+> That is the shape to copy: a scenario that cannot pass yet is **annotated and kept**, never
+> deleted and never quietly bridged.
+
+### Karma retired — with the receipts
+
+`npm test` now runs Vitest. The 19 Karma assertions were retired under ADR-008 §2 with an auditable
+**19 → 68** mapping in `docs/architecture/karma-retirement.md`, and `test/` is gone — authorised
+explicitly by increment plan §5, which also carries the gate check *"all 19 Karma assertions have a
+named, passing React replacement."*
+
+One mapping **inverts its assertion**, and it is the most interesting line in the increment. Karma's
+*"should select a flight and broadcast event"* becomes *"does **not** announce `flight:selected`"* —
+because ADR-013 drops the event, and **asserting its absence is what stops it being reimplemented by
+accident.**
+
+### Four bugs its own suite caught, and one it caught by diffing
+
+It reported the suite catching four of its own bugs at 227/236 — including a shared notification
+selector re-pointed to a React-only `data-testid`, which broke **seven scenarios in expense and
+travel-request**, modules this increment never touched.
+
+The best one it found before the suite could: **`Intl.NumberFormat` groups thousands by default**
+(`$1,250`) where the legacy renders plain concatenation (`$1250`). It caught that by running the
+**real vendored Moment/AngularJS output and diffing**, rather than trusting its reading. It would
+have surfaced on the details-panel total, which multiplies price by passenger count.
+
+### The real blocker was origin scoping
+
+Storage state captured on `:8080` was invisible to the React route, so the guard bounced **every**
+scenario to login and the feature timed out. `localStorage` is origin-scoped — the exact property
+Increment 0's one-origin front door exists to satisfy. The whole harness now drives the front door.
+
+This was plan §4.2's deferred work, landing here because Increment 1 is the first increment that
+needs it. Worth noting how it surfaced: not as a design discussion, but as a suite that would not
+start.
+
+### C-4 preserved — a contradiction escalated rather than resolved silently
+
+Increment plan §5.3 **authorises** superseding `:118` and `:123` (the price-slider snap) under
+ADR-006. The prompt on this page authorises **only** ADR-009 and says *"if you find yourself fixing
+something the baseline pins, stop and tell me instead."*
+
+Those two instructions conflict. It **stopped and reported** — and wrote `snapToStep()` specifically
+to reproduce the AngularJS `input[range]` clamp, with the conflict named in a comment above it.
+
+**Gate ruling: preserved.** It keeps this increment a single-change migration whose delta is minimal
+and auditable. C-4 and the `Confirmation: undefined` defect *(`controller:220` reads
+`booking.confirmationCode`; the API returns `confirmationNumber` — the baseline asserts only the
+prefix, so it never caught it)* are now a natural pair for a later, deliberate bug-fix increment.
+
+> Neither is tech debt. **A defect reproduced on purpose, pinned by a test, and dated is a
+> decision** — the difference is whether anyone wrote it down.
+
+### A step-A1 bug, exactly where the prompt predicted
+
+`flight-search.steps.js:474` polled the AngularJS scope **inline inside a step definition** — the one
+place framework coupling escaped the page object. It could not survive the migration, so a step
+definition had to change, which plan §1.4 says should not happen. Now `this.flights.waitForIdle()`,
+asserted condition unchanged.
+
+That is the green baseline earning its keep: a hole in the safety net, found at the cheapest possible
+moment.
+
+### ⚠️ New finding — the baseline is not hermetic
+
+**My first full run came back 235/236.** The failure was
+`expense-reconciliation.feature:213`, timing out on the expenses table — a module this increment
+never touched.
+
+It is **not a regression**. Driving a browser at the page showed it rendering fine, two rows, zero
+console errors. The cause:
+
+- the expense scenarios mutate server state but carry **zero `@mutates-fixture` tags**
+- the restore hook in `hooks.js` covers **itinerary only** — `FIXTURE_DEFAULTS = [{ id: 'item-4' }]`
+- `api-mock/server.js:222` holds `expenseReports` in a plain in-memory array with **no reset endpoint**
+
+My mock API had been live across several prior suites. Restarting it and re-running gave a clean
+**236/236**. Recorded as `BASELINE-ISOLATION`; it predates this increment and matters most at
+**Increment 5**, which migrates that exact module.
+
+### The staleness bug, third occurrence — and this half was the reviewer's
+
+The agent's summary again reported `§13-16` as unsettled. This time the cause was **not** stale docs:
+the ruling *had* been recorded in `state.json` and the ADRs, and a resolution note *had* been added to
+`tech-stack.md` — **above the table.** The table **row** still read *"Must be settled before Inc-0"*,
+and `increment-plan.md` §1.7 and §14 were never touched at all.
+
+It read the row. Correctly.
+
+> **A resolution recorded in a note above the question, but not in the row that states it, is not
+> recorded.** Fix the sentence that makes the claim — not the space near it.
+
+Both are now struck through in place, in the rows themselves and in both plan sections. And credit
+where it is due: the agent **caught its own error in the artifact**, writing into `state.json`
+*"(I incorrectly repeated this as open in my Inc-1 summary.)"* Its chat report was stale; its record
+was not.
 
 ---
 
@@ -198,8 +316,8 @@ digest cycle in React, badly.
 
 - [ ] All `@existing-behavior` scenarios pass — for **every** module, not just flights
 - [ ] The only modified scenario is the date-parsing one, and its ADR explains it
-- [ ] `grep -rn "jquery|jQuery|moment|lodash|restangular" src/` → nothing
-- [ ] `grep -rn ": any|as any|@ts-expect-error|@ts-ignore" src/` → nothing
+- [ ] `grep -rn "jquery\|jQuery\|moment\|lodash\|restangular" src/` → nothing
+- [ ] `grep -rn ": any\|as any\|@ts-expect-error\|@ts-ignore" src/` → nothing
 - [ ] The flight response is validated before it is rendered — the generated type is not the check
 - [ ] The `maxPrice` reset still happens on every search — **surprising behaviour preserved**
 - [ ] Time buckets are still 6–12 / 12–18 / 18–6
