@@ -7,6 +7,22 @@ This is the operational companion to the [root README](../../README.md). The REA
 repo** — the prompt used at each step, the artifacts it produced, the gate decision, and what went
 wrong.
 
+> [!IMPORTANT]
+> **Read these docs from `main`, and pull them onto your lab branch before every step.**
+>
+> ```bash
+> git checkout main -- docs/ README.md
+> ```
+>
+> `docs/` lives on `main`. A `lab/*` branch carries whatever `docs/` looked like when it was cut, and
+> nothing merges `main` forward — so the copy sitting on your branch is **always behind**, and gets
+> further behind with every step.
+>
+> This is not hypothetical. [Increment 0](08-deliver-inc0-shell.md#-outcome) was run against
+> instructions **1935 lines out of date**, which cost three deviations in the first increment that
+> produced code. Run the line above **first**, before you read the step, or you will read the wrong
+> version of it.
+
 ---
 
 ## 🧭 HOW TO USE THIS
@@ -151,7 +167,7 @@ exists, and why you should read the output rather than clicking approve.
 | 06 | [Assess](06-assess.md) | A · Assess | Assessment Review | ✅ Verified |
 | 07 | [Plan](07-plan.md) | P · Plan | Plan ✅ / Tech-Stack ✅ | ✅ Verified |
 | 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ✅ Verified |
-| 09 | [Increment 1 — flight-search](09-deliver-inc1-flight-search.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 09 | [Increment 1 — flight-search](09-deliver-inc1-flight-search.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 12 | [Increment 4 — travel-request](12-deliver-inc4-travel-request.md) | 2 · Deliver | PR Review | ⏳ Pending |

@@ -23,8 +23,12 @@ re-pointable or merely re-runnable.
 ## ✅ Prerequisites
 
 - [ ] [Step 09](09-deliver-inc1-flight-search.md) merged and green
-- [ ] The `flight:selected` bridge is documented — you are about to remove it
+- [ ] `hotel-booking.feature:209` is tagged `@deferred-to-inc-2` — **this increment must make it pass
+      by construction**, with both endpoints in React and no interop built
 - [ ] `specs/features/hotel-booking.feature` green from [step 04](04-green-baseline.md)
+- [ ] **Restart the mock API before the full baseline run.** It holds fixtures in an in-memory array
+      with no reset endpoint, and a long-lived server makes runs order-dependent — see
+      [`BASELINE-ISOLATION`](09-deliver-inc1-flight-search.md#-new-finding--the-baseline-is-not-hermetic)
 
 ---
 

@@ -24,6 +24,13 @@ After this, `app/` contains routing, three services, and nothing else worth keep
 - [ ] [Step 12](12-deliver-inc4-travel-request.md) merged and green
 - [ ] `specs/features/expense-reconciliation.feature` green
 - [ ] `app/app.routes.js` now has exactly one feature state left
+- [ ] ⚠️ **`BASELINE-ISOLATION` applies most sharply here.** The expense scenarios mutate server
+      state but carry **zero `@mutates-fixture` tags**, the restore hook in `hooks.js` covers
+      itinerary only, and `api-mock/server.js:222` holds `expenseReports` in an in-memory array with
+      no reset endpoint. **Restart the mock API before every full run**, and consider tagging the
+      mutating scenarios and extending the restore hook as part of this increment — it is the module
+      the gap is about. See
+      [step 09](09-deliver-inc1-flight-search.md#-new-finding--the-baseline-is-not-hermetic).
 
 ---
 
