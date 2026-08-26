@@ -42,7 +42,10 @@ Still no code changes. Findings and ADRs only.
 ```bash
 git switch lab/05-path-selection
 git switch -c lab/06-assess
+git checkout main -- docs/ README.md   # current lab instructions
 ```
+
+<sub>That third line matters. `docs/` lives on `main`; a `lab/*` branch cut from its predecessor carries whatever `docs/` looked like back then. Increment 0 was run against instructions **1935 lines out of date** because of exactly this — see [step 08](08-deliver-inc0-shell.md#-outcome).</sub>
 
 ---
 

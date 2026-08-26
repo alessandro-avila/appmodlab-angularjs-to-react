@@ -395,6 +395,68 @@ That single flow touches routing, a directive wrapping a jQuery plugin, a filter
 
 ---
 
+## 🌿 RUNNING THE REACT SHELL (Increment 0 onwards)
+
+From Increment 0 the React client runs **alongside** the AngularJS app behind a
+single entry point — the *front door*. The legacy commands above are unchanged.
+
+```bash
+npm start              # legacy AngularJS (:8080) + mock API (:3000)  ← still required
+npm run shell:dev      # the front door (:5173)                       ← browse here
+
+npm run shell:test     # Vitest — the React shell suite
+npm run shell:typecheck # tsc --noEmit, TypeScript strict
+npm run shell:lint     # oxlint, type-aware
+npm run shell:build    # production build → dist-react/
+npm run shell:verify   # typecheck + lint + test + build, in order
+```
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| **Front door** | http://localhost:5173 | **one origin**; routes between both apps |
+| React shell health | http://localhost:5173/__shell | non-product route; shows the route ledger |
+| Legacy app | http://localhost:8080 | still works standalone, unchanged |
+| Mock API | http://localhost:3000/api | unchanged |
+
+**Both servers must be running.** The front door proxies everything it does not
+own to `:8080` and `:3000`.
+
+Copy `.env.example` to `.env` first — the API base URL comes from the
+environment, never from source (finding **A-5**).
+
+> **How the front door works — and how a route moves from AngularJS to React —
+> is documented in
+> [`docs/architecture/strangler-fig-entry-point.md`](docs/architecture/strangler-fig-entry-point.md).**
+> Increments 1–5 all depend on it.
+
+### Where the two test suites live
+
+| Suite | Command | Covers | Status |
+|-------|---------|--------|--------|
+| Karma + Jasmine | `npm test` | the 19 legacy AngularJS tests | unchanged, still green — retired in Inc-1 per ADR-008 §2 |
+| Vitest | `npm run shell:test` | the React shell | new |
+| Cucumber + Playwright | `npm run test:baseline` | the 235-scenario green baseline | unchanged; runs against `:8080` directly, **not** through the front door |
+
+
+**Try:** Flights → `SFO` → `JFK` → pick two dates → **Search Flights** → click a result.
+That single flow touches routing, a directive wrapping a jQuery plugin, a filter, a service, Restangular, and jQuery DOM manipulation. It is the perfect first migration target.
+
+### What you are modernizing
+
+| | |
+|---|---|
+| ![Login](assets/screenshots/01-login.png) | ![Dashboard](assets/screenshots/02-dashboard.png) |
+| **Login** — mock auth, JWT into `localStorage` | **Dashboard** — hub for the five modules |
+| ![Flights](assets/screenshots/03-flights.png) | ![Hotels](assets/screenshots/04-hotels.png) |
+| **Flight search** — round-trip toggle, jQuery UI datepickers, filters, sorting | **Hotel booking** — destination, date range, guests/rooms, card results |
+| ![Itinerary](assets/screenshots/05-itinerary.png) | ![Travel requests](assets/screenshots/06-travel-request.png) |
+| **Itinerary** — list / timeline / print views | **Travel requests** — status filters, search, validation-heavy form |
+
+![Expenses](assets/screenshots/07-expenses.png)
+**Expense reconciliation** — status tabs, search, date-range filter, report creation.
+
+---
+
 ## 🧨 KNOWN LEGACY DEBT
 
 This is a *brownfield* lab. Some things are broken **on purpose** because fixing them is the exercise. Do not "helpfully" repair these before the hackathon starts.
@@ -420,6 +482,10 @@ This is a *brownfield* lab. Some things are broken **on purpose** because fixing
 So `lab/07-plan` contains everything from steps 00–07, and checking out any branch gives you a
 working snapshot of the journey at that moment. Each step doc carries the exact `git` command to
 create its branch.
+
+> ⚠️ **Pull `docs/` forward at every branch cut** — `git checkout main -- docs/ README.md`.
+> A `lab/*` branch carries whatever `docs/` looked like when it was cut, and nothing merges `main`
+> forward. Increment 0 was run against instructions 1935 lines out of date because of this.
 
 | Branch | Contents |
 |--------|----------|

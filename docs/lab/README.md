@@ -113,6 +113,17 @@ branches in order. If you just want the modernized app, check out `lab/final-sol
 carries the error. That is not a flaw in the tooling — it is *why* the Extraction Review gate
 exists, and why you should read the output rather than clicking approve.
 
+> ⚠️ **`docs/` lives on `main` — pull it forward at every branch cut.**
+>
+> ```bash
+> git checkout main -- docs/ README.md
+> ```
+>
+> A `lab/*` branch carries whatever `docs/` looked like when it was cut, and nothing merges `main`
+> forward. [Increment 0](08-deliver-inc0-shell.md#-outcome) was run against instructions **1935 lines
+> out of date**, which cost three deviations in the first increment that produced code. The line
+> above is now in every step's *Branch setup*.
+
 ---
 
 ## 🗺️ THE STEPS
@@ -139,7 +150,7 @@ exists, and why you should read the output rather than clicking approve.
 |---|------|-------|-----------|--------|
 | 06 | [Assess](06-assess.md) | A · Assess | Assessment Review | ✅ Verified |
 | 07 | [Plan](07-plan.md) | P · Plan | Plan ✅ / Tech-Stack ✅ | ✅ Verified |
-| 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 09 | [Increment 1 — flight-search](09-deliver-inc1-flight-search.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ⏳ Pending |
