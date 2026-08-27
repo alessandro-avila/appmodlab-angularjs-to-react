@@ -23,6 +23,26 @@ wrong.
 > produced code. Run the line above **first**, before you read the step, or you will read the wrong
 > version of it.
 
+> [!WARNING]
+> **Then check you cut the branch from the right place.** `main` carries the *story* and has **no
+> `specs/` and no `src/`** — so a branch accidentally cut from `main` looks superficially fine and is
+> missing every artifact the step depends on.
+>
+> ```bash
+> git ls-tree -r --name-only HEAD -- specs/ src/ | Measure-Object -Line
+> ```
+>
+> Zero means you branched from `main`. Fix it before you start — while the branch has no unique
+> commits, it is a one-line reset:
+>
+> ```bash
+> git reset --hard lab/NN-previous-step
+> ```
+>
+> This has happened **twice** in this lab: once at `lab/03-testability-gate` and again at
+> `lab/11-deliver-inc3-itinerary`. Both times the agent caught it by noticing the artifacts were
+> missing — but it costs a whole exchange, and it is thirty seconds to check.
+
 ---
 
 ## 🧭 HOW TO USE THIS
@@ -168,7 +188,7 @@ exists, and why you should read the output rather than clicking approve.
 | 07 | [Plan](07-plan.md) | P · Plan | Plan ✅ / Tech-Stack ✅ | ✅ Verified |
 | 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 09 | [Increment 1 — flight-search](09-deliver-inc1-flight-search.md) | 2 · Deliver | PR Review | ✅ Verified |
-| 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 12 | [Increment 4 — travel-request](12-deliver-inc4-travel-request.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 13 | [Increment 5 — expenses](13-deliver-inc5-expenses.md) | 2 · Deliver | PR Review | ⏳ Pending |

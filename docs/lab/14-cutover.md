@@ -174,6 +174,11 @@ specs/                            updated, not deleted
       before any deletion happened (ADR-010)
 - [ ] **Sign-out exists** — net-new behaviour, with its own scenarios, not a port
 - [ ] `app/`, `bower.json`, `.bowerrc`, `bower_components/`, `Gruntfile.js` all gone
+- [ ] **The front door's proxy leg is retired** — one origin, one document, one app (plan §10.2)
+- [ ] ⚠️ **`npm run shell:preview` actually serves the app.** The front door is registered via
+      `configureServer`, which is **dev-server only** — there is no `configurePreviewServer` and no
+      `preview.proxy`. Nothing in the lab has ever proven the *production build* serves anything.
+      After the proxy leg goes this matters less, but verify it rather than assume it
 - [ ] `grep -rn "angular\|bower\|grunt\|karma\|jasmine" --include=*.json --include=*.js .` returns
       nothing outside `specs/` and `docs/`
 - [ ] `package.json` has no Grunt, Karma or Jasmine left

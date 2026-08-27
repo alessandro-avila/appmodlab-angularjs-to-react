@@ -1,7 +1,7 @@
 # Step 10 · Increment 2 — hotel-booking
 
 > **Phase** 2 · Deliver (increment 2) &nbsp;|&nbsp; **Branch** [`lab/10-deliver-inc2-hotel-booking`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/10-deliver-inc2-hotel-booking) &nbsp;|&nbsp; **Parent** `lab/09-deliver-inc1-flight-search`
-> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -127,15 +127,129 @@ result, not to write the prompt:
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/09-deliver-inc1-flight-search..lab/10-deliver-inc2-hotel-booking`
-> 2. **Was the increment-1 bridge actually deleted**, or is it still sitting there unused?
-> 3. Does the flight → hotel pre-fill still work end to end? Test it by hand.
-> 4. What replaced the Bootstrap modal, and is `bootstrap.js` still needed by anything
-> 5. Unit run, full Playwright across all five modules, build
-> 6. Did it reuse increment 1's patterns, or invent new ones?
+> ✅ **Verified** — branch [`lab/10-deliver-inc2-hotel-booking`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/10-deliver-inc2-hotel-booking) ·
+> [compare with `lab/09-deliver-inc1-flight-search`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/09-deliver-inc1-flight-search...lab/10-deliver-inc2-hotel-booking)
+
+**34 files, +2732 / −942.** The discovery increment found what it was sequenced to find.
+
+| Check | Result |
+|---|---|
+| **Full baseline** *(my own run, fresh servers)* | ✅ **240 scenarios, 240 passed · 1987/1987 steps · 17m41s** |
+| `npm test` | ✅ 204/204 |
+| `tsc` · `oxlint` · `vite build` | ✅ all exit 0 |
+| Three unmigrated modules · `api-mock/` · bower · Grunt | ✅ untouched |
+| `app/components/hotel-booking/` | ✅ deleted |
+| jQuery · Moment · Lodash · Restangular · `$rootScope` · `any` | ✅ none |
+
+236 → **240 scenarios.**
+
+### The discovery, and it was in the data
+
+P-7 said `track by room.id` fails because rooms have no `id`. Step 0 discovery went further and found
+**why the field is missing** — and it is not an omission:
+
+> **A *hotel* has `pricePerNight`. A *room* has `price`.** Two different shapes, sitting side by side
+> in one controller.
+
+That is the origin of the NaN total. The legacy code reaches for a hotel-shaped field on a
+room-shaped object. And a fourth defect fell out of the same reading: the server reads
+**`roomType`**, not `roomId` (`api-mock/server.js:449`, verified — there is no `roomId` anywhere).
+So the legacy request was wrong **twice over**: wrong field name, *and* a property rooms do not have.
+
+Discovery also closed the plan's open range — *"8–14 net-new scenarios"* — at **9**, and established
+that `type` **is** unique, so it is the natural key the payload was missing.
+
+### The defects were corrected, not reproduced — and that is not a contradiction
+
+Increment 1 *preserved* its defects (C-4, `Confirmation: undefined`). Increment 2 *fixed* three. The
+difference is authorisation, not mood:
+
+> **increment plan §6.5, scenario 24 (`:188`), authorised by ADR-005 and Q-3** — *"the scenario exists
+> **only** because the table could not be used… The three defects it documents are fixed as part of
+> building a path that has never existed."*
+
+The prompt told it to check whether the assessment had already decided this, and to ask only if it
+had not. It found the decision, followed it, and **named it**. Verified verbatim.
+
+> You cannot reproduce the behaviour of a screen that has never rendered. There is no baseline to
+> preserve — so this is net-new, and net-new is where a fix is free.
+
+### It refused an instruction, correctly
+
+The prompt on this page **told it to restore the flight → hotel pre-fill**. It stopped and asked,
+because `hotel-booking.feature:209` asserts the opposite and plan §6.5/§6.8 make that scenario an
+**exit criterion**.
+
+It was right and **the prompt was wrong** — the pre-fill is dead code: the two
+controllers are never alive simultaneously, so the listener has never run. The prompt was also
+self-contradictory, saying *"restore the pre-fill"* and *"match the baseline"* in one breath when the
+baseline **is** that the pre-fill never happens.
+
+**Gate ruling: keep the plan.** There is now no pre-fill mechanism anywhere in the module, two unit
+tests assert its absence, and `:209` is PRESERVE with the decision written into the feature file.
+
+That is the second prompt on this lab to contradict the specs it serves, and the cause is the same as
+[C-4](09-deliver-inc1-flight-search.md#-outcome): **these prompts were written before the green
+baseline existed**, from assumptions about what the legacy app did. The baseline proved several of
+them wrong. Steps 11–13 were audited for the same defect and now carry the rule explicitly, because
+**React has no scope chain — every control trapped in an `ng-if` child scope starts working by
+accident on migration.**
+
+### Two questions answered by measuring
+
+**`bootstrap.js` must stay.** Verified: `travel-request.controller.js:246` and
+`expense.controller.js:223` both call `.modal(`, and `app/index.html` still loads it. It goes at
+Increment 5 at the earliest. The hotel modal itself is now a React modal (ADR-007 cat 2).
+
+**Hotel money is not flight money.** It ran the *real* Angular `currency` filter in the legacy app
+rather than reading the docs: `currency(1234,'$',2)` → `$1,234.00` — **grouped, two decimals**, unlike
+flight-search's plain `$1250`. And `undefined` renders the literal string `"undefined"` while `NaN`
+renders **empty**. Both reproduced in `src/lib/format.ts`.
+
+On reuse: the date and money primitives moved into `src/lib/format.ts` and flight-search re-exports
+them, so Increment 1's public surface is unchanged and its 69 tests still pass.
+
+### ⚠️ The finding that matters most: the suite is flaky
+
+It reported this rather than burying it, which is the right call.
+
+| Run | Result | Failures |
+|---|---|---|
+| A | 238/240 | itinerary container timeout · notification race |
+| B | 237/240 | **three different** — angular injector undefined · Enter Portal 30s · expenses table |
+| C | 240/240 | — |
+| **D — mine, fresh servers** | **240/240** | — |
+
+Five failures across 960 scenario-executions ≈ **0.52% per scenario**. The number that matters is not
+that one:
+
+> P(clean run) = 0.9948²⁴⁰ ≈ **29%** — about **two runs in three come back red**.
+
+A suite that needs three attempts to go green is not a green suite. If Increment 3 breaks one
+scenario, it is indistinguishable from noise — and that distinction is the entire method.
+
+**It measured instead of guessing:** the front-door proxy is **0.8× direct — faster**, warm legacy
+loads are ~10ms, and browser contexts close correctly. `authentication.feature` alone passes 51/51.
+
+Reviewing that, one more number: **`app/index.html` loads 24 script tags**, so every AngularJS page
+boot is 24 proxied requests — roughly **5,000 per run**. Against 10ms warm loads, a 30s stall is a
+**hang, not slowness**, and *"angular injector undefined"* means a script never arrived. The proxy
+under sustained load is the suspect, not ambient noise.
+
+And the flakiness exposed a **genuine latent race**, which it fixed: the shared step
+*"I see a notification containing"* **sampled the list once**, but notifications only arrive after the
+triggering request settles. It now polls. That changes how a scenario *observes*, never what it
+*asserts* — the ADR-008 §5 class.
+
+> **The load causing this is on a demolition schedule.** ~185 of 240 scenarios still boot AngularJS
+> today; that falls to ~150 after Inc-3, ~105 after Inc-4, ~36 after Inc-5, and **0 at cutover**. Do
+> not build a deep fix for a subsystem being deleted — time-box it, raise the budgets, move on.
+
+### Still unverified: SEAM-3
+
+`POST /api/bookings/hotels` echoes the request and **creates no itinerary item** (`server.js:445-455`
+— confirmed). Q-3 requires a booking to reach the itinerary. Increment 3 migrates the consumer, so it
+is the increment that has to confront it.
 
 ---
 
