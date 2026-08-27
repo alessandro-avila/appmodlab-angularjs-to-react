@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
-  "currentPhase": "2-increment-delivery",
-  "currentStep": "Increment 2 (hotel-booking) implemented; awaiting PR Review gate",
-  "status": "hotel-booking migrated to React. 240/240 baseline green across all five modules. The room table renders for the first time; the AngularJS hotels state and component deleted after the React route went green.",
+  "currentPhase": "2",
+  "currentStep": "inc-3 — awaiting PR Review gate",
+  "status": "awaiting-human-gate",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -1058,23 +1058,10 @@
     }
   },
   "testsStatus": {
-    "karma-jasmine": {
-      "pass": 19,
-      "fail": 0,
-      "total": 19,
-      "exitCode": 0,
-      "note": "reconciled in B3 Track A; was 0/11 before"
-    },
-    "baseline": {
-      "runner": "cucumber-js",
-      "scenarios": 82,
-      "passing": 82,
-      "failing": 0,
-      "steps": 611
-    },
-    "baselineLastRun": "2026-08-23T12:35:00+02:00",
-    "baselineLastResult": "189/235 - 46 fixture-decay failures, 0 regressions",
-    "baselineBlocking": "Inc-0 task 0 (specs/increment-plan.md section 0.6)"
+    "unit": "281 passed",
+    "cucumber": "245 passed / 245",
+    "build": "clean",
+    "lint": "clean"
   },
   "verifiedCounts": {
     "filesInScope": 30,
@@ -1116,7 +1103,13 @@
     "datepickerInitSitesLive": 8,
     "legacyUnitTests": 19,
     "skipMarkers": 0,
-    "bowerTrackedFiles": 964
+    "bowerTrackedFiles": 964,
+    "scenarios": 245,
+    "steps": 2098,
+    "unitTests": 281,
+    "bypassesUi": 3,
+    "reactRoutes": 3,
+    "angularRoutes": 4
   },
   "humanGates": {
     "brownfield-b1-extraction-approved": true,
@@ -1430,6 +1423,10 @@
         "the three booking defects were CORRECTED under ADR-005 + Q-3 while the identical flight-search confirmation defect stays REPRODUCED — confirm the asymmetry is understood and intended",
         "SEAM-3 is still unverified: the server creates no itinerary item from a hotel booking. Q-3 requires it. Inc-3 verifies the consumer."
       ]
+    },
+    "inc3PrReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-27T19:55:00+02:00"
     }
   },
   "testabilityGateReview": {
@@ -1563,9 +1560,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-27T12:30:00+02:00",
+  "lastUpdated": "2026-08-27T19:55:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-27T12:30:00+02:00",
+  "updatedAt": "2026-08-27T19:55:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -2004,6 +2001,114 @@
         "bootstrap.min.js": "still required by travel-request and expense-reconciliation"
       },
       "navbarNote": "app/index.html's Hotels entry rewritten from ui-sref to href='/hotels' and KEPT until cutover."
+    },
+    "inc-3": {
+      "name": "itinerary — the consumer increment",
+      "status": "implemented; awaiting PR Review gate",
+      "completedAt": "2026-08-27T19:55:00+02:00",
+      "branchNote": "lab/11 was cut from a commit predating increments 0-2: no specs/, no src/, and flight-search and hotel-booking still present as AngularJS. Recreated on lab/10-deliver-inc2-hotel-booking with the four newer lab-doc files carried forward. Backup ref: backup/lab11-before-rebase.",
+      "scopeQuestionsClosedAtGate": {
+        "seam-3-and-q-6": "The prompt described client-side work only, but plan §7.2/§7.3 authorises modifying api-mock/server.js and specs/contracts/api/itinerary.yaml. Asked; answered FOLLOW THE PLAN. Without the server half, query invalidation would refetch identical data and the refresh would be vacuous.",
+        "plan-§7.5": "Does a cancelled item count towards the server-derived Trip.totalCost? The plan explicitly refused to pick and required the Inc-3 gate to answer. Answered INCLUDED — itinerary.feature:218 stays PRESERVE.",
+        "session-expiry-policy": "Plan §13 item 12, deferred by Inc-0 and forced here because the itinerary is the first React route that fetches on mount. Asked; answered ADOPT THE POLICY. ADR-018.",
+        "query-invalidation-vs-no-cache": "The instruction asked for query invalidation, but tech-stack.md:122 specifies against any data cache (NFR-F005-003, NFR-F007-004). Asked; answered a lightweight in-house query over GET /api/trips only. ADR-021."
+      },
+      "deviationFromPlan": {
+        "what": "increment plan §7.4 classified 8 dead-control scenarios as SUPERSEDE; they are PRESERVED instead.",
+        "why": "The instruction for this increment states the rule \"where a baseline scenario pins a control as dead, keep it dead and say so\", and lab commit b6c90a9 records that §7.4 was written from pre-baseline assumptions the green baseline then disproved.",
+        "recordedIn": "ADR-019",
+        "consequence": "@bypasses-ui stays at 3, where §7.4 predicted 0. The React component models the parent/child scope pair explicitly so both controls remain inert."
+      },
+      "planCorrections": {
+        "authentication-supersede-count": "plan §7.4 lists 3 authentication scenarios superseded here. Only 2 are: :220 is PRESERVED because the guard re-renders on a STORE mutation, and the harness clearToken() writes to localStorage from outside the app. Verified in the run.",
+        "flight-booking-endpoint": "plan §7.2/§7.3 refer to POST /api/bookings/flights; the real path is POST /api/flights/:id/book (api-mock/server.js:365)."
+      },
+      "gherkinDelta": {
+        "itinerary": {
+          "superseded": 2,
+          "netNew": 5,
+          "preservedAgainstPlan": 8,
+          "total": 37
+        },
+        "authentication": {
+          "superseded": 2,
+          "preserved": 1
+        },
+        "bypassesUi": {
+          "before": 3,
+          "after": 3,
+          "planPredicted": 0
+        }
+      },
+      "serverChanges": {
+        "file": "api-mock/server.js",
+        "q-6": "Trip.totalCost derived on read from items[].cost; stale seeds (2450, 1800) deliberately left in the fixture so a removed derivation fails loudly.",
+        "seam-3": "POST /api/flights/:id/book and POST /api/bookings/hotels append a confirmed itinerary item to the traveller’s earliest trip.",
+        "contract": "specs/contracts/api/itinerary.yaml — totalCost marked readOnly + derived; two findings marked resolved-in-increment-3."
+      },
+      "harnessChanges": {
+        "fixtureRestore": "TRIP_DEFAULTS replaces the item-4-status-only restore and now replaces whole items arrays via PUT /api/trips/:id, because SEAM-3 appends items and there is no DELETE route. Runs for EVERY @feature-itinerary scenario, since the scenarios that append live in three different feature files.",
+        "authPageObject": "goToState() addresses migrated routes by real path and unmigrated ones by fragment. The distinction is load-bearing: hash-to-hash navigation is same-document, so $rootScope.currentUser survives, and two scenarios depend on that. currentState() reads either form.",
+        "bugFound": "Two 401 scenarios had been silently exercising the AngularJS screen, because goToState() addressed /itinerary by hash and a fragment never reaches the server."
+      },
+      "verification": {
+        "unit": "281 passed (14 files) — 55 new for itinerary model/query/api-client, 34 component",
+        "cucumber": "245 scenarios, 2098 steps, all passed (20m 21s) — run after the AngularJS deletion",
+        "build": "vite build clean — 495 modules, 383.25 kB",
+        "lint": "oxlint --type-aware src: exit 0",
+        "typecheck": "tsc --noEmit clean",
+        "seam3ByHand": "Verified in a real browser from BOTH producers: flight 8->9 items, hotel 9->10 items, itinerary rendered each new row, trip total moved $1330 -> $1684 (server-derived), fixture restored to 8/$1330."
+      },
+      "deleted": [
+        "app/components/itinerary/itinerary.controller.js (235)",
+        "app/components/itinerary/itinerary.service.js (103)",
+        "app/components/itinerary/itinerary.template.html (226)",
+        "the 'itinerary' UI-Router state",
+        "two <script> tags at app/index.html"
+      ],
+      "guardrails": {
+        "bower.json": "untouched",
+        "Gruntfile.js": "untouched",
+        "bower_components/": "untouched",
+        "package.json": "unchanged — the query cache is in-house, no dependency added",
+        "bootstrap.min.js": "still required by travel-request (Inc-4) and expense (Inc-5)"
+      }
     }
-  }
+  },
+  "adrs": [
+    {
+      "id": "ADR-017",
+      "title": "Printing: a print stylesheet replaces the cloned print window",
+      "status": "proposed",
+      "increment": "inc-3"
+    },
+    {
+      "id": "ADR-018",
+      "title": "Session-expiry policy: a rejected session is told so and returned to login",
+      "status": "proposed",
+      "increment": "inc-3",
+      "closes": "plan §13 item 12"
+    },
+    {
+      "id": "ADR-019",
+      "title": "Controls the baseline pins as dead stay dead through migration",
+      "status": "proposed",
+      "increment": "inc-3",
+      "supersedes": "increment plan §7.4 classifications"
+    },
+    {
+      "id": "ADR-020",
+      "title": "The itinerary becomes server-derived: Trip.totalCost (Q-6) and bookings that arrive (SEAM-3)",
+      "status": "proposed",
+      "increment": "inc-3",
+      "answers": "plan §7.5"
+    },
+    {
+      "id": "ADR-021",
+      "title": "itinerary:refresh becomes query invalidation over a cache scoped to one resource",
+      "status": "proposed",
+      "increment": "inc-3",
+      "supersedes": "ADR-013's itinerary:refresh row only"
+    }
+  ]
 }
