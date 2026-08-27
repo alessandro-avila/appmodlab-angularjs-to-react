@@ -76,9 +76,12 @@ code, and the currency filter in the same commit.
 This is the last feature module, so after it is green, tell me what is left under
 app/ and what still depends on it.
 
-The date filter is one-way today: clearing both dates never un-filters. React will
-make it work by accident. That is a user-visible behaviour change — keep it broken
-if a baseline scenario pins it, and stop and ask if none does.
+The date filter is one-way today: clearing both dates never un-filters. In React
+it works both ways. That is the AUTHORISED outcome: ADR-005 classifies the trapped
+date filter among "the four dead controls" as SUPERSEDE, because ADR-001/002
+already decided to fix them and they are "resolved by being reimplemented
+correctly". Supersede the scenarios that pin the one-way behaviour, with the ADR
+named — do not write code to reproduce it.
 
 Paste the unit run, the full @existing-behavior suite across all five modules, and
 the build. Stop at the PR Review gate.

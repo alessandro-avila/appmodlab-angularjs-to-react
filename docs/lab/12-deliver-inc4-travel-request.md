@@ -25,6 +25,15 @@ This is also where the first custom directive gets dissolved: `approval-status.d
 - [ ] `specs/features/travel-request.feature` green
 - [ ] You have looked at the six validation rules and decided, in advance, whether fail-fast
       survives — because the agent will not ask
+- [ ] ⚠️ **You inherit ADR-022.** The search box is one of ADR-005's *"four dead controls"*, so it
+      **works** in React — authorised, not accidental. Supersede the scenarios that pin it as inert;
+      no fresh decision is needed. See
+      [step 11](11-deliver-inc3-itinerary.md#%EF%B8%8F-the-reviewer-was-wrong-and-it-cost-a-rework).
+- [ ] ⚠️ **`signedInIdentity()` needs a React branch.** That step reads `$rootScope.currentUser` and
+      is shared with `authentication.feature`; once travel-request is React there is no `$rootScope`.
+- [ ] ⚠️ **Cache idempotent collections, never search results** (ADR-021). `GET /api/travel-requests`
+      returns a stable array and may be cached.
+- [ ] **Restart the mock API before the full run** — `BASELINE-ISOLATION`.
 
 ---
 
@@ -64,9 +73,11 @@ Remove the AngularJS 'travelRequest' state only after the React route is green,
 delete app/components/travel-request/ and the directive in the same commit.
 
 The search box does nothing today — a TypeError escapes the digest, so typing has
-no effect. React will make it work by accident. That is a user-visible behaviour
-change: keep it inert if a baseline scenario pins it, and stop and ask if none
-does. Do not silently ship a working search box.
+no effect. In React it works. That is the AUTHORISED outcome: ADR-005 classifies
+the inert search among "the four dead controls" as SUPERSEDE, on the grounds that
+ADR-001/002 already decided to fix them and they are "resolved by being
+reimplemented correctly". So supersede the scenarios that pin it as dead, with the
+ADR named, rather than writing code to reproduce a TypeError.
 
 Paste the unit run, the full @existing-behavior suite across all five modules, and
 the build. Stop at the PR Review gate.
