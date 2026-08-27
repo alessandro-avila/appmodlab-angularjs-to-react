@@ -336,16 +336,58 @@ its output depends on what AngularJS has already rendered.
 
 ## Current Implementation (Brownfield Extension)
 
+> **⚠ MIGRATION STATUS — React, since Increment 3.**
+>
+> The AngularJS module described below has been **deleted**. It is retained here as the
+> record of what the React implementation was built to reproduce, because the green
+> baseline pins that behaviour and several defects are preserved on purpose.
+>
+> | Was | Is now |
+> |---|---|
+> | `app/components/itinerary/itinerary.controller.js` | `src/features/itinerary/Itinerary.tsx` + `itinerary-model.ts` |
+> | `app/components/itinerary/itinerary.service.js` | `src/features/itinerary/itinerary-api.ts` |
+> | `app/components/itinerary/itinerary.template.html` | JSX in `Itinerary.tsx` |
+> | `'itinerary'` UI-Router state | ledger row `/itinerary` → `owner: 'react'` |
+>
+> **What changed, and by whose authority:**
+>
+> - **`Trip.totalCost` is server-derived** (Q-6 / **ADR-020**). `itinerary.service.js:19`
+>   overwrote the API value with a client-side sum; the server derives it now and the
+>   client renders what it is given. Cancelled items are **included** — the answer this
+>   increment was required to give to increment plan §7.5.
+> - **A booking reaches the itinerary** (Q-3 / SEAM-3 / **ADR-020**). Both booking
+>   endpoints append an itinerary item. This is the only HTTP-contract change in the
+>   migration; `specs/contracts/api/itinerary.yaml` is edited, not annotated.
+> - **`itinerary:refresh` became query invalidation** (**ADR-021**), not a store event.
+>   The booking mutation invalidates the itinerary query and any live view reloads.
+> - **Printing** no longer clones the DOM into a popup (**ADR-017**): a `@media print`
+>   stylesheet plus `window.print()`. Four net-new scenarios — the path had no baseline.
+> - **A rejected session says so** (**ADR-018**) instead of being reported as an empty
+>   itinerary. This closes increment plan §13 item 12, left open by Increment 0.
+>
+> **What deliberately did NOT change:**
+>
+> - **The status filter and Add Note are still dead** (**ADR-019**), against increment
+>   plan §7.4, which expected React's lack of a scope chain to revive them. Reviving a
+>   control because the framework stopped preventing it is an unauthorised behaviour
+>   change. The React component models both scopes explicitly to keep them inert.
+>   `@bypasses-ui` therefore stays at **3**, where §7.4 predicted 0.
+> - No trip shows a destination; the details heading ends with a dangling separator;
+>   every row headline is blank. All three are `undefined` field bindings, all pinned by
+>   the baseline, all reproduced.
+> - Item costs render **ungrouped** (`$1250.00`) while trip totals render **grouped**
+>   (`$1,250.00`). SEAM-3 makes this reachable for the first time. Preserved.
+
 ### Files Involved
 
 | File Path | Role | Lines |
 |-----------|------|-------|
-| `app/components/itinerary/itinerary.controller.js` | Controller — all scope state and behaviour | 1–235 |
-| `app/components/itinerary/itinerary.service.js` | Restangular service + item enrichment | 1–103 |
-| `app/components/itinerary/itinerary.template.html` | Bootstrap 3 template, two view modes | 1–226 |
-| `app/app.routes.js` | `'itinerary'` state registration | 44–49 |
+| `app/components/itinerary/itinerary.controller.js` | *(deleted Inc-3)* Controller — all scope state and behaviour | 1–235 |
+| `app/components/itinerary/itinerary.service.js` | *(deleted Inc-3)* Restangular service + item enrichment | 1–103 |
+| `app/components/itinerary/itinerary.template.html` | *(deleted Inc-3)* Bootstrap 3 template, two view modes | 1–226 |
+| `app/app.routes.js` | *(state removed Inc-3)* `'itinerary'` state registration | 44–49 |
 | `app/app.js` | Restangular base URL, token interceptor, auth guard, notification bus | 13–50 |
-| `api-mock/server.js` | Trips seed data and eight handlers | 142, 461, 480, 518, 535 |
+| `api-mock/server.js` | Trips seed data and eight handlers — **modified in Inc-3** (Q-6, SEAM-3) | 142, 461, 480, 518, 535 |
 
 **Not involved, despite proximity.** These were checked and are *not* used by this module:
 

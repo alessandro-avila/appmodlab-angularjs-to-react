@@ -29,6 +29,28 @@ Feature: Itinerary
   # The mock API keeps trips in a mutable module-level array, so cancelling an
   # item persists for the life of the server process. Scenarios that cancel are
   # tagged @mutates-fixture and the fixture is restored around them.
+  #
+  # ---------------------------------------------------------------------------
+  # INCREMENT 3 — this screen is now React. What changed, and what did not:
+  #
+  #   SUPERSEDED (2)
+  #     * the trip total is derived by the SERVER          Q-6  / ADR-020
+  #     * a booked flight now reaches the itinerary        Q-3 / SEAM-3 / ADR-020
+  #
+  #   NET-NEW (5)
+  #     * a booked hotel reaches the itinerary too         SEAM-3, second producer
+  #     * printing, 4 scenarios                            ADR-017 (no baseline existed)
+  #
+  #   PRESERVED AGAINST THE PLAN (8)
+  #     Increment plan §7.4 said to revive both dead controls because React has
+  #     no scope chain. ADR-019 refuses: a control that starts working because
+  #     the framework stopped preventing it is an unauthorised behaviour change.
+  #     The status filter and Add Note are both still dead, deliberately, and
+  #     @bypasses-ui stays at 3 where §7.4 predicted 0.
+  #
+  #   The two headline findings above therefore still stand, and are now
+  #   reproduced on purpose rather than inherited.
+  # ---------------------------------------------------------------------------
 
   Background:
     Given I am signed in to the travel portal
@@ -53,11 +75,21 @@ Feature: Itinerary
   Scenario: A trip that has already happened does not show a countdown
     Then no trip shows a countdown to departure
 
-  Scenario: A trip's cost is recomputed from its items and overrides the stored total
-    # The server stores $2,450 for this trip. The service replaces it with the
-    # sum of the items, $1,330, and that is what the traveller is shown.
-    Then the server prices the trip "trip-1" at 2450
-    But the trip "NYC Business Trip" is priced at "$1,330.00"
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by Q-6 / ADR-020 — the total is now derived by the SERVER.
+  #
+  # `itinerary.service.js:19` used to overwrite what the API sent, so the server
+  # said 2450 and the screen said $1,330.00. The server derives the total itself
+  # now and the client renders what it is given, so the two agree.
+  #
+  # The stored 2450 stays in the fixture on purpose. Deriving on read rather
+  # than correcting the fixture means that if the derivation is ever removed,
+  # 2450 reappears and this scenario fails loudly instead of silently agreeing.
+  # ---------------------------------------------------------------------------
+  Scenario: A trip's cost is derived by the server from its items
+    Then the server prices the trip "trip-1" at 1330
+    And the trip "NYC Business Trip" is priced at "$1,330.00"
 
   Scenario: No trip shows a destination
     # The template binds trip.destination; the trips carry no such field.
@@ -118,6 +150,20 @@ Feature: Itinerary
 
   # ---------------------------------------------------------- the status filter
 
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # PRESERVED by ADR-019, against increment plan §7.4.
+  #
+  # §7.4 classified the next four scenarios as SUPERSEDE, reasoning that React
+  # has no scope chain so the filter starts working. It does — by accident, not
+  # by decision. ADR-019 keeps it dead: the React route models both scopes
+  # explicitly, so the button still highlights and nothing is still filtered.
+  #
+  # "the controller" below means the state behind the interface. In AngularJS
+  # that was the controller scope; in React it is the parent value the filtering
+  # logic reads, published through the test seam. The step wording is unchanged
+  # deliberately (plan §1.4) — the contract should not churn for terminology.
+  # ---------------------------------------------------------------------------
   Scenario Outline: Choosing a status highlights the button but filters nothing
     When I filter the itinerary by "<status>"
     Then the "<status>" filter button is highlighted
@@ -159,6 +205,18 @@ Feature: Itinerary
 
   # ------------------------------------------------------------------- notes
 
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # PRESERVED by ADR-019, against increment plan §7.4.
+  #
+  # Add Note is dead control 2 of 4. §7.4 classified the next four scenarios as
+  # SUPERSEDE; ADR-019 keeps the control inert. The note box still holds what
+  # was typed and addNote() still reads a value the box never writes to, so it
+  # returns at its guard — no request, no note, no notification.
+  #
+  # @bypasses-ui therefore stays at 3 for the suite, where §7.4 predicted 0.
+  # The tag survives because the controls it reaches past survive.
+  # ---------------------------------------------------------------------------
   Scenario: Typing a note and adding it does nothing at all
     When I type the note "Bring the signed contract" against the first itinerary row
     And I add that note
@@ -215,9 +273,22 @@ Feature: Itinerary
     And the last notification reads "transport cancelled"
 
   @mutates-fixture
+  # ---------------------------------------------------------------------------
+  # PRESERVED, and it is the answer to increment plan §7.5.
+  #
+  # §7.5 carried this scenario as UNCLASSIFIED: Q-6 makes the total server-
+  # derived but is silent on whether cancelled items are excluded. The Inc-3
+  # gate answered INCLUDED (ADR-020), on the plan's own default — Q-6 moved who
+  # computes the total, not what the total means.
+  #
+  # The assertion is unchanged but it now pins a SERVER behaviour, and it is the
+  # regression test for anyone who later assumes "derived" implies "excludes
+  # cancelled".
+  # ---------------------------------------------------------------------------
   Scenario: A cancelled item still counts towards the trip total
-    # calculateTotals() sums every item regardless of status, so cancelling
-    # changes nothing about what the trip appears to cost.
+    # The server sums every item regardless of status, so cancelling changes
+    # nothing about what the trip appears to cost. Until Inc-3 this was
+    # calculateTotals() in the client; it is the same rule, moved.
     Given the trip total reads "$1,330.00"
     When I cancel the item "Airport Shuttle"
     Then the trip total still reads "$1,330.00"
@@ -237,11 +308,74 @@ Feature: Itinerary
 
   # --------------------------------------------------- cross-feature coupling
 
-  Scenario: A booked flight never reaches the itinerary
-    # SEAM-3. The booking POST succeeds and the app announces it, but nothing
-    # is written to any trip — so the itinerary is exactly as it was.
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by Q-3 / SEAM-3 / ADR-020.
+  #
+  # The baseline pinned the seam as broken: "the booking POST succeeds and the
+  # app announces it, but nothing is written to any trip". Q-3 decided a booking
+  # must persist and appear on the itinerary, and SEAM-3 was marked
+  # defect-to-fix, so both booking endpoints now append an itinerary item.
+  #
+  # The client half is query invalidation, not a store event: the booking
+  # mutation invalidates the itinerary query and the data reloads. That is why
+  # this scenario needs no event plumbing to observe — it just refetches.
+  #
+  # Both producers are pinned, because the plan requires SEAM-3 verified from
+  # flight AND hotel.
+  # ---------------------------------------------------------------------------
+  Scenario: A booked flight reaches the itinerary
     Given I note how many itinerary items exist
     When I book a flight from the flight search page
     Then the flight booking is accepted
-    But no itinerary item has been added
-    And the itinerary still shows the same items
+    And one more itinerary item exists than before
+    And the itinerary shows the newly booked flight
+
+  @inc-3
+  # NET-NEW — the second producer. Nothing pinned the hotel side of SEAM-3 at
+  # all, because in the baseline neither producer reached the consumer.
+  Scenario: A booked hotel reaches the itinerary
+    Given I note how many itinerary items exist
+    When I book a hotel from the hotel booking page
+    Then the hotel booking is accepted
+    And one more itinerary item exists than before
+    And the itinerary shows the newly booked hotel
+
+  # ------------------------------------------------------------------- printing
+
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # NET-NEW — ADR-017. There is no baseline for printing.
+  #
+  # The legacy path cloned #itinerary-details into a popup and wrote a document
+  # by hand, pulling Bootstrap from a CDN at print time. Track A never captured
+  # it, because a popup plus a native print dialog was not drivable.
+  #
+  # It is drivable now: window.print is stubbed and asserted. These four
+  # scenarios are the first coverage this control has ever had.
+  # ---------------------------------------------------------------------------
+  Scenario: Printing asks the browser to print the page it is on
+    When I print the itinerary
+    Then the browser is asked to print
+    And no second window is opened
+
+  @inc-3
+  Scenario: The printed itinerary keeps the trip and its days
+    When I print the itinerary
+    Then the printed itinerary includes the trip summary
+    And the printed itinerary includes every day of the trip
+
+  @inc-3
+  Scenario: The printed itinerary leaves out the controls
+    # `printContent.find('.btn, .no-print').remove()` becomes @media print CSS.
+    When I print the itinerary
+    Then the printed itinerary leaves out the buttons
+    And the printed itinerary leaves out the note boxes
+
+  @inc-3
+  Scenario: The printed page is titled Itinerary
+    # The legacy popup set <title>Itinerary</title>, which browsers put in the
+    # print header. Reproduced deliberately — ADR-017 change 3 of 4.
+    When I print the itinerary
+    Then the document was titled "Itinerary" while printing
+    And the document title is restored afterwards

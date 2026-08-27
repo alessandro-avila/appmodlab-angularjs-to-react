@@ -363,8 +363,20 @@ app.get('/api/flights/:id', authMiddleware, function(req, res) {
 });
 
 app.post('/api/flights/:id/book', authMiddleware, function(req, res) {
+  var confirmationNumber = 'GT' + generateId().toUpperCase();
+
+  // SEAM-3 / Q-3 — the booking now reaches the itinerary. The flight itself is
+  // generated per search and never stored, so the server knows only the id it
+  // was given; the item carries the confirmation code, which is what the
+  // itinerary scenario matches on.
+  appendItineraryItem(req.user.id, {
+    type: 'flight',
+    description: 'Flight ' + req.params.id,
+    confirmationCode: confirmationNumber
+  });
+
   res.json({
-    confirmationNumber: 'GT' + generateId().toUpperCase(),
+    confirmationNumber: confirmationNumber,
     flightId: req.params.id,
     status: 'confirmed',
     bookedAt: new Date().toISOString()
@@ -443,8 +455,20 @@ app.get('/api/hotels/:id/reviews', authMiddleware, function(req, res) {
 });
 
 app.post('/api/bookings/hotels', authMiddleware, function(req, res) {
+  var confirmationNumber = 'HT' + generateId().toUpperCase();
+
+  // SEAM-3 / Q-3 — as above. The hotel request carries a total price, so unlike
+  // the flight path this item records a real cost.
+  appendItineraryItem(req.user.id, {
+    type: 'hotel',
+    time: '15:00',
+    description: 'Hotel ' + req.body.hotelId + ' — ' + req.body.roomType,
+    cost: req.body.totalPrice,
+    confirmationCode: confirmationNumber
+  });
+
   res.json({
-    confirmationNumber: 'HT' + generateId().toUpperCase(),
+    confirmationNumber: confirmationNumber,
     hotelId: req.body.hotelId,
     roomType: req.body.roomType,
     checkIn: req.body.checkIn,
@@ -458,8 +482,68 @@ app.post('/api/bookings/hotels', authMiddleware, function(req, res) {
 // Trip / Itinerary Routes
 // ========================================
 
+/**
+ * Q-6 / ADR-020 — `totalCost` is DERIVED, not stored.
+ *
+ * `itinerary.service.js:19` used to do this on the client, so every consumer
+ * was obliged to recompute a field the API already published, and any consumer
+ * that trusted the API was wrong. The derivation moves here.
+ *
+ * Increment plan §7.5, answered at the Inc-3 gate: cancelled items are
+ * INCLUDED. Q-6 moved who computes the total, not what the total means.
+ * `itinerary.feature` pins this — cancelling the $50 shuttle must leave the
+ * NYC trip at $1,330.00.
+ *
+ * Derived on READ. The stored totalCost stays in the fixture untouched, so if
+ * this is ever removed the stale 2450 reappears and the tests fail loudly
+ * instead of silently agreeing.
+ */
+function withDerivedTotal(trip) {
+  var derived = (trip.items || []).reduce(function(sum, item) {
+    return sum + (item.cost || 0);
+  }, 0);
+  return Object.assign({}, trip, { totalCost: derived });
+}
+
+/**
+ * SEAM-3 / Q-3 / ADR-020 — a booking must persist and appear on the itinerary.
+ *
+ * Both booking endpoints echoed their request and wrote nothing, so the
+ * producer/consumer seam between flight-search, hotel-booking and the itinerary
+ * was never connected. `itinerary.feature` pinned the outcome: "A booked flight
+ * never reaches the itinerary."
+ *
+ * Mock simplification, deliberately simple and recorded as such: the item is
+ * appended to the traveller's EARLIEST trip — the one the itinerary opens by
+ * default — and dated on that trip's startDate so it lands on Day 1 rather than
+ * inventing a day hundreds of entries away. The mock records the cost the
+ * request declared; a flight booking declares none, so it records 0.
+ */
+function appendItineraryItem(userId, details) {
+  var owned = trips.filter(function(t) { return t.userId === userId; });
+  if (owned.length === 0) return null;
+
+  var trip = owned.slice().sort(function(a, b) {
+    return a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0;
+  })[0];
+
+  var item = {
+    id: 'item-' + generateId(),
+    type: details.type,
+    date: trip.startDate,
+    time: details.time || '',
+    description: details.description,
+    cost: details.cost || 0,
+    status: 'confirmed',
+    confirmationCode: details.confirmationCode
+  };
+
+  trip.items.push(item);
+  return item;
+}
+
 app.get('/api/trips', authMiddleware, function(req, res) {
-  res.json(trips);
+  res.json(trips.map(withDerivedTotal));
 });
 
 app.post('/api/trips', authMiddleware, function(req, res) {
@@ -482,7 +566,7 @@ app.get('/api/trips/:id', authMiddleware, function(req, res) {
   if (!trip) {
     return res.status(404).json({ error: 'Trip not found' });
   }
-  res.json(trip);
+  res.json(withDerivedTotal(trip));
 });
 
 app.put('/api/trips/:id', authMiddleware, function(req, res) {
@@ -491,7 +575,7 @@ app.put('/api/trips/:id', authMiddleware, function(req, res) {
     return res.status(404).json({ error: 'Trip not found' });
   }
   Object.assign(trip, req.body);
-  res.json(trip);
+  res.json(withDerivedTotal(trip));
 });
 
 app.delete('/api/trips/:id', authMiddleware, function(req, res) {

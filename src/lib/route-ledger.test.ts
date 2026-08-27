@@ -18,18 +18,17 @@ import {
   ownerOf,
 } from './route-ledger';
 
-describe('route ledger — ownership after Increment 2', () => {
+describe('route ledger — ownership after Increment 3', () => {
   it('React owns exactly the migrated routes', () => {
     // Increment 1 moved the first row. This assertion is the ledger's
     // changelog: it must be edited deliberately, per increment.
-    expect(reactOwnedPaths()).toEqual(['/flights', '/hotels']);
+    expect(reactOwnedPaths()).toEqual(['/flights', '/hotels', '/itinerary']);
   });
 
-  it('AngularJS still owns the other five', () => {
+  it('AngularJS still owns the other four', () => {
     expect(legacyOwnedPaths()).toEqual([
       '/login',
       '/dashboard',
-      '/itinerary',
       '/travel-request',
       '/expenses',
     ]);

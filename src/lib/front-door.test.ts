@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { decide, pathnameOf, isViteInternal } from './front-door';
 import { ROUTE_LEDGER, type LedgerRow } from './route-ledger';
 
-describe('front door — ownership after Increment 2', () => {
+describe('front door — ownership after Increment 3', () => {
   it('serves the legacy document at the root', () => {
     expect(decide('/')).toEqual({ kind: 'proxy-to-legacy' });
   });
@@ -22,15 +22,19 @@ describe('front door — ownership after Increment 2', () => {
     // The legacy static server has no /hotels resource — its states are
     // fragments under '/'. Proxying the real path would 404, which is exactly
     // the bug this rule exists to prevent.
-    for (const path of ['/login', '/dashboard', '/itinerary', '/travel-request', '/expenses']) {
+    for (const path of ['/login', '/dashboard', '/travel-request', '/expenses']) {
       expect(decide(path).kind, `${path} should still redirect`).toBe('redirect-to-legacy-hash');
     }
   });
 
+  it('serves /itinerary from React — the row Increment 3 moved', () => {
+    expect(decide('/itinerary')).toEqual({ kind: 'react' });
+  });
+
   it('redirects to the exact hash URL the legacy router understands', () => {
-    expect(decide('/itinerary')).toEqual({
+    expect(decide('/expenses')).toEqual({
       kind: 'redirect-to-legacy-hash',
-      location: '/#!/itinerary',
+      location: '/#!/expenses',
     });
     expect(decide('/travel-request')).toEqual({
       kind: 'redirect-to-legacy-hash',
@@ -83,32 +87,33 @@ describe('front door — url parsing', () => {
 });
 
 describe('front door — what the NEXT increment changes', () => {
-  /** The ledger as it will look after Inc-3 flips the itinerary row. */
-  const afterInc3: readonly LedgerRow[] = ROUTE_LEDGER.map((r) =>
-    r.path === '/itinerary' ? { ...r, owner: 'react' as const } : r,
+  /** The ledger as it will look after Inc-4 flips the travel-request row. */
+  const afterInc4: readonly LedgerRow[] = ROUTE_LEDGER.map((r) =>
+    r.path === '/travel-request' ? { ...r, owner: 'react' as const } : r,
   );
 
   it('flipping ONE row moves that route to React', () => {
-    expect(decide('/itinerary', afterInc3)).toEqual({ kind: 'react' });
+    expect(decide('/travel-request', afterInc4)).toEqual({ kind: 'react' });
   });
 
   it('and leaves every other route exactly where it was', () => {
-    for (const row of afterInc3.filter((r) => r.owner === 'angularjs')) {
-      expect(decide(row.path, afterInc3).kind, `${row.path} must not move`).toBe(
+    for (const row of afterInc4.filter((r) => r.owner === 'angularjs')) {
+      expect(decide(row.path, afterInc4).kind, `${row.path} must not move`).toBe(
         'redirect-to-legacy-hash',
       );
     }
-    expect(decide('/flights', afterInc3)).toEqual({ kind: 'react' });
-    expect(decide('/hotels', afterInc3)).toEqual({ kind: 'react' });
-    expect(decide('/', afterInc3)).toEqual({ kind: 'proxy-to-legacy' });
-    expect(decide('/api/hotels', afterInc3)).toEqual({ kind: 'proxy-to-api' });
+    expect(decide('/flights', afterInc4)).toEqual({ kind: 'react' });
+    expect(decide('/hotels', afterInc4)).toEqual({ kind: 'react' });
+    expect(decide('/itinerary', afterInc4)).toEqual({ kind: 'react' });
+    expect(decide('/', afterInc4)).toEqual({ kind: 'proxy-to-legacy' });
+    expect(decide('/api/hotels', afterInc4)).toEqual({ kind: 'proxy-to-api' });
   });
 
   it('so the SAME address survives the migration — only the answerer changes', () => {
-    // Before its increment: /itinerary -> 302 -> the AngularJS screen
-    expect(decide('/itinerary').kind).toBe('redirect-to-legacy-hash');
-    // After:                 /itinerary -> 200 -> the React screen
-    expect(decide('/itinerary', afterInc3).kind).toBe('react');
+    // Before its increment: /travel-request -> 302 -> the AngularJS screen
+    expect(decide('/travel-request').kind).toBe('redirect-to-legacy-hash');
+    // After:                 /travel-request -> 200 -> the React screen
+    expect(decide('/travel-request', afterInc4).kind).toBe('react');
   });
 
   it('rolling a row back restores the legacy route in one edit', () => {

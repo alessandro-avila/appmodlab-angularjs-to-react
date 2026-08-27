@@ -27,6 +27,7 @@
 import type { z } from 'zod';
 import { apiBaseUrl } from './config';
 import { authorizationHeader, handleUnauthorized } from '../stores/auth-store';
+import { notify } from '../stores/notification-store';
 import { ApiErrorSchema } from '../types/api';
 
 export class ApiError extends Error {
@@ -63,12 +64,17 @@ export interface ApiClientDeps {
   readonly fetch: typeof globalThis.fetch;
   readonly baseUrl: () => string;
   readonly onUnauthorized: () => void;
+  /** ADR-018 — the session-expiry policy. Authenticated 401s only. */
+  readonly onSessionRejected: () => void;
 }
 
 const defaultDeps: ApiClientDeps = {
   fetch: (...args) => globalThis.fetch(...args),
   baseUrl: apiBaseUrl,
   onUnauthorized: handleUnauthorized,
+  onSessionRejected: () => {
+    notify('Your session has expired. Please sign in again.', 'error');
+  },
 };
 
 /**
@@ -106,9 +112,16 @@ export async function request<S extends z.ZodType>(
   const raw: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    // The 401 path (plan §4.2). Clearing the session is the MECHANISM; what the
-    // UI does about it is the session-expiry POLICY, still open (§13 item 12).
-    if (response.status === 401) deps.onUnauthorized();
+    // The 401 path (plan §4.2). Clearing the session is the MECHANISM; ADR-018
+    // decided the POLICY in Increment 3 — a rejected session says so, and the
+    // reactive route guard returns the traveller to the login screen.
+    //
+    // Guarded on `anonymous` because a 401 from the login endpoint means "wrong
+    // password", not "your session expired". Login must keep its own message.
+    if (response.status === 401) {
+      deps.onUnauthorized();
+      if (!anonymous) deps.onSessionRejected();
+    }
     const parsed = ApiErrorSchema.safeParse(raw);
     const message = parsed.success ? parsed.data.error : `Request to ${path} failed`;
     throw new ApiError(message, response.status, raw);

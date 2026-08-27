@@ -203,20 +203,37 @@ Feature: Getting into the travel portal
     And I am invited to create my first expense report
     And nothing on the page tells me my session is the problem
 
-  @unauthenticated
-  Scenario: A rejected session looks like an empty itinerary
+  @unauthenticated @inc-3
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-018 — the session-expiry policy, left open by Increment 0
+  # (plan §13 item 12) and forced here because the itinerary is the first React
+  # route that fetches on mount.
+  #
+  # The legacy caught every failure identically, so a rejected session produced
+  # an empty-state screen telling the traveller they had no trips — a false
+  # statement about their data. A 401 is now treated as a session event.
+  #
+  # :199 above, the expense equivalent, is deliberately NOT touched: expenses is
+  # still AngularJS. The suite holds both behaviours at once until Increment 5.
+  # ---------------------------------------------------------------------------
+  Scenario: A rejected session says so and returns me to the login screen
     Given my browser holds a session token the server will reject
     When I go straight to "itinerary"
-    Then I am told "No trips yet"
-    And I am encouraged to book a flight or hotel to get started
-    And nothing on the page tells me my session is the problem
+    Then I am returned to the login screen
+    And I am told my session has expired
+    And I am not told that I have no trips
 
-  @unauthenticated
-  Scenario: A rejected session raises a failure notice that names the data, not the session
+  @unauthenticated @inc-3
+  # SUPERSEDED by ADR-018 — the notice named the data; it now names the session.
+  Scenario: A rejected session raises a notice that names the session
     Given my browser holds a session token the server will reject
     When I go straight to "itinerary"
-    Then I see a notification containing "Failed to load itinerary"
+    Then I see a notification containing "session has expired"
 
+  # PRESERVED. Plan §7.4 expected this to supersede alongside the two above; it
+  # does not. ADR-018 explains: `isAuthenticated()` reads localStorage live, but
+  # the guard re-renders only on a STORE mutation. Taking the token away from
+  # outside the app is not one, so nothing re-evaluates and the page stays.
   Scenario: Losing my session mid-visit leaves the page on screen
     Given I am signed in to the travel portal
     And I am on the itinerary page

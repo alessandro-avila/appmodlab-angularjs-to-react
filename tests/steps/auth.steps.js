@@ -171,6 +171,28 @@ Then('I am returned to the login screen', function () {
   assert.ok(this.auth.onLoginScreen(), `expected to be bounced to login, was at ${this.auth.url()}`);
 });
 
+// ADR-018 — the session-expiry policy. A 401 is a session event, not a data
+// event, so the traveller is told about the SESSION and never shown an
+// empty-state screen that misdescribes their data as absent.
+
+Then('I am told my session has expired', async function () {
+  const body = await this.auth.bodyText();
+  assert.match(
+    body,
+    /session has expired/i,
+    'expected the screen to say the session expired'
+  );
+});
+
+Then('I am not told that I have no trips', async function () {
+  const body = await this.auth.bodyText();
+  assert.doesNotMatch(
+    body,
+    /No trips yet/i,
+    'a rejected session must not be reported as an empty itinerary'
+  );
+});
+
 Then('the login screen offers a single way in', async function () {
   const buttons = await this.auth.loginButtonNames();
   assert.deepStrictEqual(buttons, ['Enter Portal'], `login buttons were ${JSON.stringify(buttons)}`);

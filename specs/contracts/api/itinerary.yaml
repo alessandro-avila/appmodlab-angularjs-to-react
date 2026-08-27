@@ -44,7 +44,7 @@ components:
         startDate: { type: string, example: "2024-03-15" }
         endDate:   { type: string, example: "2024-03-18" }
         status:    { type: string, x-observed-values: [upcoming], description: "'upcoming' in both seeded records and the fixed literal assigned on create (api-mock/server.js:472). No handler ever writes another value." }
-        totalCost: { type: number, example: 2450.00, description: "0 on create; hand-written in the seeds; never recalculated by any handler" }
+        totalCost: { type: number, readOnly: true, example: 1330.00, description: "DERIVED by the server from the sum of items[].cost, on every read (Q-6 / ADR-020, Increment 3). Cancelled items are INCLUDED — increment plan §7.5, answered at the Inc-3 gate. Read-only: a value sent by a client is ignored on the way out." }
         items:
           type: array
           description: "5 entries in trip-1, 3 in trip-2"
@@ -377,11 +377,27 @@ x-discrepancies:
       will remove any trip for any authenticated caller.
   - id: totalCost-never-recalculated
     severity: informational
+    status: resolved-in-increment-3
     summary: |
-      `Trip.totalCost` is set to 0 on create (api-mock/server.js:473) and is never recalculated
-      from `items[].cost` by any handler — unlike ExpenseReport.totalAmount, which PUT
-      /api/expense-reports/{id} does recalculate (api-mock/server.js:650-652). The two seeded
-      trips carry hand-written totalCost values.
+      RESOLVED by Q-6 / ADR-020. Until Increment 3, `Trip.totalCost` was set to 0 on create and
+      never recalculated from `items[].cost` by any handler — unlike ExpenseReport.totalAmount,
+      which PUT /api/expense-reports/{id} does recalculate (api-mock/server.js:650-652). The two
+      seeded trips carried hand-written values (2450.00 and 1800.00) that no client ever used,
+      because `itinerary.service.js:19` overwrote them with the item sum on arrival.
+
+      The server now derives `totalCost` on every read. The stale seed values are deliberately
+      LEFT IN the fixture: deriving on read rather than correcting the seeds means that if the
+      derivation is ever removed, 2450 reappears and itinerary.feature fails loudly rather than
+      silently agreeing with a wrong number.
+  - id: booking-does-not-reach-the-itinerary
+    severity: informational
+    status: resolved-in-increment-3
+    summary: |
+      RESOLVED by Q-3 / SEAM-3 / ADR-020. POST /api/flights/{id}/book and POST /api/bookings/hotels
+      both echoed their request and wrote nothing, so no booking ever produced an itinerary item.
+      Both now append a confirmed item to the traveller's earliest trip, carrying the confirmation
+      code. This is the only change in the migration that alters the HTTP contract's behaviour
+      rather than its shape.
   - id: uncalled-endpoints
     severity: informational
     summary: |

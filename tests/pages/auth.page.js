@@ -3,15 +3,28 @@
  * app/services/auth.service.js, the route guard in app/app.js, and an inline
  * login template in app/app.routes.js. This page object therefore works across
  * whichever screen a scenario happens to be on.
+ *
+ * FRONT-DOOR ASYMMETRY (Increment 3). A migrated route is a REAL PATH
+ * (`/itinerary`); an unmigrated one is a FRAGMENT under `/` (`/#!/expenses`),
+ * and a fragment is never sent to the server. Navigating by hash therefore
+ * reaches the AngularJS screen even for a route React now owns — which is how
+ * two 401 scenarios silently kept testing the legacy behaviour.
+ *
+ * So navigation always uses the real path and lets the front door decide: it
+ * serves React for a migrated row and 302s to the `legacyHash` form otherwise.
+ * `currentState()` reads whichever of the two forms it ends up in.
  */
 const { BASE_URL: BASE } = require('../support/world');
+
+/**
+ * Routes React owns. Kept in step with `src/lib/route-ledger.ts`: a route joins
+ * this set in the increment that migrates it.
+ */
+const REACT_PATHS = new Set(['flights', 'hotels', 'itinerary']);
 
 const STATES = {
   login: '#!/login',
   dashboard: '#!/dashboard',
-  flights: '#!/flights',
-  hotels: '#!/hotels',
-  itinerary: '#!/itinerary',
   'travel-request': '#!/travel-request',
   expenses: '#!/expenses'
 };
@@ -26,9 +39,19 @@ class AuthPage {
     await this.settle();
   }
 
+  /**
+   * A migrated route is addressed by its real path; an unmigrated one by its
+   * fragment, exactly as before.
+   *
+   * The distinction is not cosmetic. Hash navigation between two legacy states
+   * is a SAME-DOCUMENT navigation — the AngularJS app is not reloaded, so
+   * `$rootScope.currentUser` survives, and two scenarios depend on that.
+   * Addressing a legacy route by real path would 302 and reboot the app,
+   * quietly changing what those scenarios measure.
+   */
   async goToState(name) {
-    const fragment = STATES[name] || '#!/' + name;
-    await this.page.goto(BASE + '/' + fragment, { waitUntil: 'domcontentloaded' });
+    const target = REACT_PATHS.has(name) ? '/' + name : '/' + (STATES[name] || '#!/' + name);
+    await this.page.goto(BASE + target, { waitUntil: 'domcontentloaded' });
     await this.settle();
   }
 
@@ -46,12 +69,19 @@ class AuthPage {
   }
 
   onLoginScreen() {
-    return /#!\/login/.test(this.page.url());
+    return this.currentState() === 'login';
   }
 
+  /**
+   * The area currently on screen, in whichever form the front door left the
+   * URL: `#!/expenses` for a legacy route, `/itinerary` for a migrated one.
+   */
   currentState() {
-    const match = /#!\/([^?]*)/.exec(this.page.url());
-    return match ? match[1] : '';
+    const url = this.page.url();
+    const hash = /#!\/([^?]*)/.exec(url);
+    if (hash) return hash[1];
+    const path = /^https?:\/\/[^/]+\/([^?#]*)/.exec(url);
+    return path ? path[1] : '';
   }
 
   /** The view content only — the navbar carries its own .container. */
@@ -154,4 +184,4 @@ class AuthPage {
   }
 }
 
-module.exports = { AuthPage, STATES, BASE };
+module.exports = { AuthPage, BASE };

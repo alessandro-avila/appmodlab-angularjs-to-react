@@ -118,15 +118,50 @@ Before(async function ({ pickle }) {
 });
 
 /**
- * The mock API keeps trips in a mutable module-level array, so cancelling an
- * itinerary item survives for the life of the server process and would leak
- * into every later scenario — and into the next run. Scenarios that cancel are
- * tagged @mutates-fixture; the fixture is put back both before and after, so a
+ * The mock API keeps trips in a mutable module-level array, so a write survives
+ * for the life of the server process and would leak into every later scenario —
+ * and into the next run. The fixture is put back both before and after, so a
  * run that dies half way through still leaves the next one a clean slate.
  *
  * This restores DATA through the app's own API. Nothing under app/ is touched.
+ *
+ * INCREMENT 3 widened this in two ways, both forced by SEAM-3 (ADR-020).
+ *
+ *  1. A booking now APPENDS an itinerary item. There is no DELETE route for
+ *     itinerary items, so patching item-4's status back is no longer enough —
+ *     the whole `items` array has to be replaced. `PUT /api/trips/:id` merges
+ *     with Object.assign, so sending `items` replaces it wholesale. Still the
+ *     app's own API.
+ *
+ *  2. The scenarios that append are in flight-search.feature and
+ *     hotel-booking.feature as well as itinerary.feature, so contamination now
+ *     crosses feature files. The restore therefore runs for EVERY
+ *     @feature-itinerary scenario, not only the ones tagged @mutates-fixture —
+ *     the same lesson already recorded for travel requests below, where an
+ *     untagged scenario starved a later one.
+ *
+ * These are the exact seed arrays from api-mock/server.js:152-171.
  */
-const FIXTURE_DEFAULTS = [{ id: 'item-4', status: 'pending' }];
+const TRIP_DEFAULTS = [
+  {
+    id: 'trip-1',
+    items: [
+      { id: 'item-1', type: 'flight', date: '2024-03-15', time: '08:30', description: 'SFO → JFK', cost: 450, status: 'confirmed' },
+      { id: 'item-2', type: 'hotel', date: '2024-03-15', time: '15:00', description: 'Grand Hyatt New York', cost: 350, status: 'confirmed' },
+      { id: 'item-3', type: 'activity', date: '2024-03-16', time: '09:00', description: 'Client Meeting - Midtown', cost: 0, status: 'confirmed' },
+      { id: 'item-4', type: 'transport', date: '2024-03-16', time: '08:00', description: 'Airport Shuttle', cost: 50, status: 'pending' },
+      { id: 'item-5', type: 'flight', date: '2024-03-18', time: '18:00', description: 'JFK → SFO', cost: 480, status: 'confirmed' }
+    ]
+  },
+  {
+    id: 'trip-2',
+    items: [
+      { id: 'item-6', type: 'flight', date: '2024-04-10', time: '07:00', description: 'SFO → ORD', cost: 380, status: 'confirmed' },
+      { id: 'item-7', type: 'hotel', date: '2024-04-10', time: '14:00', description: 'Marriott Marquis Chicago', cost: 280, status: 'confirmed' },
+      { id: 'item-8', type: 'activity', date: '2024-04-11', time: '09:00', description: 'Tech Conference 2024', cost: 500, status: 'confirmed' }
+    ]
+  }
+];
 
 /**
  * Travel requests live in the same kind of mutable array, and three things
@@ -230,11 +265,11 @@ const EXPENSE_DEFAULTS = [
 const API_ROOT = 'http://localhost:3000/api';
 
 async function restoreItineraryFixture() {
-  for (const item of FIXTURE_DEFAULTS) {
-    const res = await fetch(`http://localhost:3000/api/itinerary-items/${item.id}`, {
+  for (const item of TRIP_DEFAULTS) {
+    const res = await fetch(`${API_ROOT}/trips/${item.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-      body: JSON.stringify({ status: item.status })
+      body: JSON.stringify({ items: item.items })
     });
     if (!res.ok) {
       throw new Error(`could not restore ${item.id}: HTTP ${res.status}`);
@@ -318,6 +353,14 @@ After({ tags: '@feature-expense-reconciliation' }, restoreExpenses);
 
 Before({ tags: '@mutates-fixture' }, restoreFixture);
 After({ tags: '@mutates-fixture' }, restoreFixture);
+
+/**
+ * SEAM-3 (ADR-020): a booking appends an itinerary item, and the scenarios that
+ * book live in three different feature files. Every itinerary scenario
+ * therefore starts from the seeded arrays, whatever ran before it.
+ */
+Before({ tags: '@feature-itinerary' }, restoreItineraryFixture);
+After({ tags: '@feature-itinerary' }, restoreItineraryFixture);
 
 After(async function (scenario) {
   if (scenario.result && scenario.result.status === Status.FAILED && this.page) {

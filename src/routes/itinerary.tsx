@@ -1,16 +1,12 @@
 /**
- * ITINERARY ROUTE — placeholder.
+ * ITINERARY ROUTE — migrated in Increment 3.
  *
- * Mirrors the legacy `itinerary` state (app/app.routes.js), which today loads
- * `components/...` via templateUrl and its AngularJS controller.
- *
- * Increment 0 migrates nothing. This route is replaced with the real screen in
- * **Inc-3**, at which point the ledger row for `/itinerary` flips to
- * `owner: 'react'` and the front door stops proxying it to :8080.
+ * The ledger row for `/itinerary` is now `owner: 'react'`, so the front door
+ * serves this route instead of redirecting to `#!/itinerary` on :8080.
  */
 import type { ReactElement } from 'react';
-import { Placeholder } from './placeholder';
+import { Itinerary as ItineraryScreen } from '../features/itinerary/Itinerary';
 
 export function Itinerary(): ReactElement {
-  return <Placeholder path="/itinerary" title="Itinerary" />;
+  return <ItineraryScreen />;
 }

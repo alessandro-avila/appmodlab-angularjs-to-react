@@ -24,7 +24,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { Hotel, HotelFilters, HotelSearchParams, Room, HotelSortBy } from '../../types/hotel';
 import { notify } from '../../stores/notification-store';
-import { publishScope, clearScope, announce } from '../../lib/test-seam';
+import { publishScope, clearScope } from '../../lib/test-seam';
+import { invalidateItinerary } from '../itinerary/itinerary-api';
 import { toInputValue, toApiValue, parseInputDate } from '../../lib/format';
 import { Modal } from '../../components/modal';
 import { searchHotels, getHotelRooms, bookRoom } from './hotel-booking-api';
@@ -194,8 +195,8 @@ export function HotelBooking(): ReactElement {
       });
       setConfirmation({ code: booking.confirmationNumber, total });
       notify(bookedNotification(booking), 'success');
-      // controller:238 — announced, and (still) nothing consumes it until Inc-3.
-      announce('itinerary:refresh');
+      // controller:238 — the broadcast becomes query invalidation (ADR-021).
+      invalidateItinerary();
     } catch {
       notify('Hotel booking failed. Please try again.', 'error');
     } finally {

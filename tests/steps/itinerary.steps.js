@@ -407,17 +407,135 @@ Then('the flight booking is accepted', function () {
   assert.strictEqual(posts.length, 1, `expected one booking request, saw ${posts.length}`);
 });
 
-Then('no itinerary item has been added', async function () {
+// --------------------------------------------------------------------- SEAM-3
+//
+// Until Increment 3 both booking endpoints echoed their request and wrote
+// nothing, so the two steps here asserted the ABSENCE of an itinerary item.
+// Q-3 / SEAM-3 / ADR-020 connected the seam; these now assert its presence.
+
+Then('one more itinerary item exists than before', async function () {
   const trips = await this.itinerary.serverTrips();
   const after = trips.reduce((a, t) => a + t.items.length, 0);
-  assert.strictEqual(after, this.itemsBefore, 'expected the booking to add nothing to any trip');
+  assert.strictEqual(
+    after,
+    this.itemsBefore + 1,
+    `expected the booking to add exactly one item (had ${this.itemsBefore}, now ${after})`
+  );
 });
 
-Then('the itinerary still shows the same items', async function () {
+/** The item the booking just created, whichever trip it landed on. */
+async function addedItem(world) {
+  const trips = await world.itinerary.serverTrips();
+  const added = trips
+    .flatMap((t) => t.items)
+    .filter((i) => !world.itemIdsBefore.includes(i.id));
+  assert.strictEqual(added.length, 1, `expected exactly one new item, saw ${added.length}`);
+  return added[0];
+}
+
+Then('the itinerary shows the newly booked flight', async function () {
+  const item = await addedItem(this);
+  assert.strictEqual(item.type, 'flight', 'the new item should be a flight');
   await this.itinerary.open();
-  const trips = await this.itinerary.serverTrips();
-  const ids = trips.flatMap((t) => t.items.map((i) => i.id));
-  assert.deepStrictEqual(ids, this.itemIdsBefore);
   const descriptions = await this.itinerary.itemDescriptions();
-  assert.strictEqual(descriptions.length, 5, 'expected the first trip to still show its five items');
+  assert.ok(
+    descriptions.includes(item.description),
+    `expected the itinerary to show "${item.description}", saw ${JSON.stringify(descriptions)}`
+  );
+});
+
+When('I book a hotel from the hotel booking page', async function () {
+  await this.hotels.open();
+  await this.hotels.setCity('Boston');
+  await this.hotels.pickDate('hotelCheckIn', '09/01/2026');
+  await this.hotels.pickDate('hotelCheckOut', '09/04/2026');
+  await this.hotels.search();
+  await this.hotels.waitForResults();
+  await this.hotels.viewRoomsOf(0);
+  await this.hotels.selectRoom(0);
+  this.requests.length = 0;
+  await this.hotels.confirmBooking();
+  await this.page.waitForTimeout(2000);
+});
+
+Then('the hotel booking is accepted', function () {
+  const posts = this.requests.filter(
+    (r) => r.method === 'POST' && r.url.includes('/api/bookings/hotels')
+  );
+  assert.strictEqual(posts.length, 1, `expected one booking request, saw ${posts.length}`);
+});
+
+Then('the itinerary shows the newly booked hotel', async function () {
+  const item = await addedItem(this);
+  assert.strictEqual(item.type, 'hotel', 'the new item should be a hotel');
+  await this.itinerary.open();
+  const descriptions = await this.itinerary.itemDescriptions();
+  assert.ok(
+    descriptions.includes(item.description),
+    `expected the itinerary to show "${item.description}", saw ${JSON.stringify(descriptions)}`
+  );
+});
+
+// -------------------------------------------------------------------- printing
+//
+// ADR-017. The legacy cloned #itinerary-details into a popup; printing now
+// prints the live document behind a @media print stylesheet. `window.print` is
+// stubbed so the native dialog never opens, and `window.open` is wrapped so the
+// absence of a second window can be asserted rather than assumed.
+
+When('I print the itinerary', async function () {
+  await this.itinerary.stubPrint();
+  await this.itinerary.clickPrint();
+  this.printRecord = await this.itinerary.printRecord();
+});
+
+Then('the browser is asked to print', function () {
+  assert.strictEqual(this.printRecord.printed, 1, 'expected window.print() to be called once');
+});
+
+Then('no second window is opened', function () {
+  assert.strictEqual(this.printRecord.opened, 0, 'expected no window.open() call');
+});
+
+Then('the printed itinerary includes the trip summary', async function () {
+  const styles = await this.itinerary.printStyles();
+  assert.match(styles, /@media print/, 'expected a print stylesheet');
+  assert.match(
+    styles,
+    /#itinerary-details\s*\{\s*display:\s*block/,
+    'expected #itinerary-details to remain visible in print'
+  );
+  const text = await this.itinerary.printRegionText();
+  assert.match(text, /NYC Business Trip/);
+  assert.match(text, /\$1,330\.00/);
+});
+
+Then('the printed itinerary includes every day of the trip', async function () {
+  const labels = await this.itinerary.dayLabels();
+  assert.deepStrictEqual(labels, ['Day 1', 'Day 2', 'Day 4']);
+});
+
+Then('the printed itinerary leaves out the buttons', async function () {
+  const styles = await this.itinerary.printStyles();
+  assert.match(
+    styles,
+    /#itinerary-details \.btn[\s\S]*?display:\s*none/,
+    'expected buttons inside the details to be hidden in print'
+  );
+});
+
+Then('the printed itinerary leaves out the note boxes', async function () {
+  const styles = await this.itinerary.printStyles();
+  assert.match(styles, /\.no-print[\s\S]*?display:\s*none/, 'expected .no-print to be hidden');
+  const regions = await this.itinerary.noPrintCount();
+  assert.ok(regions > 0, 'expected the note composers and cancel column to be marked .no-print');
+});
+
+Then('the document was titled {string} while printing', function (title) {
+  assert.strictEqual(this.printRecord.titleWhilePrinting, title);
+});
+
+Then('the document title is restored afterwards', async function () {
+  const now = await this.page.title();
+  assert.notStrictEqual(now, 'Itinerary', 'expected the document title to be put back');
 });

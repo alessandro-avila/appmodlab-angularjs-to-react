@@ -19,7 +19,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import type { Flight, Filters, SearchParams, SortField, StopsFilter, DepartTimeRange, TripType } from '../../types/flight';
 import { notify } from '../../stores/notification-store';
-import { publishScope, clearScope, announce } from '../../lib/test-seam';
+import { publishScope, clearScope } from '../../lib/test-seam';
+import { invalidateItinerary } from '../itinerary/itinerary-api';
 import { searchFlights, bookFlight } from './flight-search-api';
 import {
   applyFilters,
@@ -201,8 +202,9 @@ export function FlightSearch(): ReactElement {
       // payload has `confirmationNumber`; the legacy code read
       // `confirmationCode`. See bookedNotification() for why that is preserved.
       notify(bookedNotification(booking), 'success');
-      // controller:221 — announced, and (still) nothing consumes it.
-      announce('itinerary:refresh');
+      // controller:221 — the broadcast becomes query invalidation (ADR-021).
+      // The itinerary now HAS a consumer, and this is how it hears about it.
+      invalidateItinerary();
       setSelectedFlight({ ...selectedFlight, booked: true });
       setFlights((prev) =>
         prev.map((f) => (f.id === selectedFlight.id ? { ...f, booked: true } : f)),

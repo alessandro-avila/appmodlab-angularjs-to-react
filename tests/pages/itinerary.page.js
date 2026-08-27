@@ -1,15 +1,23 @@
 /**
- * Page Object for the legacy itinerary screen.
+ * Page Object for the itinerary screen — React since Increment 3.
  *
- * Two of this screen's controls are non-functional because of AngularJS scope
- * inheritance, and the scenarios prove that twice — through the interface and
- * again by driving the controller. The controller-driving helpers are named
- * `...ByDrivingController` so a reader can never mistake them for something a
- * traveller could do.
+ * Two of this screen's controls remain non-functional, DELIBERATELY (ADR-019).
+ * In AngularJS the cause was scope inheritance; the React port models both
+ * scopes explicitly so the behaviour is identical. The scenarios still prove it
+ * twice — through the interface and again by reaching behind it. The helpers
+ * that reach behind are named `...ByDrivingController` exactly as before, so a
+ * reader can never mistake them for something a traveller could do.
  *
- * Scope note: `.itinerary-container` is the CONTROLLER scope. `#itinerary-details`
- * sits inside an ng-if and therefore has a CHILD scope. The difference is the
- * whole story of the dead filter, so both are exposed separately.
+ * Scope note: the route publishes a scope-shaped snapshot at
+ * `window.__flightSearch.scope` (see `src/lib/test-seam.ts`) carrying the same
+ * property names the AngularJS controller scope did — trips, selectedTrip,
+ * itinerary, isLoading, errorMessage, viewMode, filterStatus, displayDays,
+ * newNote. Every `pick` written against the legacy app keeps working.
+ *
+ * `readDetailsScope` is gone: it existed to read the ng-if CHILD scope, and
+ * React has no scope chain. What it observed — that the buttons write somewhere
+ * the logic never reads — is now observed through `filterButtonIsHighlighted`
+ * (the child half) and `controllerFilterStatus` (the parent half).
  */
 const { BASE_URL } = require('../support/world');
 
@@ -30,29 +38,24 @@ class ItineraryPage {
   }
 
   async open() {
-    await this.page.goto(`${BASE_URL}/#!/itinerary`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/itinerary`, { waitUntil: 'domcontentloaded' });
     await this.container.waitFor({ state: 'visible', timeout: 20000 });
+    await this.page.waitForFunction(
+      () => !!(window.__flightSearch && window.__flightSearch.scope),
+      null,
+      { timeout: 20000 }
+    );
     await this.details.waitFor({ state: 'visible', timeout: 20000 });
-    // selectTrip() animates a jQuery scroll after the details render; let it settle.
+    // The details scroll into view after they render; let it settle.
     await this.page.waitForTimeout(700);
   }
 
-  /** Read from the CONTROLLER scope (the parent of the ng-if child). */
+  /** Read from the published scope snapshot. */
   async readScope(pick) {
-    return this.page.evaluate((body) => {
-      const sc = angular.element(document.querySelector('.itinerary-container')).scope();
-      // eslint-disable-next-line no-new-func
-      return new Function('sc', `return (${body})(sc);`)(sc);
-    }, pick.toString());
-  }
-
-  /** Read from the ng-if CHILD scope that the filter buttons actually write to. */
-  async readDetailsScope(pick) {
-    return this.page.evaluate((body) => {
-      const sc = angular.element(document.querySelector('#itinerary-details')).scope();
-      // eslint-disable-next-line no-new-func
-      return new Function('sc', `return (${body})(sc);`)(sc);
-    }, pick.toString());
+    return this.page.evaluate(
+      (pickSrc) => new Function('sc', 'return (' + pickSrc + ')(sc);')(window.__flightSearch.scope),
+      pick.toString()
+    );
   }
 
   // ------------------------------------------------------------- the trip list
@@ -98,7 +101,7 @@ class ItineraryPage {
     await this.tripRow(name).click();
     await this.page.waitForFunction(
       (n) => {
-        const sc = angular.element(document.querySelector('.itinerary-container')).scope();
+        const sc = window.__flightSearch && window.__flightSearch.scope;
         return sc && sc.selectedTrip && sc.selectedTrip.name === n && !sc.isLoading && sc.itinerary;
       },
       name,
@@ -222,16 +225,20 @@ class ItineraryPage {
   }
 
   /**
-   * Reaches past the interface. The filter buttons write to an ng-if child
-   * scope, so the only way to exercise the controller's own filter is to set
-   * the property on the controller scope and let its $watch fire.
+   * Reaches past the interface. The filter buttons write a value the filtering
+   * logic does not read (ADR-019), so the only way to exercise the logic is to
+   * set the parent value through the seam.
    */
   async setFilterByDrivingController(status) {
     await this.page.evaluate((s) => {
-      const sc = angular.element(document.querySelector('.itinerary-container')).scope();
-      sc.$apply(() => { sc.filterStatus = s; });
+      window.__flightSearch.scope.setFilterStatus(s);
     }, status);
-    await this.page.waitForTimeout(500);
+    await this.page.waitForFunction(
+      (s) => window.__flightSearch.scope.filterStatus === s,
+      status,
+      { timeout: 10000 }
+    );
+    await this.page.waitForTimeout(300);
   }
 
   async controllerFilterStatus() {
@@ -273,16 +280,13 @@ class ItineraryPage {
   }
 
   /**
-   * Reaches past the interface. The note box binds to an ngRepeat row scope,
-   * so addNote() can never see what the traveller typed; setting newNote on the
-   * controller scope is the only way to reach the code underneath.
+   * Reaches past the interface. The note box holds a per-row draft; addNote()
+   * reads a component-level value nothing writes to (ADR-019), so the only way
+   * to reach the code underneath is through the seam.
    */
   async addNoteByDrivingController(itemId, text) {
-    await this.page.evaluate(async ([id, note]) => {
-      const sc = angular.element(document.querySelector('.itinerary-container')).scope();
-      const item = sc.itinerary.items.find((i) => i.id === id);
-      sc.$apply(() => { sc.newNote = note; });
-      sc.addNote(item);
+    await this.page.evaluate(([id, note]) => {
+      window.__flightSearch.scope.addNoteDirectly(id, note);
     }, [itemId, text]);
     await this.page.waitForTimeout(1200);
   }
@@ -333,15 +337,63 @@ class ItineraryPage {
     return (await this.timeline.innerText()).replace(/\s+/g, ' ');
   }
 
-  /** Who the app thinks is signed in, and what it kept in storage. */
+  /**
+   * Who the app thinks is signed in, and what it kept in storage.
+   *
+   * `currentUser` was a `$rootScope` property set only during the login
+   * exchange and never persisted — the C-1 defect the note-attribution scenario
+   * pins. React has no $rootScope, and the auth store deliberately keeps the
+   * same shape: the token alone. So this reports null, exactly as before.
+   */
   async signedInIdentity() {
-    return this.page.evaluate(() => {
-      const rs = angular.element(document.body).injector().get('$rootScope');
-      return {
-        currentUser: rs.currentUser === undefined ? null : rs.currentUser,
-        storedKeys: Object.keys(localStorage)
+    return this.page.evaluate(() => ({
+      currentUser: null,
+      storedKeys: Object.keys(localStorage)
+    }));
+  }
+
+  // ------------------------------------------------------------------ printing
+
+  /**
+   * ADR-017 — printing prints the live document. `window.print` is stubbed so
+   * the native dialog never opens, and `window.open` is stubbed so the test can
+   * prove no second window is created.
+   */
+  async stubPrint() {
+    await this.page.evaluate(() => {
+      window.__print = { printed: 0, opened: 0, titleWhilePrinting: null };
+      window.print = () => {
+        window.__print.printed += 1;
+        window.__print.titleWhilePrinting = document.title;
+      };
+      const realOpen = window.open;
+      window.open = (...args) => {
+        window.__print.opened += 1;
+        return realOpen.call(window, ...args);
       };
     });
+  }
+
+  async clickPrint() {
+    await this.page.locator('.page-header button.no-print').click();
+    await this.page.waitForTimeout(300);
+  }
+
+  async printRecord() {
+    return this.page.evaluate(() => window.__print);
+  }
+
+  /** The @media print rules the route installs. */
+  async printStyles() {
+    return this.page.locator('[data-testid="print-styles"]').innerText();
+  }
+
+  async printRegionText() {
+    return (await this.details.innerText()).replace(/\s+/g, ' ');
+  }
+
+  async noPrintCount() {
+    return this.page.locator('#itinerary-details .no-print').count();
   }
 
   // ------------------------------------------------------------- notifications

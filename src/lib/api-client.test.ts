@@ -33,6 +33,7 @@ function depsReturning(body: unknown, status = 200): { deps: ApiClientDeps; call
     }) as unknown as typeof globalThis.fetch,
     baseUrl: () => '/api',
     onUnauthorized: vi.fn(),
+    onSessionRejected: vi.fn(),
   };
   return { deps, calls, urls };
 }
@@ -98,11 +99,33 @@ describe('api client — one error policy (closes finding P-8)', () => {
     expect(deps.onUnauthorized).not.toHaveBeenCalled();
   });
 
+  // ADR-018 — the session-expiry policy, decided in Increment 3.
+  it('reports a rejected session on an authenticated 401', async () => {
+    const { deps } = depsReturning({ error: 'Invalid token' }, 401);
+    await expect(request('/trips', z.unknown(), {}, deps)).rejects.toThrow(ApiError);
+    expect(deps.onSessionRejected).toHaveBeenCalledOnce();
+  });
+
+  it('stays SILENT on an anonymous 401 — a bad login is not an expired session', async () => {
+    const { deps } = depsReturning({ error: 'Invalid credentials' }, 401);
+    await expect(
+      request('/auth/login', z.unknown(), { method: 'POST', anonymous: true }, deps),
+    ).rejects.toThrow(ApiError);
+    expect(deps.onSessionRejected).not.toHaveBeenCalled();
+  });
+
+  it('does not report a rejected session on a non-401 failure', async () => {
+    const { deps } = depsReturning({ error: 'Boom' }, 500);
+    await expect(request('/trips', z.unknown(), {}, deps)).rejects.toThrow(ApiError);
+    expect(deps.onSessionRejected).not.toHaveBeenCalled();
+  });
+
   it('wraps a network-level failure rather than letting it escape raw', async () => {
     const deps: ApiClientDeps = {
       fetch: (() => Promise.reject(new TypeError('Failed to fetch'))) as unknown as typeof globalThis.fetch,
       baseUrl: () => '/api',
       onUnauthorized: vi.fn(),
+      onSessionRejected: vi.fn(),
     };
     await expect(request('/trips', z.unknown(), {}, deps)).rejects.toThrow(ApiError);
   });
