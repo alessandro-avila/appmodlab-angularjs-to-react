@@ -197,9 +197,9 @@ describe('the day breakdown', () => {
   });
 });
 
-/* ---------------------------------------------------- DEAD CONTROL 1: filter */
+/* ------------------------------------------------ the status filter now works */
 
-describe('the status filter is dead, deliberately (ADR-019)', () => {
+describe('the status filter works (ADR-005, ADR-022)', () => {
   it('highlights the button that was pressed', async () => {
     const user = userEvent.setup();
     await renderItinerary();
@@ -208,50 +208,73 @@ describe('the status filter is dead, deliberately (ADR-019)', () => {
     expect(pending.className).toMatch(/btn-warning/);
   });
 
-  it('filters nothing — all three days remain', async () => {
+  it('filters the days down to those with a matching item', async () => {
     const user = userEvent.setup();
     await renderItinerary();
     await user.click(screen.getByRole('button', { name: 'Pending' }));
-    expect(document.querySelectorAll('.itinerary-list > .panel')).toHaveLength(3);
-  });
-
-  it('leaves every status on screen', async () => {
-    const user = userEvent.setup();
-    await renderItinerary();
-    await user.click(screen.getByRole('button', { name: 'Confirmed' }));
-    const statuses = [...document.querySelectorAll('.itinerary-list .col-md-2 .label')].map(
-      (l) => l.textContent,
-    );
-    expect(statuses).toEqual(['confirmed', 'confirmed', 'pending', 'confirmed', 'confirmed']);
-  });
-
-  it('never reaches the value the filtering logic reads', async () => {
-    const user = userEvent.setup();
-    await renderItinerary();
-    await user.click(screen.getByRole('button', { name: 'Cancelled' }));
-    expect(seam()['filterStatus']).toBe('all');
-    expect(seam()['displayDays']).toBeUndefined();
-  });
-
-  /** The @bypasses-ui half: the logic underneath is correct and complete. */
-  it('DOES filter when the value is set behind the interface', async () => {
-    await renderItinerary();
-    (seam()['setFilterStatus'] as (s: string) => void)('pending');
     await waitFor(() => {
       expect(document.querySelectorAll('.itinerary-list > .panel')).toHaveLength(1);
     });
-    const statuses = [...document.querySelectorAll('.itinerary-list .col-md-2 .label')].map(
-      (l) => l.textContent,
-    );
-    // The day survives WHOLE — the confirmed meeting comes with it.
-    expect(statuses).toEqual(['pending', 'confirmed']);
+  });
+
+  it('keeps a day WHOLE when any one of its items matches', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    await user.click(screen.getByRole('button', { name: 'Pending' }));
+    await waitFor(() => {
+      const statuses = [...document.querySelectorAll('.itinerary-list .col-md-2 .label')].map(
+        (l) => l.textContent,
+      );
+      // The confirmed meeting shares the day and comes with it — an OR, unlike
+      // the hotel amenity filter, which is an AND.
+      expect(statuses).toEqual(['pending', 'confirmed']);
+    });
+  });
+
+  it('shows every day again when All is chosen', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    await user.click(screen.getByRole('button', { name: 'Pending' }));
+    await waitFor(() => {
+      expect(document.querySelectorAll('.itinerary-list > .panel')).toHaveLength(1);
+    });
+    await user.click(screen.getByRole('button', { name: 'All' }));
+    await waitFor(() => {
+      expect(document.querySelectorAll('.itinerary-list > .panel')).toHaveLength(3);
+    });
+  });
+
+  it('shows nothing when no item matches', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    await user.click(screen.getByRole('button', { name: 'Cancelled' }));
+    await waitFor(() => {
+      expect(document.querySelectorAll('.itinerary-list > .panel')).toHaveLength(0);
+    });
+  });
+
+  it('reaches the value the filtering logic reads', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    await user.click(screen.getByRole('button', { name: 'Pending' }));
+    await waitFor(() => {
+      expect(seam()['filterStatus']).toBe('pending');
+    });
+    expect(seam()['displayDays']).toBeDefined();
   });
 });
 
-/* ------------------------------------------------------ DEAD CONTROL 2: note */
+/* ----------------------------------------------------- Add Note now works */
 
-describe('Add Note is dead, deliberately (ADR-019)', () => {
-  it('keeps what was typed in the box', async () => {
+describe('Add Note works (ADR-005, ADR-022)', () => {
+  function noted(text: string) {
+    return {
+      ...NYC.items[0]!,
+      notes: [{ text, createdAt: '2026-08-06T09:00:00.000Z', author: 'Sarah Johnson' }],
+    };
+  }
+
+  it('holds what was typed in that row', async () => {
     const user = userEvent.setup();
     await renderItinerary();
     const box = document.querySelectorAll<HTMLInputElement>('input[placeholder="Add a note..."]')[0];
@@ -259,46 +282,107 @@ describe('Add Note is dead, deliberately (ADR-019)', () => {
     expect(box!.value).toBe('Bring the signed contract');
   });
 
-  it('sends no request, adds no note and raises no notification', async () => {
+  it('posts the note, shows it, clears the box and confirms', async () => {
     const user = userEvent.setup();
+    addNote.mockResolvedValue(noted('Bring the signed contract'));
     await renderItinerary();
+
     const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
     const box = row.querySelector<HTMLInputElement>('input[placeholder="Add a note..."]')!;
     await user.type(box, 'Bring the signed contract');
     await user.click(row.querySelector('.input-group-btn button')!);
 
-    expect(addNote).not.toHaveBeenCalled();
-    expect(row.querySelectorAll('.well')).toHaveLength(0);
-    expect(notificationStore.getState().notifications).toHaveLength(0);
-    expect(box.value).toBe('Bring the signed contract');
-  });
-
-  it('never reaches the value addNote() reads', async () => {
-    const user = userEvent.setup();
-    await renderItinerary();
-    const box = document.querySelectorAll<HTMLInputElement>('input[placeholder="Add a note..."]')[0];
-    await user.type(box!, 'Bring the signed contract');
-    expect(seam()['newNote']).toBe('');
-  });
-
-  /** The @bypasses-ui half. */
-  it('DOES add a note when driven behind the interface, credited to "You"', async () => {
-    await renderItinerary();
-    addNote.mockResolvedValue({ ...NYC.items[0]!, notes: undefined });
-
-    (seam()['addNoteDirectly'] as (id: string, t: string) => void)(
-      'item-1',
-      'Bring the signed contract',
-    );
-
     await waitFor(() => {
       expect(addNote).toHaveBeenCalledWith('item-1', 'Bring the signed contract');
     });
-    const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
     await waitFor(() => {
       expect(within(row as HTMLElement).getByText('Bring the signed contract')).toBeTruthy();
     });
-    expect(within(row as HTMLElement).getByText('You')).toBeTruthy();
+    expect(box.value).toBe('');
+    expect(notificationStore.getState().notifications.at(-1)?.message).toBe('Note added');
+  });
+
+  /** ADR-003 C-1 — repaired by the SERVER, which knows the caller. */
+  it('credits the note to the person the server says wrote it', async () => {
+    const user = userEvent.setup();
+    addNote.mockResolvedValue(noted('Bring the signed contract'));
+    await renderItinerary();
+
+    const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
+    await user.type(
+      row.querySelector<HTMLInputElement>('input[placeholder="Add a note..."]')!,
+      'Bring the signed contract',
+    );
+    await user.click(row.querySelector('.input-group-btn button')!);
+
+    await waitFor(() => {
+      expect(within(row as HTMLElement).getByText('Sarah Johnson')).toBeTruthy();
+    });
+    // Never the legacy 'You' fallback.
+    expect(within(row as HTMLElement).queryByText('You')).toBeNull();
+  });
+
+  it('renders what the server stored, not a locally built guess', async () => {
+    const user = userEvent.setup();
+    addNote.mockResolvedValue({
+      ...NYC.items[0]!,
+      notes: [{ text: 'server copy', createdAt: '2026-08-06T09:00:00.000Z', author: 'Sarah Johnson' }],
+    });
+    await renderItinerary();
+
+    const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
+    await user.type(
+      row.querySelector<HTMLInputElement>('input[placeholder="Add a note..."]')!,
+      'what I typed',
+    );
+    await user.click(row.querySelector('.input-group-btn button')!);
+
+    await waitFor(() => {
+      expect(within(row as HTMLElement).getByText('server copy')).toBeTruthy();
+    });
+  });
+
+  it('does nothing on an empty box — the guard at controller:140', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
+    await user.click(row.querySelector('.input-group-btn button')!);
+    expect(addNote).not.toHaveBeenCalled();
+  });
+
+  it('does nothing on a whitespace-only box', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
+    await user.type(row.querySelector<HTMLInputElement>('input[placeholder="Add a note..."]')!, '   ');
+    await user.click(row.querySelector('.input-group-btn button')!);
+    expect(addNote).not.toHaveBeenCalled();
+  });
+
+  it('keeps each row\u2019s draft separate', async () => {
+    const user = userEvent.setup();
+    await renderItinerary();
+    const boxes = document.querySelectorAll<HTMLInputElement>('input[placeholder="Add a note..."]');
+    await user.type(boxes[0]!, 'first row');
+    await user.type(boxes[1]!, 'second row');
+    expect(boxes[0]!.value).toBe('first row');
+    expect(boxes[1]!.value).toBe('second row');
+  });
+
+  it('warns and keeps the draft when the request fails', async () => {
+    const user = userEvent.setup();
+    addNote.mockRejectedValue(new Error('boom'));
+    await renderItinerary();
+
+    const row = document.querySelectorAll('.itinerary-list .list-group-item')[0]!;
+    const box = row.querySelector<HTMLInputElement>('input[placeholder="Add a note..."]')!;
+    await user.type(box, 'Bring the signed contract');
+    await user.click(row.querySelector('.input-group-btn button')!);
+
+    await waitFor(() => {
+      expect(notificationStore.getState().notifications.at(-1)?.message).toBe('Failed to add note');
+    });
+    expect(box.value).toBe('Bring the signed contract');
   });
 });
 

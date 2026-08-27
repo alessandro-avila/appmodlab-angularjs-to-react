@@ -65,10 +65,23 @@ components:
         cost:        { type: number }
         status:      { type: string, x-observed-values: [confirmed, pending, cancelled] }
         notes:
-          type: string
+          type: array
+          readOnly: true
           description: |
-            Not present on any seeded item. Assigned only by POST /api/itinerary-items/{id}/notes,
-            from `req.body.notes` — see x-discrepancies/note-key-mismatch.
+            Appended by POST /api/itinerary-items/{id}/notes (ADR-005 / ADR-022, increment plan
+            §7.4 rows 22-23). Absent on every seeded item. Until Increment 3 this was assigned
+            `req.body.notes` — a field no client sent — so it was set to `undefined` and no note
+            was ever stored.
+          items:
+            type: object
+            properties:
+              text:      { type: string }
+              createdAt: { type: string, format: date-time }
+              author:
+                type: string
+                description: |
+                  Derived by the SERVER from the authenticated caller, never from the request
+                  body. Repairs ADR-003 C-1 without requiring the client to hold an identity.
 
     ShareResult:
       type: object
@@ -326,24 +339,27 @@ paths:
       x-auth-required: true
       security: [{ bearerAuth: [] }]
       x-behaviour: |
-        Same nested search as PUT /itinerary-items/{id}, then `item.notes = req.body.notes`
-        (api-mock/server.js:540). This is an overwrite, not an append — there is no notes array
-        and no note record is created. Returns the whole item, not the note.
+        Same nested search as PUT /itinerary-items/{id}, then APPENDS the posted note to
+        `item.notes`, initialising the array if absent. The author is taken from the
+        authenticated caller, not the request body. Returns the whole item, not the note.
+
+        Changed in Increment 3 (ADR-005 / ADR-022, increment plan §7.4 rows 22-23). It previously
+        did `item.notes = req.body.notes` — an overwrite of a field no client sent.
       x-client-callers:
-        - "app/components/itinerary/itinerary.service.js:50 — ItineraryService.addNote, called from itinerary.controller.js:142"
+        - "src/features/itinerary/itinerary-api.ts — addNote(), called from Itinerary.tsx runAddNote()"
       requestBody:
         required: true
         description: |
-          The handler reads `notes`. The client sends `{ text, createdAt }`
-          (itinerary.service.js:51) — see x-discrepancies/note-key-mismatch.
+          `{ text, createdAt }`. The client does not send an author and must not: attribution is
+          the server's, so a note cannot be credited to someone else.
         content:
           application/json:
             schema:
               type: object
+              required: [text]
               properties:
-                notes:     { type: string, description: "read by the handler; not sent by the client" }
-                text:      { type: string, description: "sent by the client; not read by the handler" }
-                createdAt: { type: string, format: date-time, description: "sent by the client; not read by the handler" }
+                text:      { type: string, description: "the note body" }
+                createdAt: { type: string, format: date-time, description: "defaults to now if absent" }
       responses:
         '200':
           description: The mutated item.
@@ -356,19 +372,20 @@ paths:
 x-discrepancies:
   - id: note-key-mismatch
     severity: contract-break
+    status: resolved-in-increment-3
     summary: |
-      The client POSTs `{ text: noteText, createdAt: moment().toISOString() }`
-      (app/components/itinerary/itinerary.service.js:50-52). The handler assigns
-      `item.notes = req.body.notes` (api-mock/server.js:540), which is undefined. The note text
-      is discarded, and the response contains no note. The controller nevertheless reports
-      'Note added' (itinerary.controller.js:150) because the request returns 200.
+      RESOLVED by ADR-005 / ADR-022 (increment plan §7.4 row 23). The client POSTed
+      `{ text, createdAt }` while the handler assigned `item.notes = req.body.notes`, which was
+      undefined. The note text was discarded and the response contained no note, yet the
+      controller reported 'Note added' because the request returned 200. The handler now reads
+      `text` and appends.
   - id: note-overwrite-not-append
     severity: informational
+    status: resolved-in-increment-3
     summary: |
-      The route path ends in `/notes` (plural), but the handler assigns a single value to
-      `item.notes` (api-mock/server.js:540) rather than pushing to an array. No `notes` array
-      is ever initialised and no note carries an identity, so a second call to this route
-      replaces the value written by the first.
+      RESOLVED by ADR-005 / ADR-022. The route path ends in `/notes` (plural) but the handler
+      assigned a single value rather than pushing, so a second call replaced the first. It now
+      initialises the array when absent and appends.
   - id: no-ownership-check
     severity: informational
     summary: |

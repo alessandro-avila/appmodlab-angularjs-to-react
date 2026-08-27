@@ -1,6 +1,18 @@
 # ADR-019 — Controls the baseline pins as dead stay dead through migration
 
-- **Status:** proposed — decided at the Inc-3 PR Review gate
+> **⚠ SUPERSEDED IN FULL by [ADR-022](adr-022-dead-controls-are-revived.md), 2026-08-27, before this
+> ADR was ever accepted.**
+>
+> This ADR reasoned from **mechanism** — that a control which starts working because React has no
+> scope chain is an unauthorised change — and never checked whether an authorisation existed. One
+> did: **ADR-005** classifies "the four dead controls" as **Supersede**, and rejects the Fix-Bugs path
+> precisely because those defects "are resolved by being reimplemented correctly". Increment plan
+> §7.4 cited ADR-005 correctly; this ADR did not.
+>
+> The text below is left exactly as written. It is wrong, and the record should show what was decided
+> and on what basis. ADR-022 explains the correction: the distinction is authorisation, not mechanism.
+
+- **Status:** **superseded by [ADR-022](adr-022-dead-controls-are-revived.md)** — never accepted
 - **Date:** 2026-08-27
 - **Phase:** 2 → increment 3 (`itinerary`), and standing for increments 4 and 5
 - **Deciders:** product owner, orchestrator

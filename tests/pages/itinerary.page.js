@@ -224,23 +224,6 @@ class ItineraryPage {
     return /btn-(primary|success|warning|danger)/.test(cls);
   }
 
-  /**
-   * Reaches past the interface. The filter buttons write a value the filtering
-   * logic does not read (ADR-019), so the only way to exercise the logic is to
-   * set the parent value through the seam.
-   */
-  async setFilterByDrivingController(status) {
-    await this.page.evaluate((s) => {
-      window.__flightSearch.scope.setFilterStatus(s);
-    }, status);
-    await this.page.waitForFunction(
-      (s) => window.__flightSearch.scope.filterStatus === s,
-      status,
-      { timeout: 10000 }
-    );
-    await this.page.waitForTimeout(300);
-  }
-
   async controllerFilterStatus() {
     return this.readScope((sc) => sc.filterStatus);
   }
@@ -269,7 +252,7 @@ class ItineraryPage {
   }
 
   async controllerNoteBox() {
-    return this.readScope((sc) => sc.newNote);
+    return this.readScope((sc) => sc.noteDrafts);
   }
 
   async notesOn(index) {
@@ -277,18 +260,6 @@ class ItineraryPage {
     if ((await wells.count()) === 0) return [];
     const texts = await wells.allInnerTexts();
     return texts.map((t) => t.replace(/\s+/g, ' ').trim());
-  }
-
-  /**
-   * Reaches past the interface. The note box holds a per-row draft; addNote()
-   * reads a component-level value nothing writes to (ADR-019), so the only way
-   * to reach the code underneath is through the seam.
-   */
-  async addNoteByDrivingController(itemId, text) {
-    await this.page.evaluate(([id, note]) => {
-      window.__flightSearch.scope.addNoteDirectly(id, note);
-    }, [itemId, text]);
-    await this.page.waitForTimeout(1200);
   }
 
   // --------------------------------------------------------------- cancelling
@@ -340,16 +311,23 @@ class ItineraryPage {
   /**
    * Who the app thinks is signed in, and what it kept in storage.
    *
-   * `currentUser` was a `$rootScope` property set only during the login
-   * exchange and never persisted — the C-1 defect the note-attribution scenario
-   * pins. React has no $rootScope, and the auth store deliberately keeps the
-   * same shape: the token alone. So this reports null, exactly as before.
+   * Reads `$rootScope.currentUser` — the C-1 defect (ADR-003) that this step
+   * exists to pin. After Increment 3 the itinerary no longer uses it, but
+   * `authentication.feature:161/:170/:185` and `travel-request.feature:238`
+   * still do, and every one of those runs on a screen AngularJS still serves.
+   *
+   * It must therefore keep reading the real root scope. Stubbing it would make
+   * four scenarios across three feature files pass without measuring anything.
+   * When travel-request migrates in Inc-4 this needs a React branch.
    */
   async signedInIdentity() {
-    return this.page.evaluate(() => ({
-      currentUser: null,
-      storedKeys: Object.keys(localStorage)
-    }));
+    return this.page.evaluate(() => {
+      const rs = angular.element(document.body).injector().get('$rootScope');
+      return {
+        currentUser: rs.currentUser === undefined ? null : rs.currentUser,
+        storedKeys: Object.keys(localStorage)
+      };
+    });
   }
 
   // ------------------------------------------------------------------ printing

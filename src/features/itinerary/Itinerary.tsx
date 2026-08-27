@@ -2,28 +2,27 @@
  * ITINERARY — the React port of `app/components/itinerary/*`.
  *
  * ─────────────────────────────────────────────────────────────────────────
- * TWO CONTROLS ON THIS SCREEN ARE DEAD ON PURPOSE (ADR-019)
+ * TWO CONTROLS THAT WERE DEAD IN ANGULARJS NOW WORK (ADR-005, ADR-022)
  * ─────────────────────────────────────────────────────────────────────────
- * The status filter and Add Note do nothing in the legacy app, because both sit
- * inside a child scope and write to a property the controller never reads
- * (finding P-2). React has no scope chain, so a naive port would make both
- * start working — a user-visible behaviour change nobody asked for.
+ * The status filter and Add Note do nothing in the legacy app: both sit inside
+ * an `ng-if`/`ng-repeat` child scope and write to a property the controller
+ * never reads (finding P-2). The logic behind each is complete and correct and
+ * merely unreachable.
  *
- * ADR-019 keeps them dead. The scope chain is therefore MODELLED here: each
- * dead control has TWO pieces of state, and the logic reads the one the control
- * never writes.
+ * ADR-005's scenario classification lists "the four dead controls" under
+ * **Supersede** — *"the scenario encodes a defect that ADR-001/002 already
+ * decided to fix"* — and its rejection of the Fix-Bugs path says those defects
+ * *"are resolved by being reimplemented correctly"*. React having no scope
+ * chain is the mechanism; ADR-005 is the authorisation. Both are needed, and
+ * both are present here.
  *
- *     uiFilterStatus  <- what the buttons write, and what highlights them
- *     filterStatus    <- what filterDays() reads. Stays 'all' forever.
+ * So each control is ordinary React state: one value, written by the control
+ * and read by the logic. `filterStatus` drives `filterDays()`; a row's
+ * `noteDrafts[id]` is what `handleAddNote(id)` posts.
  *
- *     noteDrafts[id]  <- what each row's input holds
- *     newNote         <- what handleAddNote() reads. Stays '' forever.
- *
- * Both underlying functions are complete and correct; the three `@bypasses-ui`
- * scenarios set the parent value through the test seam and prove it.
- *
- * DO NOT "SIMPLIFY" THIS BY COLLAPSING EACH PAIR INTO ONE VALUE. That is the
- * bug, and it is the whole point.
+ * Contrast `flight:selected` (ADR-013, ADR-022): identical dead code, dropped
+ * rather than revived, because no decision authorises it. The difference is
+ * authorisation, not mechanism.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { notify } from '../../stores/notification-store';
@@ -40,6 +39,7 @@ import {
   filterDays,
   formatTime,
   formatItemCost,
+  formatNoteTimestamp,
   getItemIcon,
   getStatusLabel,
   getTripStatusLabel,
@@ -87,18 +87,14 @@ export function Itinerary(): ReactElement {
   const [errorMessage, setErrorMessage] = useState('');
   const [viewMode, setViewMode] = useState<string>(VIEW_LIST);
 
-  // --- the two dead controls, each modelled as a parent/child scope pair ---
-  /** CHILD scope: what the filter buttons write. Drives highlighting only. */
-  const [uiFilterStatus, setUiFilterStatus] = useState('all');
-  /** PARENT scope: what filterDays() reads. No control writes here. */
+  // --- the two controls AngularJS left unreachable, now ordinary state ---
+  /** Written by the filter buttons AND read by filterDays(). One value. */
   const [filterStatus, setFilterStatus] = useState('all');
-  /** CHILD scope: one draft per row, keyed by item id. */
+  /** One note draft per row, keyed by item id, read by handleAddNote(). */
   const [noteDrafts, setNoteDrafts] = useState<Readonly<Record<string, string>>>({});
-  /** PARENT scope: what handleAddNote() reads. No input writes here. */
-  const [newNote, setNewNote] = useState('');
 
-  /** Notes added optimistically; the server stores none. Keyed by item id. */
-  const [localNotes, setLocalNotes] = useState<Readonly<Record<string, readonly ItineraryNote[]>>>({});
+  /** Notes as the SERVER returned them, keyed by item id. */
+  const [serverNotes, setServerNotes] = useState<Readonly<Record<string, readonly ItineraryNote[]>>>({});
   const [cancelledIds, setCancelledIds] = useState<readonly string[]>([]);
 
   const detailsRef = useRef<HTMLDivElement | null>(null);
@@ -191,9 +187,11 @@ export function Itinerary(): ReactElement {
   const totals = useMemo<ItineraryTotals>(() => calculateTotals(items), [items]);
 
   /**
-   * `displayDays` is only ever computed from the PARENT filterStatus, which the
-   * buttons cannot write. It therefore stays undefined in normal use, exactly
-   * as the legacy `$watch` left it — `itinerary.feature` asserts that directly.
+   * `displayDays` — `getFilteredDays()` at `itinerary.controller.js:114-123`.
+   *
+   * Computed from the same `filterStatus` the buttons write, so choosing a
+   * status now filters. `undefined` for "all" keeps the template's
+   * `displayDays || itinerary.days` fallback meaningful.
    */
   const displayDays = useMemo<readonly ItineraryDay[] | undefined>(() => {
     if (filterStatus === 'all') return undefined;
@@ -217,18 +215,8 @@ export function Itinerary(): ReactElement {
       viewMode,
       filterStatus,
       displayDays,
-      newNote,
-      /** Lets the @bypasses-ui scenarios reach the logic behind a dead control. */
-      setFilterStatus: (status: string) => {
-        setFilterStatus(status);
-      },
-      addNoteDirectly: (itemId: string, text: string) => {
-        setNewNote(text);
-        void runAddNote(itemId, text);
-      },
+      noteDrafts,
     });
-    // runAddNote is stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     trips,
     selectedTrip,
@@ -241,48 +229,50 @@ export function Itinerary(): ReactElement {
     viewMode,
     filterStatus,
     displayDays,
-    newNote,
+    noteDrafts,
   ]);
 
   /* -------------------------------------------------------------- actions */
 
   /**
-   * `addNote()` — `itinerary.controller.js:139-154`, faithfully.
+   * `addNote()` — `itinerary.controller.js:139-154`, reimplemented correctly.
    *
-   * The optimistic push happens INSIDE the success path, and the note is
-   * credited to a `currentUser` that is never persisted, so the fallback "You"
-   * always wins on a restored session (C-1, PRESERVED).
+   * Two repairs come with the control being reachable, both authorised by
+   * ADR-005 via increment plan §7.4 rows 22 and 23:
+   *
+   *   ATTRIBUTION (row 22, ADR-003 C-1). The legacy credited the note to
+   *   `$rootScope.currentUser`, which is set only inside the login handler and
+   *   never persisted, so the `'You'` fallback always won on a restored
+   *   session. The note is now credited by the SERVER from the authenticated
+   *   caller, so the client needs no identity of its own — which is why this
+   *   repair does not require the client-side C-1 rehydration that
+   *   `auth-store.ts` schedules for Inc-6.
+   *
+   *   PERSISTENCE (row 23). The server read `req.body.notes` while the client
+   *   posted `{ text, createdAt }`, so nothing was ever stored. It appends now.
+   *
+   * The rendered note is the SERVER's, not a locally constructed guess, so what
+   * is shown immediately is exactly what a reload will show.
    */
   const runAddNote = useCallback(async (itemId: string, text: string): Promise<void> => {
     try {
-      await addNote(itemId, text);
-      setLocalNotes((prev) => {
-        const existing = prev[itemId] ?? [];
-        const note: ItineraryNote = {
-          text,
-          // `moment().format('MMM D, YYYY h:mm A')`
-          createdAt: formatNoteTimestamp(new Date()),
-          author: 'You',
-        };
-        return { ...prev, [itemId]: [...existing, note] };
-      });
-      setNewNote('');
+      const item = await addNote(itemId, text);
+      setServerNotes((prev) => ({ ...prev, [itemId]: item.notes ?? [] }));
+      setNoteDrafts((prev) => ({ ...prev, [itemId]: '' }));
       notify('Note added', 'success');
     } catch {
       notify('Failed to add note', 'error');
     }
   }, []);
 
-  /**
-   * The DEAD half. Reads the parent `newNote`, which no input writes, so the
-   * guard at `itinerary.controller.js:140` always returns. ADR-019.
-   */
+  /** Reads the draft the row's own input writes. `controller:140`'s guard. */
   const handleAddNote = useCallback(
     (itemId: string): void => {
-      if (newNote.trim() === '') return;
-      void runAddNote(itemId, newNote);
+      const draft = noteDrafts[itemId] ?? '';
+      if (draft.trim() === '') return;
+      void runAddNote(itemId, draft);
     },
-    [newNote, runAddNote],
+    [noteDrafts, runAddNote],
   );
 
   const handleCancelItem = useCallback(
@@ -468,16 +458,15 @@ export function Itinerary(): ReactElement {
 
           <div className="row">
             <div className="col-md-12">
-              {/* DEAD CONTROL 1 of 2 (ADR-019). These buttons write
-                  uiFilterStatus, which highlights them. filterDays() reads
-                  filterStatus, which they do not touch. */}
+              {/* Ordinary React state (ADR-005, ADR-022): the value these
+                  buttons write is the value filterDays() reads. */}
               <div className="btn-group btn-group-sm" style={{ marginBottom: '15px' }}>
                 {(['all', 'confirmed', 'pending', 'cancelled'] as const).map((status) => (
                   <button
                     key={status}
-                    className={`btn ${uiFilterStatus === status ? FILTER_TONE[status] : 'btn-default'}`}
+                    className={`btn ${filterStatus === status ? FILTER_TONE[status] : 'btn-default'}`}
                     onClick={() => {
-                      setUiFilterStatus(status);
+                      setFilterStatus(status);
                     }}
                   >
                     {FILTER_LABEL[status]}
@@ -502,7 +491,7 @@ export function Itinerary(): ReactElement {
                       <ItemRow
                         key={item.id}
                         item={item}
-                        notes={[...(item.notes ?? []), ...(localNotes[item.id] ?? [])]}
+                        notes={serverNotes[item.id] ?? item.notes ?? []}
                         draft={noteDrafts[item.id] ?? ''}
                         onDraftChange={(value) => {
                           setNoteDrafts((prev) => ({ ...prev, [item.id]: value }));
@@ -660,7 +649,7 @@ function ItemRow({
             {notes.map((note, index) => (
               <div className="well well-sm" key={`${note.createdAt}-${index}`}>
                 <small>
-                  <strong>{note.author}</strong> — {note.createdAt}
+                  <strong>{note.author}</strong> — {formatNoteTimestamp(note.createdAt)}
                 </small>
                 <br />
                 <small>{note.text}</small>
@@ -670,9 +659,8 @@ function ItemRow({
         </div>
       ) : null}
 
-      {/* DEAD CONTROL 2 of 2 (ADR-019). The input holds a per-row draft; the
-          add handler reads the component-level `newNote`, which nothing writes.
-          The note the traveller typed stays in the box and no request is made. */}
+      {/* Ordinary React state (ADR-005, ADR-022): the draft this input writes
+          is the draft handleAddNote() posts for this row. */}
       <div className="row no-print" style={{ marginTop: '5px' }}>
         <div className="col-md-10 col-md-offset-1">
           <div className="input-group input-group-sm">
@@ -695,19 +683,6 @@ function ItemRow({
       </div>
     </div>
   );
-}
-
-/** `moment().format('MMM D, YYYY h:mm A')` — `itinerary.controller.js:146`. */
-function formatNoteTimestamp(now: Date): string {
-  const date = now.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const time = now
-    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-    .replace(/\u202f/g, ' ');
-  return `${date} ${time}`;
 }
 
 export { PRINT_HIDDEN_SELECTORS, PRINT_STYLES };

@@ -9,22 +9,27 @@ Feature: Itinerary
   # (server.js:142), not randomised — so these scenarios can assert literal
   # names, dates and amounts.
   #
-  # Two headline findings, both caused by AngularJS scope inheritance:
+  # Two headline findings, both caused by AngularJS scope inheritance — and both
+  # RESOLVED in Increment 3, when the screen became React (ADR-005, ADR-022).
+  # They are recorded here because the baseline pinned them and the superseding
+  # scenarios below are only legible against what they replaced:
   #
-  #   * The status filter is DEAD. The filter buttons live inside an ng-if,
-  #     which creates a child scope; "filterStatus = 'pending'" therefore writes
-  #     a NEW property on the child and shadows the controller's. The
-  #     controller's $watch never fires. The button lights up, so it looks like
-  #     it worked, and nothing is filtered.
+  #   * The status filter WAS DEAD. The filter buttons live inside an ng-if,
+  #     which creates a child scope; "filterStatus = 'pending'" therefore wrote
+  #     a NEW property on the child and shadowed the controller's. The
+  #     controller's $watch never fired. The button lit up, so it looked like
+  #     it worked, and nothing was filtered.
   #
-  #   * Add Note is DEAD. The note box sits inside ng-repeat, so each row gets
-  #     its own scope and typing writes newNote onto THAT row. addNote() reads
-  #     the controller's newNote, which stays empty, and returns at its guard.
+  #   * Add Note WAS DEAD. The note box sits inside ng-repeat, so each row got
+  #     its own scope and typing wrote newNote onto THAT row. addNote() read
+  #     the controller's newNote, which stayed empty, and returned at its guard.
   #     No request, no note, no error.
   #
-  # Both are proven twice over: once through the interface (nothing happens) and
-  # once by driving the controller directly (the logic underneath is correct).
-  # Scenarios that reach past the interface are tagged @bypasses-ui.
+  # Each was proven twice over: once through the interface (nothing happened)
+  # and once by driving the controller directly (the logic underneath was
+  # correct). That second kind of scenario carried @bypasses-ui. With both
+  # controls reachable there is nothing left to reach past, and the tag is gone
+  # from this file and from the suite.
   #
   # The mock API keeps trips in a mutable module-level array, so cancelling an
   # item persists for the life of the server process. Scenarios that cancel are
@@ -33,23 +38,24 @@ Feature: Itinerary
   # ---------------------------------------------------------------------------
   # INCREMENT 3 — this screen is now React. What changed, and what did not:
   #
-  #   SUPERSEDED (2)
+  #   SUPERSEDED (11)
   #     * the trip total is derived by the SERVER          Q-6  / ADR-020
   #     * a booked flight now reaches the itinerary        Q-3 / SEAM-3 / ADR-020
+  #     * the status filter WORKS, 5 scenarios             ADR-005 / ADR-022
+  #     * Add Note WORKS, 4 scenarios                      ADR-005 / ADR-022
+  #         - credited to the person who wrote it          ADR-003 C-1
+  #         - and the note is actually stored              plan §7.4 row 23
   #
   #   NET-NEW (5)
   #     * a booked hotel reaches the itinerary too         SEAM-3, second producer
   #     * printing, 4 scenarios                            ADR-017 (no baseline existed)
   #
-  #   PRESERVED AGAINST THE PLAN (8)
-  #     Increment plan §7.4 said to revive both dead controls because React has
-  #     no scope chain. ADR-019 refuses: a control that starts working because
-  #     the framework stopped preventing it is an unauthorised behaviour change.
-  #     The status filter and Add Note are both still dead, deliberately, and
-  #     @bypasses-ui stays at 3 where §7.4 predicted 0.
-  #
-  #   The two headline findings above therefore still stand, and are now
-  #   reproduced on purpose rather than inherited.
+  #   @bypasses-ui is now ZERO across the whole suite. Every scenario that
+  #   carried it existed only to reach behind a dead control; with both controls
+  #   working, each becomes an ordinary UI scenario. The two headline findings
+  #   in the block above are therefore RESOLVED, not reproduced — ADR-005
+  #   classifies the four dead controls as Supersede, and ADR-022 records why
+  #   that is authorisation rather than an accident of framework.
   # ---------------------------------------------------------------------------
 
   Background:
@@ -152,41 +158,51 @@ Feature: Itinerary
 
   @inc-3
   # ---------------------------------------------------------------------------
-  # PRESERVED by ADR-019, against increment plan §7.4.
+  # SUPERSEDED by ADR-005, per increment plan §7.4 rows 15-17.
   #
-  # §7.4 classified the next four scenarios as SUPERSEDE, reasoning that React
-  # has no scope chain so the filter starts working. It does — by accident, not
-  # by decision. ADR-019 keeps it dead: the React route models both scopes
-  # explicitly, so the button still highlights and nothing is still filtered.
+  # ADR-005's scenario classification lists "the four dead controls" under
+  # Supersede — "the scenario encodes a defect that ADR-001/002 already decided
+  # to fix" — and its rejection of the Fix-Bugs path says those defects "are
+  # resolved by being reimplemented correctly". The status filter is one of the
+  # four. It works.
   #
-  # "the controller" below means the state behind the interface. In AngularJS
-  # that was the controller scope; in React it is the parent value the filtering
-  # logic reads, published through the test seam. The step wording is unchanged
-  # deliberately (plan §1.4) — the contract should not churn for terminology.
+  # The three baseline scenarios this replaces asserted, in order: that the
+  # button highlighted but nothing filtered; that the chosen status never
+  # reached the controller; and — reaching past the interface — that the logic
+  # underneath was correct all along. That last one was @bypasses-ui. All three
+  # collapse into ordinary UI scenarios now that the control is reachable.
   # ---------------------------------------------------------------------------
-  Scenario Outline: Choosing a status highlights the button but filters nothing
+  Scenario Outline: Choosing a status filters the itinerary to matching days
     When I filter the itinerary by "<status>"
     Then the "<status>" filter button is highlighted
-    But all 3 days are still shown
-    And the statuses still shown are "confirmed, confirmed, pending, confirmed, confirmed"
+    And the number of days shown is <days>
 
     Examples:
-      | status    |
-      | Confirmed |
-      | Pending   |
-      | Cancelled |
+      | status    | days |
+      | Confirmed | 3    |
+      | Pending   | 1    |
+      | Cancelled | 0    |
 
-  Scenario: The chosen status never reaches the controller
+  @inc-3
+  # SUPERSEDED by ADR-005. The chosen status now reaches the filtering logic —
+  # this is the scenario that pinned the scope-shadowing defect (P-2) directly.
+  Scenario: The chosen status reaches the filtering logic
     When I filter the itinerary by "Pending"
-    Then the controller still holds the status filter "all"
-    And the controller has computed no filtered days
+    Then the controller still holds the status filter "pending"
+    And the controller has computed filtered days
 
-  @bypasses-ui
-  Scenario: Set on the controller instead, the filter works — and keeps whole days
-    # Proves the filtering logic is correct and merely unreachable. It also
-    # shows the logic keeps a day WHOLE when any one item matches, so a
-    # "pending" filter still displays the confirmed meeting alongside it.
-    When I set the status filter to "pending" on the controller directly
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 — and @bypasses-ui is REMOVED.
+  #
+  # The baseline drove the controller directly, because the button could not
+  # reach the logic. It can now, so the same assertion is made through the
+  # interface. The behaviour proved here is unchanged: a day survives WHOLE when
+  # any one of its items matches, so a "pending" filter still displays the
+  # confirmed meeting that shares the day.
+  # ---------------------------------------------------------------------------
+  Scenario: Filtering keeps a whole day when any one item matches
+    When I filter the itinerary by "Pending"
     Then only 1 day is still shown
     And the statuses still shown are "pending, confirmed"
 
@@ -207,48 +223,70 @@ Feature: Itinerary
 
   @inc-3
   # ---------------------------------------------------------------------------
-  # PRESERVED by ADR-019, against increment plan §7.4.
+  # SUPERSEDED by ADR-005, per increment plan §7.4 rows 20-23.
   #
-  # Add Note is dead control 2 of 4. §7.4 classified the next four scenarios as
-  # SUPERSEDE; ADR-019 keeps the control inert. The note box still holds what
-  # was typed and addNote() still reads a value the box never writes to, so it
-  # returns at its guard — no request, no note, no notification.
+  # Add Note is dead control 2 of 4, and the same authorisation applies: ADR-005
+  # classifies the four dead controls as Supersede, "resolved by being
+  # reimplemented correctly". The note box now writes the draft that the add
+  # button posts, so the control works.
   #
-  # @bypasses-ui therefore stays at 3 for the suite, where §7.4 predicted 0.
-  # The tag survives because the controls it reaches past survive.
+  # Two repairs travel with it, both named by §7.4:
+  #
+  #   row 22, ADR-003 C-1 — ATTRIBUTION. The legacy credited the note to
+  #   $rootScope.currentUser, set only inside the login handler and never
+  #   persisted, so the "You" fallback always won on a restored session. The
+  #   note is now credited by the SERVER from the authenticated caller. That is
+  #   a stronger repair than the plan anticipated: it needs no client-side
+  #   identity, so it does not require the C-1 rehydration that auth-store.ts
+  #   schedules for Inc-6, and authentication.feature:156/:165 stay green.
+  #
+  #   row 23 — PERSISTENCE. POST /api/itinerary-items/:id/notes read
+  #   `req.body.notes` while every client posted `{ text, createdAt }`, so it
+  #   stored `undefined` and also replaced the whole array. It appends now.
   # ---------------------------------------------------------------------------
-  Scenario: Typing a note and adding it does nothing at all
+  Scenario: Typing a note and adding it records the note
     When I type the note "Bring the signed contract" against the first itinerary row
     And I add that note
-    Then no note request is sent
-    And the first itinerary row carries no note
-    And the note I typed is still sitting in the box
-    And no notification is raised
+    Then a note request is sent
+    And the first itinerary row shows a note reading "Bring the signed contract"
+    And the note box is empty again
+    And the last notification reads "Note added"
 
-  Scenario: The note I type never reaches the controller
+  @inc-3
+  # SUPERSEDED by ADR-005. The typed note now reaches the logic that posts it —
+  # this is the scenario that pinned the ngRepeat scope-shadowing directly.
+  Scenario: The note I type reaches the add handler
     When I type the note "Bring the signed contract" against the first itinerary row
-    Then the controller's note box is empty
+    Then the controller's note box holds "Bring the signed contract"
 
-  @bypasses-ui
-  Scenario: Added through the controller, a note is credited to nobody in particular
-    # currentUser is set only during the login exchange and never persisted —
-    # localStorage holds the token alone. On any reload or restored session the
-    # controller's fallback wins, so notes are credited to "You" rather than to
-    # the person who wrote them.
-    When I add the note "Bring the signed contract" by driving the controller directly
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 + ADR-003 C-1 — and @bypasses-ui is REMOVED.
+  #
+  # The baseline drove the controller because the box could not reach the
+  # handler, and recorded the consequence: the note was credited to "You" and
+  # the request carried no author at all. Both are repaired.
+  # ---------------------------------------------------------------------------
+  Scenario: A note is credited to the person who wrote it
+    When I type the note "Bring the signed contract" against the first itinerary row
+    And I add that note
     Then the first itinerary row shows a note reading "Bring the signed contract"
-    And that note is attributed to "You"
-    And the portal does not remember who is signed in
-    And a note request is sent carrying the text but no author
+    And that note is attributed to "Sarah Johnson"
 
-  @bypasses-ui
-  Scenario: A note is shown immediately but never stored
-    # The controller pushes the note into the local model before — and
-    # regardless of — the server's answer, and the server reads a field the
-    # client never sends. Reloading loses the note.
-    When I add the note "Bring the signed contract" by driving the controller directly
+  @inc-3
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 — and @bypasses-ui is REMOVED.
+  #
+  # The baseline pinned the note as shown-but-never-stored: the client pushed it
+  # into the local model regardless of the server's answer, and the server read
+  # a field the client never sent. What is shown is now what was stored, so a
+  # reload keeps it.
+  # ---------------------------------------------------------------------------
+  Scenario: A note that is shown has been stored
+    When I type the note "Bring the signed contract" against the first itinerary row
+    And I add that note
     Then the first itinerary row shows a note reading "Bring the signed contract"
-    But the server has stored no note against that item
+    And the server has stored that note against the item
 
   # -------------------------------------------------------------- cancelling
 

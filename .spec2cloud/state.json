@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
   "currentPhase": "2",
-  "currentStep": "inc-3 — awaiting PR Review gate",
+  "currentStep": "inc-3 — reworked; awaiting PR Review gate",
   "status": "awaiting-human-gate",
   "project": {
     "name": "globaltravel-portal",
@@ -1560,9 +1560,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-27T19:55:00+02:00",
+  "lastUpdated": "2026-08-27T23:55:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-27T19:55:00+02:00",
+  "updatedAt": "2026-08-27T23:55:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -2013,21 +2013,14 @@
         "session-expiry-policy": "Plan §13 item 12, deferred by Inc-0 and forced here because the itinerary is the first React route that fetches on mount. Asked; answered ADOPT THE POLICY. ADR-018.",
         "query-invalidation-vs-no-cache": "The instruction asked for query invalidation, but tech-stack.md:122 specifies against any data cache (NFR-F005-003, NFR-F007-004). Asked; answered a lightweight in-house query over GET /api/trips only. ADR-021."
       },
-      "deviationFromPlan": {
-        "what": "increment plan §7.4 classified 8 dead-control scenarios as SUPERSEDE; they are PRESERVED instead.",
-        "why": "The instruction for this increment states the rule \"where a baseline scenario pins a control as dead, keep it dead and say so\", and lab commit b6c90a9 records that §7.4 was written from pre-baseline assumptions the green baseline then disproved.",
-        "recordedIn": "ADR-019",
-        "consequence": "@bypasses-ui stays at 3, where §7.4 predicted 0. The React component models the parent/child scope pair explicitly so both controls remain inert."
-      },
       "planCorrections": {
         "authentication-supersede-count": "plan §7.4 lists 3 authentication scenarios superseded here. Only 2 are: :220 is PRESERVED because the guard re-renders on a STORE mutation, and the harness clearToken() writes to localStorage from outside the app. Verified in the run.",
         "flight-booking-endpoint": "plan §7.2/§7.3 refer to POST /api/bookings/flights; the real path is POST /api/flights/:id/book (api-mock/server.js:365)."
       },
       "gherkinDelta": {
         "itinerary": {
-          "superseded": 2,
+          "superseded": 11,
           "netNew": 5,
-          "preservedAgainstPlan": 8,
           "total": 37
         },
         "authentication": {
@@ -2036,8 +2029,9 @@
         },
         "bypassesUi": {
           "before": 3,
-          "after": 3,
-          "planPredicted": 0
+          "after": 0,
+          "planPredicted": 0,
+          "note": "plan §7.4 predicted 0 and was right"
         }
       },
       "serverChanges": {
@@ -2049,15 +2043,17 @@
       "harnessChanges": {
         "fixtureRestore": "TRIP_DEFAULTS replaces the item-4-status-only restore and now replaces whole items arrays via PUT /api/trips/:id, because SEAM-3 appends items and there is no DELETE route. Runs for EVERY @feature-itinerary scenario, since the scenarios that append live in three different feature files.",
         "authPageObject": "goToState() addresses migrated routes by real path and unmigrated ones by fragment. The distinction is load-bearing: hash-to-hash navigation is same-document, so $rootScope.currentUser survives, and two scenarios depend on that. currentState() reads either form.",
-        "bugFound": "Two 401 scenarios had been silently exercising the AngularJS screen, because goToState() addressed /itinerary by hash and a fragment never reaches the server."
+        "bugFound": "Two 401 scenarios had been silently exercising the AngularJS screen, because goToState() addressed /itinerary by hash and a fragment never reaches the server.",
+        "bugFoundInRework": "signedInIdentity() had been stubbed to return currentUser:null unconditionally. That step is shared with authentication.feature:161/:170/:185 and travel-request.feature:238 — all on AngularJS screens — so the stub silently weakened 4 scenarios across 3 feature files. The real $rootScope read is restored."
       },
       "verification": {
-        "unit": "281 passed (14 files) — 55 new for itinerary model/query/api-client, 34 component",
-        "cucumber": "245 scenarios, 2098 steps, all passed (20m 21s) — run after the AngularJS deletion",
-        "build": "vite build clean — 495 modules, 383.25 kB",
-        "lint": "oxlint --type-aware src: exit 0",
+        "unit": "292 passed (14 files)",
+        "cucumber": "PENDING — full run in progress",
+        "build": "PENDING",
+        "lint": "PENDING",
         "typecheck": "tsc --noEmit clean",
-        "seam3ByHand": "Verified in a real browser from BOTH producers: flight 8->9 items, hotel 9->10 items, itinerary rendered each new row, trip total moved $1330 -> $1684 (server-derived), fixture restored to 8/$1330."
+        "notesEndpointByHand": "verified against the running mock: first POST creates the array, second APPENDS (2 notes), author derived server-side as \"Sarah Johnson\", persisted across a re-read, unknown item still 404s.",
+        "seam3ByHand": "unchanged from the first pass: flight 8->9 items, hotel 9->10, itinerary rendered each new row, total 1330 -> 1684, fixture restored."
       },
       "deleted": [
         "app/components/itinerary/itinerary.controller.js (235)",
@@ -2072,6 +2068,23 @@
         "bower_components/": "untouched",
         "package.json": "unchanged — the query cache is in-house, no dependency added",
         "bootstrap.min.js": "still required by travel-request (Inc-4) and expense (Inc-5)"
+      },
+      "reworkAtGate": {
+        "raisedBy": "product owner",
+        "what": "ADR-019 kept the four dead controls inert. ADR-005 authorises reviving them.",
+        "evidence": {
+          "adr-005-classification": "ADR-005:93 — \"Supersede | The scenario encodes a defect that ADR-001/002 already decided to fix | the four dead controls, ngRepeat:dupes blocking hotel booking, SEAM-3/4/5, the un-dismissable alerts\"",
+          "adr-005-fix-bugs-rejection": "ADR-005:222-224 — the Fix-Bugs path is rejected BECAUSE these defects \"are resolved by being reimplemented correctly\". Leaving them inert would remove the mechanism by which the chosen path delivers."
+        },
+        "correction": "ADR-019 reasoned from MECHANISM (React has no scope chain, so reviving is accidental) and never checked for an authorisation. ADR-022 records the correct distinction: authorisation, not mechanism. The four dead controls are revived because ADR-001/002 decided to fix them; flight:selected stays dropped because nothing authorises it.",
+        "planVindicated": "increment plan §7.4 was right and cited ADR-005 correctly.",
+        "adr019": "superseded in full by ADR-022, header-marked only — its reasoning is left exactly as written."
+      },
+      "deadControlsRevived": {
+        "statusFilter": "ordinary React state; filterDays() reads the value the buttons write. 5 scenarios superseded.",
+        "addNote": "per-row draft posted by the add button. 4 scenarios superseded.",
+        "attributionRepair": "ADR-003 C-1 / plan §7.4 row 22. Repaired SERVER-side: the note is credited from the authenticated caller, so no client identity is needed. Stronger than the plan expected — §7.4 assumed \"Inc-0 identity rehydration\" which Inc-0 never built (auth-store.ts schedules it for Inc-6). authentication.feature:156/:165 therefore stay green and honest.",
+        "persistenceRepair": "plan §7.4 row 23, gated separately at the user’s request. POST /api/itinerary-items/:id/notes read req.body.notes (never sent) and overwrote rather than appended. It now appends and the note persists. Second gated extension of the api-mock exception."
       }
     }
   },
@@ -2092,9 +2105,10 @@
     {
       "id": "ADR-019",
       "title": "Controls the baseline pins as dead stay dead through migration",
-      "status": "proposed",
+      "status": "superseded by ADR-022 — never accepted",
       "increment": "inc-3",
-      "supersedes": "increment plan §7.4 classifications"
+      "supersedes": "increment plan §7.4 classifications",
+      "supersededBy": "ADR-022"
     },
     {
       "id": "ADR-020",
@@ -2109,6 +2123,13 @@
       "status": "proposed",
       "increment": "inc-3",
       "supersedes": "ADR-013's itinerary:refresh row only"
+    },
+    {
+      "id": "ADR-022",
+      "title": "The four dead controls are revived, because ADR-005 already decided to fix them",
+      "status": "proposed",
+      "increment": "inc-3",
+      "supersedes": "ADR-019 in full"
     }
   ]
 }

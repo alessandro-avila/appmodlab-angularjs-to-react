@@ -10,6 +10,7 @@ import {
   formatDayHeading,
   formatTime,
   formatItemCost,
+  formatNoteTimestamp,
   deriveTripStatus,
   decorateTrip,
   sortTripsByStart,
@@ -108,8 +109,7 @@ describe('date formatting matches the legacy moment patterns', () => {
   });
 });
 
-describe('formatItemCost — ungrouped, unlike the trip total', () => {
-  it("reproduces '$' + cost.toFixed(2)", () => {
+describe('formatItemCost — ungrouped, unlike the trip total', () => {  it("reproduces '$' + cost.toFixed(2)", () => {
     expect(formatItemCost(450)).toBe('$450.00');
     expect(formatItemCost(0)).toBe('$0.00');
     expect(formatItemCost(undefined)).toBe('$0.00');
@@ -126,6 +126,30 @@ describe('formatItemCost — ungrouped, unlike the trip total', () => {
 });
 
 /* -------------------------------------------------------------------- trips */
+
+describe('formatNoteTimestamp — the note byline', () => {
+  it("reproduces moment's 'MMM D, YYYY h:mm A'", () => {
+    const when = new Date(2026, 7, 6, 9, 5);
+    expect(formatNoteTimestamp(when)).toBe('Aug 6, 2026 9:05 AM');
+  });
+
+  it('renders an ISO string read back from the server the same way', () => {
+    const when = new Date(2026, 7, 6, 14, 30);
+    expect(formatNoteTimestamp(when.toISOString())).toBe('Aug 6, 2026 2:30 PM');
+  });
+
+  /**
+   * Node and modern browsers put a NARROW NO-BREAK SPACE before AM/PM. It is
+   * invisible in a diff and breaks a literal comparison, so it is normalised.
+   */
+  it('uses an ordinary space before AM/PM, not U+202F', () => {
+    expect(formatNoteTimestamp(new Date(2026, 7, 6, 9, 5))).not.toMatch(/\u202f/);
+  });
+
+  it('renders an unparseable timestamp as absent rather than "Invalid Date"', () => {
+    expect(formatNoteTimestamp('not-a-date')).toBe('');
+  });
+});
 
 describe('trip status is derived from the dates and overrides the stored one', () => {
   it('reads "completed" for a trip that has already happened', () => {

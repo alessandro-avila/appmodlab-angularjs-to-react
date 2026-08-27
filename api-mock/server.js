@@ -621,7 +621,6 @@ app.post('/api/itinerary-items/:id/notes', authMiddleware, function(req, res) {
   trips.forEach(function(trip) {
     trip.items.forEach(function(item) {
       if (item.id === req.params.id) {
-        item.notes = req.body.notes;
         found = item;
       }
     });
@@ -630,6 +629,26 @@ app.post('/api/itinerary-items/:id/notes', authMiddleware, function(req, res) {
   if (!found) {
     return res.status(404).json({ error: 'Itinerary item not found' });
   }
+
+  // ADR-005 / increment plan §7.4 row 23 — the note now PERSISTS.
+  //
+  // This handler read `req.body.notes` while every client posts
+  // `{ text, createdAt }`, so it assigned `undefined` and nothing was ever
+  // stored. It also replaced the whole array, which a POST to a collection
+  // should not do. Both are corrected: the posted note is APPENDED.
+  //
+  // The author is taken from the authenticated caller rather than the request
+  // body. The client never sent one (ADR-003 C-1: it had no identity to send),
+  // and deriving it here means a note cannot be attributed to someone else.
+  var author = users.find(function(u) { return u.id === req.user.id; });
+
+  if (!found.notes) found.notes = [];
+  found.notes.push({
+    text: req.body.text,
+    createdAt: req.body.createdAt || new Date().toISOString(),
+    author: author ? author.name : 'You'
+  });
+
   res.json(found);
 });
 

@@ -195,20 +195,20 @@ Then('the statuses still shown are {string}', async function (expected) {
   assert.deepStrictEqual(statuses, expected.split(',').map((s) => s.trim()));
 });
 
-Then('the controller still holds the status filter {string}', async function (status) {
-  assert.strictEqual(await this.itinerary.controllerFilterStatus(), status);
+Then('the number of days shown is {int}', async function (count) {
+  assert.strictEqual(await this.itinerary.dayPanels.count(), count);
 });
 
-Then('the controller has computed no filtered days', async function () {
+Then('the controller still holds the status filter {string}', async function (status) {
+  assert.strictEqual(await this.itinerary.controllerFilterStatus(), status.toLowerCase());
+});
+
+Then('the controller has computed filtered days', async function () {
   assert.strictEqual(
     await this.itinerary.controllerHasComputedDays(),
-    false,
-    'expected displayDays to have never been computed'
+    true,
+    'expected displayDays to have been computed'
   );
-});
-
-When('I set the status filter to {string} on the controller directly', async function (status) {
-  await this.itinerary.setFilterByDrivingController(status);
 });
 
 // ------------------------------------------------------------ switching trips
@@ -239,35 +239,25 @@ When('I add that note', async function () {
   await this.page.waitForTimeout(1500);
 });
 
-Then('no note request is sent', async function () {
+Then('a note request is sent', async function () {
   const notes = this.requests.filter((r) => /\/notes$/.test(r.url));
-  assert.deepStrictEqual(notes, [], `expected no note request, saw ${JSON.stringify(notes)}`);
+  assert.strictEqual(notes.length, 1, `expected exactly one note request, saw ${notes.length}`);
+  const body = JSON.parse(notes[0].postData);
+  assert.strictEqual(body.text, this.typedNote);
+  assert.ok(body.createdAt, 'expected the request to carry a timestamp');
 });
 
-Then('the first itinerary row carries no note', async function () {
-  assert.deepStrictEqual(await this.itinerary.notesOn(0), []);
+Then('the note box is empty again', async function () {
+  assert.strictEqual(await this.itinerary.noteBoxValue(0), '');
 });
 
-Then('the note I typed is still sitting in the box', async function () {
-  assert.strictEqual(await this.itinerary.noteBoxValue(0), this.typedNote);
-});
-
-Then('no notification is raised', async function () {
-  assert.strictEqual(
-    await this.itinerary.notificationCount(),
-    this.notificationsBefore,
-    'expected the notification count to be unchanged'
+Then("the controller's note box holds {string}", async function (text) {
+  const drafts = await this.itinerary.controllerNoteBox();
+  const held = Object.values(drafts || {});
+  assert.ok(
+    held.includes(text),
+    `expected a draft reading "${text}", saw ${JSON.stringify(drafts)}`
   );
-});
-
-Then("the controller's note box is empty", async function () {
-  assert.strictEqual(await this.itinerary.controllerNoteBox(), '');
-});
-
-When('I add the note {string} by driving the controller directly', async function (text) {
-  this.requests.length = 0;
-  this.typedNote = text;
-  await this.itinerary.addNoteByDrivingController(FIRST_ITEM_ID, text);
 });
 
 Then('the first itinerary row shows a note reading {string}', async function (text) {
@@ -287,19 +277,16 @@ Then('the portal does not remember who is signed in', async function () {
   assert.deepStrictEqual(identity.storedKeys, ['authToken'], 'expected only the token to be stored');
 });
 
-Then('a note request is sent carrying the text but no author', async function () {
-  const notes = this.requests.filter((r) => /\/notes$/.test(r.url));
-  assert.strictEqual(notes.length, 1, `expected exactly one note request, saw ${notes.length}`);
-  const body = JSON.parse(notes[0].postData);
-  assert.strictEqual(body.text, this.typedNote);
-  assert.ok(body.createdAt, 'expected the request to carry a timestamp');
-  assert.strictEqual(body.author, undefined, 'expected the request to carry no author');
-});
-
-Then('the server has stored no note against that item', async function () {
+Then('the server has stored that note against the item', async function () {
   const item = await this.itinerary.serverItem('trip-1', FIRST_ITEM_ID);
   assert.ok(item, 'expected the server to still know the item');
-  assert.strictEqual(item.notes, undefined, `expected no stored note, saw ${JSON.stringify(item.notes)}`);
+  assert.ok(
+    Array.isArray(item.notes) && item.notes.length > 0,
+    `expected a stored note, saw ${JSON.stringify(item.notes)}`
+  );
+  const stored = item.notes[item.notes.length - 1];
+  assert.strictEqual(stored.text, this.typedNote);
+  assert.ok(stored.author, 'expected the stored note to carry an author');
 });
 
 // --------------------------------------------------------------- cancelling

@@ -75,6 +75,31 @@ export function formatItemCost(cost: number | undefined): string {
   return `$${(cost ?? 0).toFixed(2)}`;
 }
 
+/**
+ * `moment().format('MMM D, YYYY h:mm A')` — `itinerary.controller.js:146`.
+ *
+ * The stored value is an ISO timestamp (what the client posts and the server
+ * keeps); this renders it. One code path, so a note read back from the server
+ * displays exactly as it did the moment it was added.
+ *
+ * The `\u202f` replacement matters: Node and modern browsers put a NARROW
+ * NO-BREAK SPACE before AM/PM, which is invisible in a diff and breaks a
+ * literal string comparison.
+ */
+export function formatNoteTimestamp(isoOrDate: string | Date): string {
+  const when = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  if (Number.isNaN(when.getTime())) return '';
+  const date = when.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const time = when
+    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    .replace(/\u202f/g, ' ');
+  return `${date} ${time}`;
+}
+
 /* -------------------------------------------------------------------- trips */
 
 export type TripStatus = 'upcoming' | 'active' | 'completed';
@@ -233,10 +258,10 @@ export function calculateTotals(items: readonly ItineraryItem[]): ItineraryTotal
  * meeting that shares the day. That is an OR, unlike the hotel amenity filter
  * in Increment 2, which is an AND. `itinerary.feature` pins it.
  *
- * NOTE ON REACHABILITY: this function is correct and, through the interface,
- * unreachable. The filter buttons write to a value it does not read — see
- * ADR-019 and the component. The three `@bypasses-ui` scenarios exist to prove
- * the logic below works despite that.
+ * NOTE ON REACHABILITY: in AngularJS this function was correct and, through the
+ * interface, unreachable — the buttons wrote to an `ng-if` child scope it did
+ * not read. ADR-005 classifies the four dead controls as Supersede, so the
+ * React port wires the buttons straight to it (ADR-022).
  */
 export function filterDays(
   days: readonly ItineraryDay[],

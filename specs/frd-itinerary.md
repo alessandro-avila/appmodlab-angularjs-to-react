@@ -367,14 +367,20 @@ its output depends on what AngularJS has already rendered.
 >
 > **What deliberately did NOT change:**
 >
-> - **The status filter and Add Note are still dead** (**ADR-019**), against increment
->   plan §7.4, which expected React's lack of a scope chain to revive them. Reviving a
->   control because the framework stopped preventing it is an unauthorised behaviour
->   change. The React component models both scopes explicitly to keep them inert.
->   `@bypasses-ui` therefore stays at **3**, where §7.4 predicted 0.
-> - No trip shows a destination; the details heading ends with a dangling separator;
->   every row headline is blank. All three are `undefined` field bindings, all pinned by
->   the baseline, all reproduced.
+> - **The status filter and Add Note now WORK** (**ADR-005**, **ADR-022**), per increment plan §7.4.
+>   Both were inert in AngularJS because of `ng-if`/`ng-repeat` scope shadowing (P-2). ADR-005
+>   classifies "the four dead controls" as **Supersede** — defects ADR-001/002 already decided to fix
+>   — and rejects the Fix-Bugs path because they "are resolved by being reimplemented correctly".
+>   Two repairs travel with Add Note: the note is **credited by the server** to the authenticated
+>   caller (ADR-003 C-1), and it is **actually stored** (§7.4 row 23).
+>   `@bypasses-ui` reaches **zero** across the whole suite.
+>
+>   *(An earlier ADR-019 kept these controls inert. It is superseded by ADR-022: it reasoned from
+>   mechanism and missed ADR-005's authorisation. Contrast `flight:selected`, identical dead code,
+>   which stays dropped because no decision authorises it.)*
+> - No trip shows a destination; the details heading ends with a dangling separator; every row
+>   headline is blank. All three are `undefined` field bindings, all pinned by the baseline, all
+>   reproduced.
 > - Item costs render **ungrouped** (`$1250.00`) while trip totals render **grouped**
 >   (`$1,250.00`). SEAM-3 makes this reachable for the first time. Preserved.
 
