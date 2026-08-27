@@ -25,6 +25,14 @@ that gets date parsing right.
 - [ ] [Step 10](10-deliver-inc2-hotel-booking.md) merged and green
 - [ ] Booking a flight *and* booking a hotel both still refresh the itinerary — verify before you
       start, so you know which of the two breaks if one does
+- [ ] ⚠️ **SEAM-3 is unverified, and this increment owns the consumer.**
+      `POST /api/bookings/hotels` echoes the request and **creates no itinerary item**
+      (`api-mock/server.js:445-455`). Q-3 requires a booking to reach the itinerary. Find out what
+      the plan authorises before you build anything — this is a server-visible question, and
+      `api-mock/` has been out of scope since ADR-005.
+- [ ] ⚠️ **The suite is flaky (~0.5% per scenario ≈ two runs in three come back red).** Re-run
+      before concluding a failure is yours, and restart the servers first. See
+      [step 10](10-deliver-inc2-hotel-booking.md#-outcome).
 
 ---
 

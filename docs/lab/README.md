@@ -168,7 +168,7 @@ exists, and why you should read the output rather than clicking approve.
 | 07 | [Plan](07-plan.md) | P · Plan | Plan ✅ / Tech-Stack ✅ | ✅ Verified |
 | 08 | [Increment 0 — React shell](08-deliver-inc0-shell.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 09 | [Increment 1 — flight-search](09-deliver-inc1-flight-search.md) | 2 · Deliver | PR Review | ✅ Verified |
-| 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 12 | [Increment 4 — travel-request](12-deliver-inc4-travel-request.md) | 2 · Deliver | PR Review | ⏳ Pending |
 | 13 | [Increment 5 — expenses](13-deliver-inc5-expenses.md) | 2 · Deliver | PR Review | ⏳ Pending |
