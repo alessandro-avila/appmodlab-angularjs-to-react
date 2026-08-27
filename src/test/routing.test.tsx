@@ -26,9 +26,12 @@ function renderAt(path: string): ReactElement {
   ) as unknown as ReactElement;
 }
 
-const GUARDED = ['/dashboard', '/hotels', '/itinerary', '/travel-request', '/expenses'];
+const GUARDED = ['/dashboard', '/itinerary', '/travel-request', '/expenses'];
 /** Migrated routes render a real screen rather than a placeholder. */
-const GUARDED_MIGRATED = [{ path: '/flights', testId: 'flight-search' }];
+const GUARDED_MIGRATED = [
+  { path: '/flights', testId: 'flight-search' },
+  { path: '/hotels', testId: 'hotel-booking' },
+];
 
 describe('router guard — a stranger is sent to login (app/app.js:32-37)', () => {
   for (const path of [...GUARDED, ...GUARDED_MIGRATED.map((r) => r.path)]) {
@@ -95,9 +98,10 @@ describe('route tree — mirrors all seven UI-Router states', () => {
 
   it('the health route reports each ledger row against its current owner', () => {
     renderAt('/__shell');
-    // Increment 1 moved exactly one row.
+    // Increments 1 and 2 have each moved one row.
     expect(screen.getByTestId('ledger-owner-flights')).toHaveTextContent('react');
-    for (const state of ['login', 'dashboard', 'hotels', 'itinerary', 'travelRequest', 'expenses']) {
+    expect(screen.getByTestId('ledger-owner-hotels')).toHaveTextContent('react');
+    for (const state of ['login', 'dashboard', 'itinerary', 'travelRequest', 'expenses']) {
       expect(screen.getByTestId(`ledger-owner-${state}`)).toHaveTextContent('angularjs');
     }
   });

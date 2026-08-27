@@ -33,15 +33,22 @@ export interface FlightSearchScope {
   errorMessage: string;
 }
 
+/**
+ * Every migrated feature publishes its own scope shape. The harness reads
+ * whatever the route it is driving has published, exactly as
+ * `angular.element(...).scope()` returned whatever controller was on screen.
+ */
+export type PublishedScope = Record<string, unknown>;
+
 interface TestSeam {
-  scope: FlightSearchScope | null;
+  scope: PublishedScope | null;
   /**
    * Counts of announcements the app makes to the rest of the system. Replaces
    * `$rootScope.$broadcast` for the harness.
    *
-   * `itinerary:refresh` is announced on booking exactly as
-   * `flight-search.controller.js:221` does, and — exactly as in the legacy app
-   * — NOTHING CONSUMES IT. ADR-013 defers the consumer to Increment 3.
+   * `itinerary:refresh` is announced on booking exactly as the legacy
+   * controllers do, and — exactly as in the legacy app — NOTHING CONSUMES IT.
+   * ADR-013 defers the consumer to Increment 3.
    */
   events: Record<string, number>;
 }
@@ -59,7 +66,7 @@ function seam(): TestSeam | null {
   return w[SEAM_KEY] ?? null;
 }
 
-export function publishScope(scope: FlightSearchScope): void {
+export function publishScope(scope: PublishedScope): void {
   const s = seam();
   if (s) s.scope = scope;
 }

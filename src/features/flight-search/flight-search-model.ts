@@ -23,47 +23,24 @@ import type {
 
 /* ------------------------------------------------------------------ dates */
 
-/** What the user reads and types. */
-export const UI_DATE_FORMAT = 'MM/dd/yyyy';
-/** What a native <input type="date"> holds in `.value`. */
-export const INPUT_DATE_FORMAT = 'yyyy-MM-dd';
-/** What the API is sent — `moment(d).format('YYYY-MM-DD')` at controller:107. */
-export const API_DATE_FORMAT = 'yyyy-MM-dd';
-
 /**
- * ADR-009 (1): explicit parse at every input boundary.
- *
- * The legacy path was `new Date(dateText)` on a non-ISO "mm/dd/yy" string
- * (`controller:77`), which ECMA-262 leaves implementation-defined, and typed
- * values fell through to a format-less `moment(string)` that guessed.
+ * The date and money primitives moved to `src/lib/format.ts` in Increment 2, so
+ * hotel-booking uses the same implementations rather than a second copy. They
+ * are re-exported here because this module's public surface — and the tests
+ * that pin it — were established in Increment 1.
  */
-export function parseInputDate(value: string): Date | null {
-  if (value === '') return null;
-  const parsed = parse(value, INPUT_DATE_FORMAT, new Date());
-  return isValid(parsed) ? parsed : null;
-}
+export {
+  UI_DATE_FORMAT,
+  INPUT_DATE_FORMAT,
+  API_DATE_FORMAT,
+  parseInputDate,
+  parseUiDate,
+  toInputValue,
+  toApiValue,
+  addDays,
+} from '../../lib/format';
 
-export function parseUiDate(value: string): Date | null {
-  if (value === '') return null;
-  const parsed = parse(value, UI_DATE_FORMAT, new Date());
-  return isValid(parsed) ? parsed : null;
-}
-
-/** ADR-009 (2)+(3): explicit format out; an absent date renders as absent. */
-export function toInputValue(date: Date | null): string {
-  return date === null ? '' : format(date, INPUT_DATE_FORMAT);
-}
-
-export function toApiValue(date: Date | null): string | null {
-  return date === null ? null : format(date, API_DATE_FORMAT);
-}
-
-/** Adds whole days without moment's mutating `.add()`. */
-export function addDays(date: Date, days: number): Date {
-  const next = new Date(date.getTime());
-  next.setDate(next.getDate() + days);
-  return next;
-}
+import { addDays, formatMoneyPlain } from '../../lib/format';
 
 /* --------------------------------------------------------------- formatting */
 
@@ -112,19 +89,8 @@ export function formatShortDate(value: string | Date): string {
  * `flight-search.service.js:25`, but no template ever rendered it, so it is not
  * ported — it is dead code.)
  */
-const USD = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-  // Verified against the legacy output: `'$' + 1250` is "$1250", NOT "$1,250".
-  // This matters in practice — the details panel multiplies price by passenger
-  // count, so a 300 fare for 6 passengers renders a four-digit total.
-  useGrouping: false,
-});
-
 export function formatPrice(price: number): string {
-  return USD.format(price);
+  return formatMoneyPlain(price);
 }
 
 /* --------------------------------------------------------------- validation */

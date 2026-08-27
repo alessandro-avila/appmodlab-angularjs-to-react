@@ -315,6 +315,28 @@ class FlightSearchPage {
     return all.length ? all[all.length - 1].trim() : null;
   }
 
+  /**
+   * Wait for a notification containing `fragment`, then return it.
+   *
+   * Notifications arrive AFTER the request that triggers them settles, so
+   * sampling the list once is a race: it passes when the API is quick and fails
+   * when the suite is under load. This polls instead.
+   *
+   * It changes how the scenario OBSERVES, never what it asserts — the same
+   * class of change as re-pointing a selector (ADR-008 §5).
+   */
+  async waitForNotification(fragment, timeout = 15000) {
+    const deadline = Date.now() + timeout;
+    let seen = null;
+    while (Date.now() < deadline) {
+      const all = await this.notifications();
+      seen = all.length ? all[all.length - 1].trim() : null;
+      if (all.some((n) => n.includes(fragment))) return seen;
+      await this.page.waitForTimeout(150);
+    }
+    return seen;
+  }
+
   async emptyStateVisible() {
     return this.page.locator('text=No flights match your filters').isVisible().catch(() => false);
   }

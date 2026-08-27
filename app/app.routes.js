@@ -29,12 +29,6 @@
           template: '<div class="container"><h1>GlobalTravel Corp Portal</h1><ul><li><a ui-sref="flights">Search Flights</a></li><li><a ui-sref="hotels">Book Hotels</a></li><li><a ui-sref="itinerary">Manage Itinerary</a></li><li><a ui-sref="travelRequest">Submit Travel Request</a></li><li><a ui-sref="expenses">Expense Reconciliation</a></li></ul></div>',
           data: { requireAuth: true }
         })
-        .state('hotels', {
-          url: '/hotels',
-          templateUrl: 'components/hotel-booking/hotel-booking.template.html',
-          controller: 'HotelBookingController',
-          data: { requireAuth: true }
-        })
         .state('itinerary', {
           url: '/itinerary',
           templateUrl: 'components/itinerary/itinerary.template.html',

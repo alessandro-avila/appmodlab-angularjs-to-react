@@ -1,16 +1,12 @@
 /**
- * HOTEL BOOKING ROUTE — placeholder.
+ * HOTELS ROUTE — migrated to React in Increment 2.
  *
- * Mirrors the legacy `hotels` state (app/app.routes.js), which today loads
- * `components/...` via templateUrl and its AngularJS controller.
- *
- * Increment 0 migrates nothing. This route is replaced with the real screen in
- * **Inc-2**, at which point the ledger row for `/hotels` flips to
- * `owner: 'react'` and the front door stops proxying it to :8080.
+ * The ledger row for `/hotels` flips to `owner: 'react'` in the same increment,
+ * which stops the front door redirecting this path to `/#!/hotels`.
  */
 import type { ReactElement } from 'react';
-import { Placeholder } from './placeholder';
+import { HotelBooking } from '../features/hotel-booking/HotelBooking';
 
 export function Hotels(): ReactElement {
-  return <Placeholder path="/hotels" title="Hotel Booking" />;
+  return <HotelBooking />;
 }

@@ -1,8 +1,8 @@
 {
   "mode": "brownfield",
   "currentPhase": "2-increment-delivery",
-  "currentStep": "Increment 1 (flight-search) implemented; awaiting PR Review gate",
-  "status": "flight-search migrated to React. 236/236 baseline green, including the 4 modules still served by AngularJS. AngularJS flights state and component deleted after the React route went green.",
+  "currentStep": "Increment 2 (hotel-booking) implemented; awaiting PR Review gate",
+  "status": "hotel-booking migrated to React. 240/240 baseline green across all five modules. The room table renders for the first time; the AngularJS hotels state and component deleted after the React route went green.",
   "project": {
     "name": "globaltravel-portal",
     "version": "1.6.0",
@@ -1419,6 +1419,17 @@
           "G-3": "RISK-001 owner is @alessandro-avila, ownerNamed true. Risk remains OPEN, correctly: naming an owner does not close it."
         }
       }
+    },
+    "inc2PrReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-27T12:30:00+02:00",
+      "blocks": "Increment 3 — itinerary",
+      "openItems": [
+        "SUITE FLAKINESS at ~1% — three runs needed to show 240/240. Diagnosed as environment load, not logic, with the measurements to back it. Decide whether that is acceptable or whether the harness needs hardening before Inc-3.",
+        "the flight:selected pre-fill is now deferred indefinitely — it needs its own increment, Gherkin and ADR if still wanted",
+        "the three booking defects were CORRECTED under ADR-005 + Q-3 while the identical flight-search confirmation defect stays REPRODUCED — confirm the asymmetry is understood and intended",
+        "SEAM-3 is still unverified: the server creates no itinerary item from a hotel booking. Q-3 requires it. Inc-3 verifies the consumer."
+      ]
     }
   },
   "testabilityGateReview": {
@@ -1552,9 +1563,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-26T18:30:00+02:00",
+  "lastUpdated": "2026-08-27T12:30:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-26T18:30:00+02:00",
+  "updatedAt": "2026-08-27T12:30:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -1868,6 +1879,131 @@
         "navbar": "intact; Flights rewritten to href='/flights', a real path crossing to React",
         "retiredHashUrl": "#!/flights now falls back to #!/login via urlRouterProvider.otherwise('/login'), identical to any unknown state — consistent with authentication.feature:72"
       }
+    },
+    "inc-2": {
+      "name": "hotel-booking — the discovery increment",
+      "status": "implemented; awaiting PR Review gate",
+      "completedAt": "2026-08-27T12:30:00+02:00",
+      "step0Discovery": {
+        "required": "increment-plan §6.2 — a written finding list BEFORE any Gherkin",
+        "output": "specs/docs/architecture/hotel-booking-room-path.md",
+        "doneBeforeGherkin": true,
+        "findings": {
+          "roomShape": "five keys (type, price, available, beds, maxGuests) and NO id — the root cause of ngRepeat:dupes",
+          "roomKey": "type IS unique within a response, so it is the natural key for React list keys and the booking payload",
+          "soldOut": "available:0 reachable on 3 of 5 types — Presidential Suite 12/30 samples, Deluxe King 8/30, Executive Suite 6/30. The legacy template has NO available-conditional markup at all.",
+          "nanOrigin": "a HOTEL has pricePerNight; a ROOM has price. The controller read the hotel field off a room object. The two shapes sit next to each other in the same controller.",
+          "secondRoomShape": "hotels carry an embedded rooms array with three keys and different type names, overwritten by selectHotel() before the panel renders — never displayed",
+          "confirmation": "POST returns confirmationNumber; the controller read confirmationCode",
+          "noAddress": "hotels carry no address — feature:91 PRESERVED"
+        },
+        "netNewRangeClosed": {
+          "planned": "8-14",
+          "closed": 9
+        }
+      },
+      "gherkinDelta": {
+        "supersede": 4,
+        "preserve": 21,
+        "netNew": 5,
+        "before": 236,
+        "after": 240,
+        "writtenAfterDiscovery": true,
+        "superseded": {
+          ":51": "raw JS date string -> calendar date (ADR-009)",
+          ":167": "room table empty -> shows five rows (ADR-005, which names ngRepeat:dupes as a Supersede)",
+          ":177": "booking cannot be completed -> can be completed (ADR-005, Q-3)",
+          ":188": "priced at nothing / confirmed with nothing -> priced and confirmed (ADR-005, Q-3)"
+        },
+        "bypassesUi": {
+          "before": 4,
+          "after": 3,
+          "reason": "the :188 scenario no longer needs to drive the controller past an unrenderable table"
+        }
+      },
+      "theNaNQuestion": {
+        "asked": "the increment brief asked whether the assessment had already decided this",
+        "answer": "YES — increment-plan §6.5 scenario 24 (:188), authorised by ADR-005 and Q-3",
+        "quote": "the scenario exists ONLY because the table could not be used ... The three defects it documents are fixed as part of building a path that has never existed.",
+        "soDidNotAsk": true,
+        "threeDefectsFixed": [
+          "roomId was selectedRoom.id, and rooms carry no id -> now sends roomType (the field the server actually reads, server.js:449)",
+          "totalPrice read room.pricePerNight, which does not exist on a room -> now room.price, so 183 x 3 x 1 = 549 instead of NaN",
+          "the notification read confirmation.confirmationCode -> now confirmationNumber, so no more \"Confirmation: undefined\""
+        ],
+        "asymmetryWithFlightSearch": "flight-search REPRODUCES the identical confirmationCode mistake, deliberately. That path works and its scenario passes either way, so changing it would be unauthorised. This path has never been reachable at all. The asymmetry is the point, not an inconsistency."
+      },
+      "theFlightSelectedQuestion": {
+        "conflict": "the brief instructed restoring the pre-fill; increment-plan §6.5 and §6.8 require NO pre-fill mechanism and make hotel-booking.feature:209 an exit criterion",
+        "raisedWithUser": true,
+        "decision": "KEEP THE PLAN — no pre-fill mechanism at all; :209 stays PRESERVE and green; the pre-fill becomes its own later increment",
+        "implementation": "there is no flight:selected wiring anywhere in the React hotel-booking module; two unit tests assert the absence so it cannot be added by accident"
+      },
+      "bootstrapJs": {
+        "question": "the brief asked whether anything else in app/ still needs bootstrap.js",
+        "answer": "YES — it must stay",
+        "evidence": [
+          "app/components/travel-request/travel-request.controller.js:246 — $(#requestDetailModal).modal(show) — Inc-4",
+          "app/components/expense-reconciliation/expense.controller.js:223 — $(#expenseDetailModal).modal(show) — Inc-5"
+        ],
+        "conclusion": "app/index.html:62 keeps loading bootstrap.min.js until Inc-5 at the earliest. Finding D-6 says the same from the other side: Bootstrap 3 JS requires jQuery, so the two cannot be removed independently.",
+        "replacement": "the hotel confirmation modal is now src/components/modal.tsx (ADR-007 cat 2), state-driven"
+      },
+      "patternReuse": {
+        "instruction": "reuse what Increment 1 established rather than inventing a second way",
+        "extracted": "src/lib/format.ts — the date and money primitives moved out of flight-search-model.ts so BOTH features share one implementation. flight-search re-exports them so its Increment 1 public surface and tests are unchanged (69/69 still pass).",
+        "reused": [
+          "the API client",
+          "the test seam (made generic)",
+          "the pure-model + component split",
+          "the page-object re-point recipe",
+          "scrollIntoView with feature detection"
+        ],
+        "genuinelyDifferent": {
+          "currency": "hotel uses Angular $filter(currency) — two decimals AND grouping — while flight uses plain concatenation. Verified by running the real filter. Two formatters, one module.",
+          "dateRule": "hotel moves check-out whenever it is absent OR not after check-in; flight requires a PREVIOUS departure date first. Both pinned by their own scenarios."
+        }
+      },
+      "suiteStability": {
+        "finding": "the suite is FLAKY at roughly 1%, and this was found rather than glossed over",
+        "runs": [
+          {
+            "result": "238/240",
+            "failures": "itinerary container timeout; notification race — both in authentication.feature"
+          },
+          {
+            "result": "237/240",
+            "failures": "angular injector undefined; Enter Portal 30s timeout; expenses table timeout — all DIFFERENT scenarios"
+          },
+          {
+            "result": "240/240",
+            "failures": "none",
+            "note": "final run, with the race fix in"
+          }
+        ],
+        "diagnosis": "different failures each run, all timeouts on AngularJS page boots during an 18-minute run. authentication.feature alone passes 51/51. Front-door proxy MEASURED at 0.8x direct (faster, not the bottleneck); warm legacy loads ~10ms; browser contexts are closed correctly in the After hook. Consistent with environment load, not logic.",
+        "fixApplied": "one genuine latent race was found and fixed: the shared step \"I see a notification containing\" SAMPLED the notification list once, but notifications only arrive after the triggering request settles. It now polls. That changes how the scenario observes, never what it asserts.",
+        "raisedForGate": "a suite that needs three runs to show green is not the same as a green suite. Flagged."
+      },
+      "verification": {
+        "typecheck": "tsc --noEmit (TypeScript 7.0.2 strict) -> exit 0",
+        "lint": "oxlint --type-aware -> exit 0",
+        "unit": "npm test -> 11 files, 204 tests, all passed",
+        "build": "vite build -> exit 0",
+        "baseline": "240 scenarios, 240 passed; 1987 steps, 1987 passed; 17m51s",
+        "reactGreenBeforeDeletion": "29/29 hotel-booking scenarios green BEFORE the AngularJS state was removed (plan §2.3)",
+        "forbiddenLibraries": "zero imports of jquery, jquery-ui, moment, lodash or restangular in src/; no $rootScope; no \": any\", @ts-ignore, @ts-expect-error or @ts-nocheck"
+      },
+      "deleted": [
+        "app/components/hotel-booking/ (controller 281, service 79, template 256)",
+        "the 'hotels' state from app/app.routes.js",
+        "the two hotel-booking <script> tags from app/index.html"
+      ],
+      "notDeleted": {
+        "bower_components/ and bower.json": "untouched, per plan §6.8",
+        "bootstrap.min.js": "still required by travel-request and expense-reconciliation"
+      },
+      "navbarNote": "app/index.html's Hotels entry rewritten from ui-sref to href='/hotels' and KEPT until cutover."
     }
   }
 }

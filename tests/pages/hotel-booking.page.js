@@ -1,40 +1,29 @@
 /**
- * Page Object for the Hotel Booking screen of the legacy AngularJS portal.
+ * Page Object for the Hotel Booking screen.
  *
- * It follows the same two rules as the flight-search page object:
+ * RE-POINTED IN INCREMENT 2 from the AngularJS screen to the React route
+ * (ADR-008 §5, increment-plan §1.4), exactly as flight-search was in
+ * Increment 1. Three things changed and nothing else:
  *
- * 1. Dates go through the jQuery UI calendar, never through typing. The inputs
- *    are plain text fields upgraded by `$('#hotelCheckIn').datepicker(...)`, and
- *    a typed value never fires `onSelect`, so the Angular model would stay null
- *    while the field looked filled. The open calendar swallows pointer events
- *    (constraint C-2 in ADR-003), so it is dismissed with Escape afterwards.
+ * 1. THE URL — `/#!/hotels` becomes the real path `/hotels` on the front door.
  *
- * 2. Assertions read the DOM wherever the screen renders the value. The scope is
- *    read only for things the screen genuinely does not show — the loaded room
- *    list behind the empty table, the numeric slider values, and the `featured`
- *    flag used by the recommended ordering.
+ * 2. DATE ENTRY — the jQuery UI calendar is gone (ADR-007 cat 1), so dates are
+ *    set on native date inputs. Constraint C-2 disappears with it, so
+ *    `dismissDatePicker` is a no-op kept only so the step definitions do not
+ *    have to change.
  *
- * One method here deliberately breaks the "drive it like a user" rule:
- * `selectRoomByDrivingController`. It exists because the room table renders no
- * rows at all, so the booking path has no user-facing entry point. It is used by
- * exactly one scenario, which is tagged @bypasses-ui and says so in its name.
+ * 3. STATE READING — React publishes a scope-shaped snapshot at
+ *    `window.__flightSearch.scope` (see `src/lib/test-seam.ts`) carrying the
+ *    same property names the AngularJS scope did, so every `pick` the step
+ *    definitions already pass keeps working unchanged.
+ *
+ * ONE METHOD IS RETIRED: `selectRoomByDrivingController`. It existed only
+ * because the room table never rendered, so the booking path had no user-facing
+ * entry point and the single @bypasses-ui scenario had to reach past the
+ * interface. The table renders now, the room is selected the way a user selects
+ * it, and the tag is gone — taking the suite from 4 bypasses to 3.
  */
 const { BASE_URL } = require('../support/world');
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** Runs in the browser: find the hotel-booking scope from the container. */
-function scopeReader(pickSource) {
-  /* global angular, document */
-  let sc = angular.element(
-    document.querySelector('.hotel-booking-container') || document.body
-  ).scope();
-  while (sc && !sc.searchParams) sc = sc.$parent;
-  if (!sc) return null;
-  // eslint-disable-next-line no-new-func
-  return new Function('sc', 'return (' + pickSource + ')(sc);')(sc);
-}
 
 class HotelBookingPage {
   constructor(page) {
@@ -45,7 +34,6 @@ class HotelBookingPage {
     this.guests = page.locator('#guests');
     this.rooms = page.locator('#rooms');
     this.searchButton = page.getByRole('button', { name: /Search Hotels/i });
-    this.picker = page.locator('#ui-datepicker-div');
     this.error = page.locator('.alert-danger');
     this.nightLabel = page.locator('.label-info');
     this.filterPanel = page.locator('.col-md-3 .panel-default');
@@ -61,20 +49,28 @@ class HotelBookingPage {
   // ---------------------------------------------------------------- navigation
 
   async open() {
-    await this.page.goto(`${BASE_URL}/#!/hotels`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/hotels`, { waitUntil: 'domcontentloaded' });
     await this.searchButton.waitFor({ state: 'visible' });
-    // The datepickers are wired inside a $timeout(..., 0); wait for that.
+    // Wait for the React route to publish its state — the equivalent of the
+    // legacy wait for the datepickers wired inside a $timeout(..., 0).
     await this.page.waitForFunction(
-      () => !!(window.jQuery && window.jQuery('#hotelCheckIn').data('datepicker')),
+      () => !!(window.__flightSearch && window.__flightSearch.scope),
       null, { timeout: 15000 }
     );
   }
 
-  /** Read a value out of the hotel-booking scope. `pick` is a fn of the scope. */
+  /**
+   * Read a value out of the hotel-booking state. `pick` is a fn of the scope.
+   *
+   * The published snapshot carries the same property names the AngularJS scope
+   * did — searchParams, hotels, filteredHotels, selectedHotel, selectedRoom,
+   * filters, nightCount, isLoading, hasSearched — so every `pick` written
+   * against the legacy app keeps working unchanged.
+   */
   async readScope(pick) {
     return this.page.evaluate(
-      ({ src, pickSrc }) => new Function('pickSource', 'return (' + src + ')(pickSource);')(pickSrc),
-      { src: scopeReader.toString(), pickSrc: pick.toString() }
+      (pickSrc) => new Function('sc', 'return (' + pickSrc + ')(sc);')(window.__flightSearch.scope),
+      pick.toString()
     );
   }
 
@@ -93,55 +89,52 @@ class HotelBookingPage {
   }
 
   /**
-   * Pick a date through the calendar widget. `date` is 'mm/dd/yyyy'.
+   * Set a date. `date` is 'mm/dd/yyyy', the format the scenarios use.
    *
-   * The day is selected with a dispatched click for the same reason as on the
-   * flight page: once results are on screen the calendar can be overlapped by
-   * the cards above it. Dispatching keeps that from blocking scenarios that
-   * merely need a date set.
+   * A native date input holds `yyyy-mm-dd`, so the conversion happens here
+   * rather than in the step definitions.
    */
   async pickDate(field, date) {
     const [month, day, year] = date.split('/').map(Number);
-    await this.page.locator(`#${field}`).click();
-    await this.picker.waitFor({ state: 'visible' });
-
-    for (let hop = 0; hop < 48; hop++) {
-      const title = (await this.picker.locator('.ui-datepicker-title').innerText()).trim();
-      const [monthName, yearText] = title.split(/\s+/);
-      const shownMonth = MONTHS.indexOf(monthName) + 1;
-      const shownYear = Number(yearText);
-      if (shownMonth === month && shownYear === year) break;
-      const forward = year > shownYear || (year === shownYear && month > shownMonth);
-      await this.picker.locator(forward ? 'a.ui-datepicker-next' : 'a.ui-datepicker-prev').click();
-    }
-
-    await this.picker
-      .locator('td[data-handler="selectDay"] a')
-      .filter({ hasText: new RegExp(`^${day}$`) })
-      .dispatchEvent('click');
-    await this.dismissDatePicker();
+    const pad = (n) => String(n).padStart(2, '0');
+    const value = `${year}-${pad(month)}-${pad(day)}`;
+    await this.page.locator(`#${field}`).fill(value);
+    await this.page.waitForFunction(
+      ({ id, expected }) => {
+        const el = document.getElementById(id);
+        return !!el && el.value === expected;
+      },
+      { id: field, expected: value },
+      { timeout: 5000 }
+    );
   }
 
-  /** The open calendar intercepts clicks (C-2). Always close it before acting. */
+  /**
+   * Kept as a no-op so the step definitions do not change. The legacy jQuery UI
+   * calendar rendered inside the document and swallowed pointer events
+   * (constraint C-2); a native date input renders its calendar outside the
+   * document, so nothing needs dismissing.
+   */
   async dismissDatePicker() {
-    if (await this.picker.isVisible().catch(() => false)) {
-      await this.page.keyboard.press('Escape');
-      await this.picker.waitFor({ state: 'hidden' }).catch(() => {});
-    }
+    /* C-2 no longer exists — see the note above. */
   }
 
-  /** The literal text sitting in a date field, object string and all. */
+  /** The literal text sitting in a date field. */
   async dateFieldText(field) {
     return this.page.locator(`#${field}`).inputValue();
   }
 
-  /** The bound Date, normalised to 'mm/dd/yyyy', or null when unset. */
+  /**
+   * The chosen date as a JS date string, or null when unset.
+   *
+   * Reads the model rather than the field, because the scenarios that use this
+   * compare calendar dates rather than the rendered format.
+   */
   async dateFieldAsCalendarDate(which) {
-    const iso = await this.readScope(
+    return this.readScope(
       new Function('sc', `var d = sc.searchParams.${which};` +
         'return d ? new Date(d).toDateString() : null;')
     );
-    return iso;
   }
 
   async nightCount() {
@@ -155,13 +148,10 @@ class HotelBookingPage {
     await this.searchButton.click();
   }
 
-  /** Wait until the controller has finished a search. */
+  /** Wait until the React route has finished a search. */
   async waitForResults() {
     await this.page.waitForFunction(() => {
-      const el = document.querySelector('.hotel-booking-container');
-      if (!el) return false;
-      let sc = angular.element(el).scope();
-      while (sc && !sc.searchParams) sc = sc.$parent;
+      const sc = window.__flightSearch && window.__flightSearch.scope;
       return !!sc && sc.isLoading === false && sc.hasSearched === true;
     }, null, { timeout: 20000 });
   }
@@ -225,25 +215,32 @@ class HotelBookingPage {
 
   // ----------------------------------------------------------------- filters
 
-  /** Range inputs reject fill(); set the value and fire the events by hand. */
-  async setRange(labelFragment, value) {
-    await this.page.evaluate(({ labelFragment, value }) => {
-      const group = [...document.querySelectorAll('.col-md-3 .form-group')]
-        .find((g) => g.querySelector('label') &&
-          g.querySelector('label').textContent.includes(labelFragment));
-      const input = group.querySelector('input[type=range]');
-      input.value = String(value);
+  /**
+   * Range inputs reject fill(); set the value and fire the events by hand.
+   *
+   * Re-pointed in Increment 2: the ranges are now addressed by their own ids
+   * rather than by walking up to a `.form-group` wrapper. React tracks the DOM
+   * value internally, so the NATIVE value setter is used — assigning
+   * `input.value` directly leaves React seeing no change and skipping the
+   * re-render.
+   */
+  async setRange(inputId, value) {
+    await this.page.locator(`#${inputId}`).evaluate((input, v) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+      ).set;
+      setter.call(input, String(v));
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
-    }, { labelFragment, value });
+    }, value);
   }
 
   async setMinRating(value) {
-    await this.setRange('Min Rating', value);
+    await this.setRange('minRating', value);
   }
 
   async setMaxPrice(value) {
-    await this.setRange('Max Price', value);
+    await this.setRange('maxPrice', value);
   }
 
   async filters() {
@@ -288,9 +285,7 @@ class HotelBookingPage {
   async viewRoomsOf(index = 0) {
     await this.hotelCards.nth(index).getByRole('button', { name: /View Rooms/i }).click();
     await this.page.waitForFunction(() => {
-      const el = document.querySelector('.hotel-booking-container');
-      let sc = angular.element(el).scope();
-      while (sc && !sc.searchParams) sc = sc.$parent;
+      const sc = window.__flightSearch && window.__flightSearch.scope;
       return !!sc && sc.isLoading === false && !!sc.selectedHotel;
     }, null, { timeout: 20000 });
   }
@@ -313,17 +308,30 @@ class HotelBookingPage {
   }
 
   /**
-   * The only way to reach the booking code, because the table is empty.
-   * Used by the single @bypasses-ui scenario.
+   * Select a room the way a user does.
+   *
+   * Replaces `selectRoomByDrivingController`, which reached past the interface
+   * because the table never rendered.
    */
-  async selectRoomByDrivingController(index = 0) {
-    await this.page.evaluate((index) => {
-      const el = document.querySelector('.hotel-booking-container');
-      let sc = angular.element(el).scope();
-      while (sc && !sc.searchParams) sc = sc.$parent;
-      sc.$apply(() => sc.selectRoom(sc.selectedHotel.rooms[index]));
-    }, index);
+  async selectRoom(index = 0) {
+    await this.roomRows.nth(index).getByRole('button', { name: /Select/i }).click();
     await this.summaryPanel.waitFor({ state: 'visible' });
+  }
+
+  /** Select a room by its type, which is the only key the payload offers. */
+  async selectRoomByType(type) {
+    await this.page
+      .locator(`[data-testid="room-row"][data-room-type="${type}"]`)
+      .getByRole('button', { name: /Select/i })
+      .click();
+    await this.summaryPanel.waitFor({ state: 'visible' });
+  }
+
+  /** Rows whose room is sold out — discovery Q2. */
+  async unavailableRoomTypes() {
+    return this.page
+      .locator('[data-testid="room-row"][data-available="0"]')
+      .evaluateAll((rows) => rows.map((r) => r.getAttribute('data-room-type')));
   }
 
   /** The big total in the booking summary, exactly as rendered. */
@@ -334,9 +342,7 @@ class HotelBookingPage {
   async confirmBooking() {
     await this.summaryPanel.getByRole('button', { name: /Confirm Booking/i }).click();
     await this.page.waitForFunction(() => {
-      const el = document.querySelector('.hotel-booking-container');
-      let sc = angular.element(el).scope();
-      while (sc && !sc.searchParams) sc = sc.$parent;
+      const sc = window.__flightSearch && window.__flightSearch.scope;
       return !!sc && sc.isLoading === false;
     }, null, { timeout: 20000 });
     // Bootstrap fades the dialogue in after the promise settles; give it that

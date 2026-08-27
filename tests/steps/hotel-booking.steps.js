@@ -326,41 +326,108 @@ Then('five rooms have been loaded', async function () {
   }
 });
 
-Then('the room table shows no rows', async function () {
-  assert.strictEqual(await this.hotels.roomRows.count(), 0);
+// ---------------------------------------------------------------------------
+// The room table renders from Increment 2. The steps below replace the ones
+// that asserted its absence — see the Gherkin delta for the authorising ADRs.
+// ---------------------------------------------------------------------------
+
+Then('the room table shows five rows', async function () {
+  assert.strictEqual(await this.hotels.roomRows.count(), 5);
 });
 
-Then('the browser reports a duplicate-key error for the room list', async function () {
+Then('the browser reports no duplicate-key error for the room list', function () {
   const dupes = this.consoleErrors.filter((e) => e.includes('ngRepeat:dupes'));
-  assert.ok(dupes.length > 0,
-    `expected an ngRepeat:dupes error, saw: ${this.consoleErrors.join(' | ') || 'none'}`);
-  assert.ok(dupes.some((e) => e.includes('room%20in%20selectedHotel.rooms')),
-    'expected the duplicate-key error to name the room repeat');
+  assert.strictEqual(dupes.length, 0,
+    `expected no duplicate-key error, saw: ${dupes.join(' | ')}`);
 });
 
-Then('there is no room I can select', async function () {
-  assert.strictEqual(await this.hotels.page.locator('#hotel-rooms tbody tr button').count(), 0);
+Then('every room row shows a type, a nightly price, a bed description and a maximum guest count',
+  async function () {
+    const rows = await this.hotels.roomRows.evaluateAll((nodes) => nodes.map((n) => {
+      const cells = [...n.querySelectorAll('td')].map((c) => c.textContent.trim());
+      return { type: cells[0], price: cells[1], beds: cells[2], maxGuests: cells[3] };
+    }));
+    assert.ok(rows.length > 0, 'expected room rows');
+    rows.forEach((r, i) => {
+      assert.ok(r.type, `row ${i} has no room type`);
+      assert.ok(/^\$[\d,]+\.\d{2}$/.test(r.price), `row ${i} price reads "${r.price}"`);
+      assert.ok(r.beds, `row ${i} has no bed description`);
+      assert.ok(/^\d+$/.test(r.maxGuests), `row ${i} max guests reads "${r.maxGuests}"`);
+    });
+  });
+
+Given('I select the first room', async function () {
+  await this.hotels.selectRoom(0);
 });
 
-Then('no booking summary is offered', async function () {
-  assert.strictEqual(await this.hotels.summaryPanel.count(), 0);
+When('I select the room named {string}', async function (type) {
+  await this.hotels.selectRoomByType(type);
+});
+
+Then('a booking summary is offered', async function () {
+  assert.strictEqual(await this.hotels.summaryPanel.count(), 1);
+});
+
+Then('the booking summary shows a total for the stay', async function () {
+  const text = (await this.hotels.summaryTotalText()).trim();
+  assert.ok(/^\$[\d,]+\.\d{2}$/.test(text),
+    `expected a money total, the summary shows "${text}"`);
+});
+
+Then('the booking summary names the room {string}', async function (type) {
+  const text = (await this.hotels.summaryPanel.innerText()).replace(/\s+/g, ' ');
+  assert.ok(text.includes(type), `expected the summary to name "${type}", got "${text}"`);
+});
+
+Then("the booking summary total is that room's nightly price times the number of nights",
+  async function () {
+    const state = await this.hotels.readScope((sc) => ({
+      price: sc.selectedRoom.price,
+      nights: sc.nightCount,
+      rooms: sc.searchParams.rooms
+    }));
+    const expected = state.price * state.nights * state.rooms;
+    const shown = Number((await this.hotels.summaryTotalText()).replace(/[^0-9.]/g, ''));
+    assert.strictEqual(shown, expected,
+      `expected ${expected} (${state.price} x ${state.nights} x ${state.rooms}), summary shows ${shown}`);
+  });
+
+When('a room has no rooms left', async function () {
+  // Discovery Q2: available:0 is reachable on three of the five room types, so
+  // a run may legitimately see none. The scenario asserts the RULE, and skips
+  // asserting on a row that does not exist in this sample.
+  this.memory.soldOut = await this.hotels.unavailableRoomTypes();
+});
+
+Then('that room is marked as unavailable', async function () {
+  if (this.memory.soldOut.length === 0) {
+    this.attach('no sold-out room in this sample; rule asserted on the selectable rows instead',
+      'text/plain');
+    return;
+  }
+  const type = this.memory.soldOut[0];
+  const row = this.hotels.page.locator(`[data-testid="room-row"][data-room-type="${type}"]`);
+  assert.ok(await row.locator('[data-testid="room-unavailable"]').isVisible(),
+    `expected "${type}" to be marked unavailable`);
+});
+
+Then('that room cannot be selected', async function () {
+  if (this.memory.soldOut.length === 0) {
+    // Every room in this sample has availability, so assert the complement:
+    // nothing selectable is marked unavailable.
+    const marked = await this.hotels.page.locator('[data-testid="room-unavailable"]').count();
+    assert.strictEqual(marked, 0);
+    return;
+  }
+  const type = this.memory.soldOut[0];
+  const button = this.hotels.page
+    .locator(`[data-testid="room-row"][data-room-type="${type}"]`)
+    .getByRole('button', { name: /Select/i });
+  assert.strictEqual(await button.isDisabled(), true,
+    `expected the Select button for "${type}" to be disabled`);
 });
 
 // ------------------------------------------------------------------- booking
-
-Given('I select the first room by driving the controller directly', async function () {
-  await this.hotels.selectRoomByDrivingController(0);
-});
-
-Then('the booking summary shows no total price', async function () {
-  const text = (await this.hotels.summaryTotalText()).trim();
-  assert.strictEqual(text, '',
-    `expected an empty total, the summary shows "${text}"`);
-  // The number behind it is genuinely not a number.
-  const computed = await this.hotels.readScope((sc) =>
-    Number.isNaN(sc.selectedRoom.pricePerNight * sc.nightCount * sc.searchParams.rooms));
-  assert.strictEqual(computed, true, 'expected the computed total to be NaN');
-});
 
 When('I confirm the booking', async function () {
   await this.hotels.confirmBooking();
@@ -375,45 +442,62 @@ function bookingBody(world) {
   return JSON.parse(req.postData);
 }
 
-Then('the booking request carries no room identifier', function () {
+Then('the booking request identifies the room', async function () {
+  // CORRECTED under ADR-005 + Q-3. The legacy sent `roomId: room.id`, and rooms
+  // carry no id, so `undefined` went on the wire. `type` is the natural key.
   const body = bookingBody(this);
-  assert.ok(!('roomId' in body), `roomId was sent as ${JSON.stringify(body.roomId)}`);
-  assert.ok(!('roomType' in body), 'no room type is sent either');
+  const selected = await this.hotels.readScope((sc) => sc.selectedRoom.type);
+  assert.strictEqual(body.roomType, selected,
+    `expected the room type "${selected}" to identify the room, got ${JSON.stringify(body.roomType)}`);
 });
 
-Then('the booking request prices the stay as nothing', function () {
+Then('the booking request prices the stay', async function () {
+  // CORRECTED under ADR-005 + Q-3. The legacy read `room.pricePerNight`, which a
+  // ROOM does not have (a HOTEL does), so totalPrice was NaN and serialised null.
   const body = bookingBody(this);
-  assert.strictEqual(body.totalPrice, null,
-    'NaN is serialised as null, so the server is told the stay costs nothing');
+  const state = await this.hotels.readScope((sc) => ({
+    price: sc.selectedRoom.price, nights: sc.nightCount, rooms: sc.searchParams.rooms
+  }));
+  assert.strictEqual(typeof body.totalPrice, 'number', 'the total should be a number');
+  assert.ok(Number.isFinite(body.totalPrice), 'the total should be finite, not NaN');
+  assert.strictEqual(body.totalPrice, state.price * state.nights * state.rooms);
 });
 
 Then('the booking is accepted', async function () {
   const confirmation = await this.hotels.readScope((sc) =>
-    sc.bookingConfirmation ? {
-      status: sc.bookingConfirmation.status,
-      confirmationNumber: sc.bookingConfirmation.confirmationNumber,
-      confirmationCode: sc.bookingConfirmation.confirmationCode
-    } : null);
+    sc.bookingConfirmation ? { code: sc.bookingConfirmation.code } : null);
   assert.ok(confirmation, 'expected a confirmation from the server');
-  assert.strictEqual(confirmation.status, 'confirmed');
-  assert.ok(/^HT/.test(confirmation.confirmationNumber),
-    `expected a confirmation number, got ${confirmation.confirmationNumber}`);
-  assert.strictEqual(confirmation.confirmationCode, undefined,
-    'the field the screen reads is not the field the server sends');
+  assert.ok(/^HT/.test(confirmation.code),
+    `expected a confirmation number, got ${confirmation.code}`);
 });
 
 Then('the last notification reads {string}', async function (expected) {
   assert.strictEqual(await this.hotels.lastNotification(), expected);
 });
 
-Then('the confirmation dialogue shows neither a confirmation code nor a total',
-  async function () {
-    assert.strictEqual(await this.hotels.modalField('Confirmation Code:'), '');
-    assert.strictEqual(await this.hotels.modalField('Total:'), '');
-    // The dialogue is open — these blanks are on screen, not hidden.
-    const display = await this.hotels.modal.evaluate((el) => getComputedStyle(el).display);
-    assert.strictEqual(display, 'block');
+Then('the last notification reads {string} followed by a confirmation code',
+  async function (prefix) {
+    const text = await this.hotels.lastNotification();
+    assert.ok(text.startsWith(prefix), `expected "${text}" to start with "${prefix}"`);
+    assert.ok(!/undefined/.test(text),
+      `the confirmation should be a real code, got "${text}"`);
+    assert.ok(/HT[A-Z0-9]+/.test(text), `expected a confirmation code in "${text}"`);
   });
+
+Then('the confirmation dialogue shows a confirmation code and a total', async function () {
+  const code = await this.hotels.modalField('Confirmation:');
+  const total = await this.hotels.modalField('Total:');
+  assert.ok(code && !/undefined/.test(code), `expected a confirmation code, got "${code}"`);
+  assert.ok(/^\$[\d,]+\.\d{2}$/.test(total), `expected a money total, got "${total}"`);
+});
+
+When('I close the confirmation dialogue', async function () {
+  await this.hotels.modal.getByRole('button', { name: /^Close$/ }).click();
+});
+
+Then('the confirmation dialogue is no longer shown', async function () {
+  assert.strictEqual(await this.hotels.modal.count(), 0);
+});
 
 // ----------------------------------------------------------- cross-feature
 
@@ -445,4 +529,14 @@ Then('the destination city is empty', async function () {
 Then('no check-in date is set', async function () {
   assert.strictEqual(await this.hotels.dateFieldText('hotelCheckIn'), '');
   assert.strictEqual(await this.hotels.readScope((sc) => sc.searchParams.checkIn), null);
+});
+
+// SUPERSEDED date step (ADR-009): the legacy field rendered
+// Date.prototype.toString(); a native date input holds a calendar date.
+Then('the check-in field reads the calendar date {string}', async function (expected) {
+  const raw = await this.hotels.dateFieldText('hotelCheckIn');
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  const shown = m ? `${m[2]}/${m[3]}/${m[1]}` : raw;
+  assert.strictEqual(shown, expected,
+    `expected the check-in field to read ${expected}, got ${shown}`);
 });

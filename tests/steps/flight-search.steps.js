@@ -462,7 +462,10 @@ When('I book the selected flight', async function () {
 });
 
 Then('I see a notification containing {string}', async function (fragment) {
-  const notification = await this.flights.latestNotification();
+  // Polls rather than sampling once: a notification arrives after the request
+  // that triggers it settles, so a single read is a race that only shows up
+  // when the suite is under load. The assertion itself is unchanged.
+  const notification = await this.flights.waitForNotification(fragment);
   assert.ok(
     notification && notification.includes(fragment),
     `expected a notification containing "${fragment}", got "${notification}"`

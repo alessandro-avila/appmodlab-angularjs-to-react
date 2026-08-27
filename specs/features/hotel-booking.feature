@@ -48,11 +48,19 @@ Feature: Hotel booking
     Then the check-out date is "13 August 2026"
     And the stay is shown as "1 night(s)"
 
-  Scenario: A chosen date is displayed as a raw JavaScript date string
-    # The datepicker writes "08/12/2026", then Angular re-renders the bound Date
-    # object over it. The user is left looking at the object, timezone and all.
+  @inc-2
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-009 (explicit date parsing) — the same mechanism as
+  # flight-search:91, migrated in Increment 1.
+  #
+  # The legacy field was <input type="text"> with ng-model bound to a Date.
+  # AngularJS re-rendered the model over the text the datepicker had written, so
+  # the field displayed Date.prototype.toString(). Date entry is now a native
+  # date input parsed with an explicit format.
+  # ---------------------------------------------------------------------------
+  Scenario: A chosen date is displayed as a calendar date
     When I choose "12 August 2026" as the check-in date
-    Then the check-in field reads a date string starting "Wed Aug 12 2026"
+    Then the check-in field reads the calendar date "08/12/2026"
 
   Scenario: Choosing only a check-out date leaves the stay length unknown
     When I choose "10 August 2026" as the check-out date
@@ -164,72 +172,141 @@ Feature: Hotel booking
     When I view the rooms of the first hotel
     Then a room panel opens headed with that hotel's name
 
-  Scenario: The room table is empty even though rooms were loaded
-    # The API returns five rooms and the controller stores all five. The table
-    # repeats them "track by room.id", but the API sends no id, so every row has
-    # the same tracking key and AngularJS refuses to render the repeat.
+  @inc-2
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005, which names "ngRepeat:dupes blocking hotel booking"
+  # as a Supersede.
+  #
+  # The legacy table repeated `room in selectedHotel.rooms track by room.id`.
+  # The API sends no `id`, so all five track-keys were `undefined` — a
+  # duplicate-key set — and AngularJS refused to render the repeat. React keys
+  # the rows by a field that exists, so the table renders and no error occurs.
+  # The scenario inverts: five loaded, five shown, no error.
+  # ---------------------------------------------------------------------------
+  Scenario: The room table shows every room that was loaded
     Given I have searched for hotels in "Boston"
     When I view the rooms of the first hotel
     Then five rooms have been loaded
-    But the room table shows no rows
-    And the browser reports a duplicate-key error for the room list
+    And the room table shows five rows
+    And the browser reports no duplicate-key error for the room list
 
-  Scenario: A hotel booking cannot be completed through the interface
+  @inc-2
+  # NET-NEW. The columns have never been seen populated, because the table has
+  # never rendered. Shapes taken from the discovery document, Q1.
+  Scenario: Each room row shows its type, price, beds and maximum guests
     Given I have searched for hotels in "Boston"
     When I view the rooms of the first hotel
-    Then there is no room I can select
-    And no booking summary is offered
+    Then every room row shows a type, a nightly price, a bed description and a maximum guest count
 
+  @inc-2
   # ---------------------------------------------------------------------------
-  # Booking — reachable only by driving the controller directly
+  # SUPERSEDED by ADR-005 and Q-3 (a booking must persist and appear on the
+  # itinerary). The completion path becomes reachable for the first time.
   # ---------------------------------------------------------------------------
+  Scenario: A hotel booking can be completed through the interface
+    Given I have searched for hotels in "Boston"
+    When I view the rooms of the first hotel
+    And I select the first room
+    Then a booking summary is offered
+    And the booking summary shows a total for the stay
 
-  @bypasses-ui
-  Scenario: Driven directly, a booking is priced at nothing and confirmed with nothing
-    # The room table cannot be used, so this scenario selects a room through the
-    # controller to reach the code behind it. Three defects meet here: the nightly
-    # price is read from a field the API does not send, so the total is not a
-    # number; the confirmation code is read from a field the API does not send
-    # either; and the room identifier is never transmitted.
+  @inc-2
+  # NET-NEW. Selecting a room is behaviour that has never been reachable.
+  Scenario: Selecting a room updates the booking summary
     Given I have searched for hotels in "Boston"
     And I have viewed the rooms of the first hotel
-    And I select the first room by driving the controller directly
-    Then the booking summary shows no total price
+    When I select the room named "Standard Double"
+    Then the booking summary names the room "Standard Double"
+    And the booking summary total is that room's nightly price times the number of nights
+
+  @inc-2
+  # NET-NEW. Discovery Q2 found `available: 0` is reachable on three of the five
+  # room types — Presidential Suite 12/30 samples, Deluxe King 8/30, Executive
+  # Suite 6/30. The legacy template has no `available`-conditional markup at all,
+  # so this behaviour is defined here for the first time.
+  Scenario: A room with no availability cannot be selected
+    Given I have searched for hotels in "Boston"
+    And I have viewed the rooms of the first hotel
+    When a room has no rooms left
+    Then that room is marked as unavailable
+    And that room cannot be selected
+
+  # ---------------------------------------------------------------------------
+  # Booking — reachable through the interface for the first time
+  # ---------------------------------------------------------------------------
+
+  @inc-2
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 and Q-3, per increment plan §6.5 scenario 24:
+  #   "the scenario exists ONLY because the table could not be used. It is
+  #    rewritten as a UI scenario and @bypasses-ui is removed ... The three
+  #    defects it documents are fixed as part of building a path that has never
+  #    existed."
+  #
+  # @bypasses-ui is REMOVED — the suite goes from 4 bypasses to 3 — because the
+  # scenario no longer needs to drive the controller to reach the code behind an
+  # unrenderable table.
+  #
+  # The three defects, and what each becomes (discovery document Q3, Q4, Q5):
+  #   1. roomId was `selectedRoom.id`, and rooms carry no `id`, so `undefined`
+  #      was transmitted. `type` is unique within a response and is now sent.
+  #   2. totalPrice read `room.pricePerNight`, which does not exist on a room —
+  #      a HOTEL has `pricePerNight`, a ROOM has `price`. The total was NaN.
+  #   3. the notification read `confirmation.confirmationCode`; the payload
+  #      carries `confirmationNumber`, so it rendered the text "undefined".
+  # ---------------------------------------------------------------------------
+  Scenario: A completed booking is priced and confirmed
+    Given I have searched for hotels in "Boston"
+    And I have viewed the rooms of the first hotel
+    And I select the first room
     When I confirm the booking
-    Then the booking request carries no room identifier
-    And the booking request prices the stay as nothing
-    But the booking is accepted
-    And the last notification reads "Hotel booked! Confirmation: undefined"
-    And the confirmation dialogue shows neither a confirmation code nor a total
+    Then the booking request identifies the room
+    And the booking request prices the stay
+    And the booking is accepted
+    And the last notification reads "Hotel booked!" followed by a confirmation code
+    And the confirmation dialogue shows a confirmation code and a total
+
+  @inc-2
+  # NET-NEW. The confirmation dialogue was a Bootstrap 3 jQuery modal opened by
+  # $('#bookingConfirmationModal').modal('show'). It is now a React modal
+  # (ADR-007 category 2). No user has seen it, because the path to it never
+  # existed.
+  Scenario: The confirmation dialogue can be dismissed
+    Given I have searched for hotels in "Boston"
+    And I have viewed the rooms of the first hotel
+    And I select the first room
+    And I confirm the booking
+    When I close the confirmation dialogue
+    Then the confirmation dialogue is no longer shown
 
   # ---------------------------------------------------------------------------
   # Cross-feature coupling
   # ---------------------------------------------------------------------------
 
-  @deferred-to-inc-2
   Scenario: Selecting a flight does not carry the destination over to hotels
     # The hotel controller listens for a "flight:selected" event to pre-fill the
     # city and the dates. The two screens are separate routes, so the hotel
     # controller does not exist when the event is broadcast and is created fresh
     # afterwards. The pre-fill can never happen.
     #
-    # -- Increment 1 note -------------------------------------------------------
-    # After Inc-1, flight search is React and hotel booking is still AngularJS.
-    # ADR-005 rejected an in-page interop bridge, so this journey is DEFERRED and
-    # remains unserved until Increment 2 migrates hotel booking. No interop is
-    # built for it.
+    # -- Increment 2 note: PRESERVE, decided ------------------------------------
+    # Both modules are now React, so a store read COULD trivially make the
+    # pre-fill work. It is deliberately not built.
     #
-    # The outcome is unchanged and the assertions below are untouched: the
-    # legacy emitter is gone, and the AngularJS listener that survives is never
-    # reached — previously because the two controllers were never alive together,
-    # now because nothing broadcasts. The scenario therefore still PASSES, and it
-    # is tagged rather than dropped so the deferral is visible.
+    # This was raised at the start of Increment 2 because restoring the pre-fill
+    # was requested, and it contradicts increment-plan §6.5 and §6.8, which make
+    # this scenario an exit criterion:
+    #   "the React implementation must contain NO pre-fill mechanism at all ...
+    #    A React store that helpfully wires flight:selected to a hotel-search
+    #    pre-fill turns this scenario red and is an unauthorised behaviour
+    #    change."
+    # The decision taken was to KEEP THE PLAN: no pre-fill mechanism, this
+    # scenario stays PRESERVE and green, and the pre-fill becomes its own later
+    # increment with its own Gherkin and ADR (the route plan §2.4 describes).
     #
-    # ADR-013 maps `flight:selected` to NO store concern: it is deliberately
-    # dropped, not ported. Increment 2 must satisfy this scenario BY
-    # CONSTRUCTION — there is no pre-fill mechanism at all — rather than by
-    # accident. Making the pre-fill work would be an unauthorised behaviour
-    # change (increment-plan §2.4).
+    # ADR-013 maps `flight:selected` to NO store concern. Increment 2 satisfies
+    # this scenario BY CONSTRUCTION — there is no pre-fill mechanism to disable —
+    # and a unit test asserts the absence so it cannot be added by accident.
     # ---------------------------------------------------------------------------
     Given I have selected a flight to "Boston" on the flight search page
     When I go to the hotel booking page
