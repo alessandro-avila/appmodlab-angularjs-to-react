@@ -25,11 +25,13 @@ that gets date parsing right.
 - [ ] [Step 10](10-deliver-inc2-hotel-booking.md) merged and green
 - [ ] Booking a flight *and* booking a hotel both still refresh the itinerary — verify before you
       start, so you know which of the two breaks if one does
-- [ ] ⚠️ **SEAM-3 is unverified, and this increment owns the consumer.**
+- [ ] ⚠️ **SEAM-3 is unverified, and this increment owns the fix — on both sides.**
       `POST /api/bookings/hotels` echoes the request and **creates no itinerary item**
-      (`api-mock/server.js:445-455`). Q-3 requires a booking to reach the itinerary. Find out what
-      the plan authorises before you build anything — this is a server-visible question, and
-      `api-mock/` has been out of scope since ADR-005.
+      (`api-mock/server.js:445-455`), so a client-side subscription alone cannot satisfy Q-3.
+      **`api-mock/server.js` is in scope here**, and so is `specs/contracts/api/itinerary.yaml` —
+      ADR-005 says the server *"survives, **with three seam fixes**… unchanged **in structure**;
+      SEAM-3/4/5 fixed, Q-6/Q-7 enforced"*, and plan §7.3 names both files. It was untouched in
+      increments 0–2 because none of them needed it, not because it was fenced off.
 - [ ] ⚠️ **The suite is flaky (~0.5% per scenario ≈ two runs in three come back red).** Re-run
       before concluding a failure is yours, and restart the servers first. See
       [step 10](10-deliver-inc2-hotel-booking.md#-outcome).
@@ -58,9 +60,17 @@ specs/features/itinerary.feature is the spec, same constraints as before.
 Three things are specific to this module.
 
 itinerary:refresh has subscribers here and publishers in both already-migrated
-modules. Replace it with query invalidation rather than a store event — the
-booking mutation invalidates the itinerary query and the data reloads. Verify by
-hand that booking a flight and booking a hotel both still refresh this view.
+modules — and unlike flight:selected, this one is RESTORED rather than dropped,
+because Q-3 decided a booking must persist and appear on the itinerary and SEAM-3
+is marked defect-to-fix. The fix is mostly server-side: today the booking POST
+only echoes, so a client subscription or query invalidation on its own would
+refetch identical data and prove nothing. api-mock/server.js is in scope for this
+increment, and so is specs/contracts/api/itinerary.yaml — ADR-005 says the server
+"survives, with three seam fixes ... unchanged in structure; SEAM-3/4/5 fixed,
+Q-6/Q-7 enforced". Make a booking write an itinerary item, make Trip.totalCost
+server-derived per Q-6, update the contract, and supersede the scenarios that pin
+the current behaviour. Verify by hand that booking a flight and booking a hotel
+both refresh this view.
 
 printItinerary clones #itinerary-details into a new window with window.open. Do not
 reproduce that. Use a print stylesheet and window.print(), and if that changes what
@@ -72,7 +82,8 @@ in this codebase that parses dates correctly. Keep that correctness; do not
 accidentally make it as loose as everything else.
 
 Remove the AngularJS 'itinerary' state only after the React route is green, delete
-app/components/itinerary/ in the same commit.
+app/components/itinerary/ in the same commit. Do not touch travel-request or
+expense-reconciliation.
 
 This module has controls that do nothing today. React will make some of them work
 by accident — it has no scope chain, so an ng-model trapped in an ng-if child
