@@ -25,6 +25,15 @@ This is also where the first custom directive gets dissolved: `approval-status.d
 - [ ] `specs/features/travel-request.feature` green
 - [ ] You have looked at the six validation rules and decided, in advance, whether fail-fast
       survives — because the agent will not ask
+- [ ] ⚠️ **You inherit ADR-022.** The search box is one of ADR-005's *"four dead controls"*, so it
+      **works** in React — authorised, not accidental. Supersede the scenarios that pin it as inert;
+      no fresh decision is needed. See
+      [step 11](11-deliver-inc3-itinerary.md#%EF%B8%8F-the-reviewer-was-wrong-and-it-cost-a-rework).
+- [ ] ⚠️ **`signedInIdentity()` needs a React branch.** That step reads `$rootScope.currentUser` and
+      is shared with `authentication.feature`; once travel-request is React there is no `$rootScope`.
+- [ ] ⚠️ **Cache idempotent collections, never search results** (ADR-021). `GET /api/travel-requests`
+      returns a stable array and may be cached.
+- [ ] **Restart the mock API before the full run** — `BASELINE-ISOLATION`.
 
 ---
 
