@@ -64,9 +64,11 @@ Remove the AngularJS 'travelRequest' state only after the React route is green,
 delete app/components/travel-request/ and the directive in the same commit.
 
 The search box does nothing today — a TypeError escapes the digest, so typing has
-no effect. React will make it work by accident. That is a user-visible behaviour
-change: keep it inert if a baseline scenario pins it, and stop and ask if none
-does. Do not silently ship a working search box.
+no effect. In React it works. That is the AUTHORISED outcome: ADR-005 classifies
+the inert search among "the four dead controls" as SUPERSEDE, on the grounds that
+ADR-001/002 already decided to fix them and they are "resolved by being
+reimplemented correctly". So supersede the scenarios that pin it as dead, with the
+ADR named, rather than writing code to reproduce a TypeError.
 
 Paste the unit run, the full @existing-behavior suite across all five modules, and
 the build. Stop at the PR Review gate.
