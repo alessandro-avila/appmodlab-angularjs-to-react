@@ -23,6 +23,26 @@ wrong.
 > produced code. Run the line above **first**, before you read the step, or you will read the wrong
 > version of it.
 
+> [!WARNING]
+> **Then check you cut the branch from the right place.** `main` carries the *story* and has **no
+> `specs/` and no `src/`** — so a branch accidentally cut from `main` looks superficially fine and is
+> missing every artifact the step depends on.
+>
+> ```bash
+> git ls-tree -r --name-only HEAD -- specs/ src/ | Measure-Object -Line
+> ```
+>
+> Zero means you branched from `main`. Fix it before you start — while the branch has no unique
+> commits, it is a one-line reset:
+>
+> ```bash
+> git reset --hard lab/NN-previous-step
+> ```
+>
+> This has happened **twice** in this lab: once at `lab/03-testability-gate` and again at
+> `lab/11-deliver-inc3-itinerary`. Both times the agent caught it by noticing the artifacts were
+> missing — but it costs a whole exchange, and it is thirty seconds to check.
+
 ---
 
 ## 🧭 HOW TO USE THIS
