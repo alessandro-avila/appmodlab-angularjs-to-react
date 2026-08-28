@@ -31,6 +31,19 @@ After this, `app/` contains routing, three services, and nothing else worth keep
       mutating scenarios and extending the restore hook as part of this increment — it is the module
       the gap is about. See
       [step 09](09-deliver-inc1-flight-search.md#-new-finding--the-baseline-is-not-hermetic).
+- [ ] ⚠️ **You inherit ADR-022.** The date filter is one of ADR-005's *"four dead controls"*, so it
+      **works** in React — authorised, not accidental. Supersede the scenarios pinning it one-way.
+      Check the same clause for an **un-dismissable alert** in this module: ADR-005 names those in the
+      same sentence, and Increment 4 found one in travel-request.
+- [ ] **Reuse `useConfirm()` from `src/components/`** — Increment 4 built it and it is still blocking.
+      Do **not** invent a second confirmation mechanism; there are already two in the product.
+- [ ] **This module is the last `bootstrap.js` consumer** (`expense.controller.js:223`). Once its
+      modal is React, `app/index.html` can drop the script — verify rather than assume.
+- [ ] `app/directives/currency-input.directive.js` and `app/filters/currency.filter.js` both go with
+      this module. **Check for consumers first** — Increment 4 found `approval-status` had zero.
+- [ ] ⚠️ **Restart the front door after cutting the branch** and confirm `GET /` returns the
+      AngularJS index (~4 kB, contains `ng-app`). A stale Vite server answers while serving nothing
+      useful — it has happened three times.
 
 ---
 

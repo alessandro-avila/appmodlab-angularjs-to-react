@@ -175,6 +175,9 @@ specs/                            updated, not deleted
 - [ ] **Sign-out exists** — net-new behaviour, with its own scenarios, not a port
 - [ ] `app/`, `bower.json`, `.bowerrc`, `bower_components/`, `Gruntfile.js` all gone
 - [ ] **The front door's proxy leg is retired** — one origin, one document, one app (plan §10.2)
+- [ ] **Two confirmation mechanisms are reconciled.** Increment 4 gave travel-request a React
+      `useConfirm()`; the itinerary still uses the native `confirm()`, because its scenarios observe
+      the native dialog. Settle it here — either is fine, silence is not
 - [ ] ⚠️ **`npm run shell:preview` actually serves the app.** The front door is registered via
       `configureServer`, which is **dev-server only** — there is no `configurePreviewServer` and no
       `preview.proxy`. Nothing in the lab has ever proven the *production build* serves anything.
