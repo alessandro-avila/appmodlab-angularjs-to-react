@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
   "currentPhase": "2",
-  "currentStep": "inc-4 — awaiting PR Review gate",
+  "currentStep": "inc-5 — PR Review gate",
   "status": "awaiting-human-gate",
   "project": {
     "name": "globaltravel-portal",
@@ -1431,6 +1431,10 @@
     "inc4PrReview": {
       "status": "pending",
       "requestedAt": "2026-08-28T06:20:00+02:00"
+    },
+    "inc5PrReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-28T12:15:00+02:00"
     }
   },
   "testabilityGateReview": {
@@ -1564,9 +1568,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-28T06:20:00+02:00",
+  "lastUpdated": "2026-08-28T12:15:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-28T06:20:00+02:00",
+  "updatedAt": "2026-08-28T12:15:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -2161,6 +2165,80 @@
         "typecheck": "tsc --noEmit clean",
         "cucumber": "PENDING — clean re-run in progress",
         "flakiness": "One full run reported 248/249 with a 60s step TIMEOUT (not an assertion) and took 171 MINUTES against 18m33s for the identical suite earlier — ~9x. Diagnosed as environmental: services re-probed healthy (14-144 ms) and the affected feature then passed 49/49 in 3m51s."
+      }
+    },
+    "inc-5": {
+      "name": "expense-reconciliation — the last feature module",
+      "status": "implemented; awaiting PR Review gate",
+      "completedAt": "2026-08-28T12:15:00+02:00",
+      "branch": "lab/13-deliver-inc5-expenses",
+      "frontDoorCheck": "GET / returned the AngularJS index containing ng-app at 3792 bytes before the work, and 3457 bytes after the four <script> tags were deleted. Checked before every suite run, per standing instruction.",
+      "scopeQuestionsClosedAtGate": {
+        "currency-directive-and-filter": "Reading the directive's parser and formatter, as instructed, is what exposed that gt-currency-input and usdCurrency BOTH have zero consumers — no template in app/ ever used the attribute, no expression ever piped through the filter. Asked rather than assumed; answered DELETE, not port (Q-10, plan §13 item 9).",
+        "un-dismissable-alert": "Fourth instance of the same ADR-005 clause. Asked; approved, consistent with inc-4."
+      },
+      "dashboardAggregates": {
+        "pinnedToTheCent": [
+          "totals per status",
+          "report count",
+          "average",
+          "top category",
+          "current-month total"
+        ],
+        "average": "over ALL reports, not the filtered set — asserted directly in expense-model.test.ts"
+      },
+      "receiptUpload": "jQuery's hidden-input click replaced by a ref plus a controlled file input. Same button, same file name shown after selection.",
+      "currencyInput": "The directive's parser/formatter behaviour — partially typed number, paste, empty field — was read first and reproduced in the model rather than delegated to Intl.NumberFormat, which alone does not reproduce it.",
+      "submittedByFix": {
+        "found": "The port hardcoded submittedBy: 'Demo User', reproducing the OBSERVED value of controller:194 rather than its CONDITIONAL ($rootScope.currentUser ? .name : 'Demo User').",
+        "whyItHid": "Every scenario exercises the placeholder branch, because the suite signs in by planting a token and identity is never read back from it. api-mock Object.assign({defaults}, req.body) lets the client value win, so the wrong value would have persisted silently.",
+        "fixed": "Ported as the conditional, reading authStore. A unit test now pins the live-session branch."
+      },
+      "divergenceFromPlan": {
+        "where": "plan §9.3 row `:179` — \"After a reload my work is attributed to a placeholder\"",
+        "planExpected": "SUPERSEDE, on the grounds that \"Inc-0's identity rehydration means the report is filed by the real user\"",
+        "actual": "PRESERVED",
+        "why": "Increment 0 did not implement rehydration — auth-store.ts mirrors the legacy field (user: null, set only by live sign-in). And nothing authorises rehydrating it: ADR-003 logs C-1 as a \"defect CANDIDATE\", and ADR-005's supersede list names the four dead controls, ngRepeat:dupes, SEAM-3/4/5 and the alerts — not C-1. ADR-022's rule decides it: authorisation, not mechanism.",
+        "reportedAt": "PR Review gate — flagged, not silently actioned"
+      },
+      "harnessBugFoundFromInc4": {
+        "what": "tests/pages/auth.page.js restated the React path set and increment 4 forgot to add 'travel-request'.",
+        "consequence": "Two authentication scenarios (the travel-request rows of the :57 and :135 outlines) passed FOR THE WRONG REASON from inc-4 onward: the stale hash matched no UI-Router state, so otherwise('/login') produced the same redirect the guard was supposed to produce.",
+        "fix": "The set is now DERIVED from src/lib/route-ledger.ts, so it cannot drift again."
+      },
+      "stepOrderChange": {
+        "scenario": "authentication.feature — After a reload my work is attributed to a placeholder",
+        "change": "\"I am known to the portal as\" moved BEFORE the move to /expenses",
+        "why": "Signing in happens on the AngularJS login screen; under ADR-012 /expenses is a real path, so that move is a DOCUMENT boundary and in-memory identity is already gone on arrival. The baseline's #!/expenses was a same-document fragment. Assertions unchanged."
+      },
+      "gherkinDelta": {
+        "superseded": 7,
+        "netNew": 2,
+        "note": "6 expense + 1 authentication (:149, ADR-005 P-5)"
+      },
+      "deleted": [
+        "app/components/expense-reconciliation/ (controller, service, template)",
+        "app/directives/currency-input.directive.js (Q-10 — zero consumers)",
+        "app/filters/currency.filter.js (Q-10 — zero consumers)",
+        "the 'expenses' UI-Router state",
+        "four <script> tags at app/index.html",
+        "two orphaned $rootScope.$$listeners step definitions and the rootScope()/listenerCount() helpers"
+      ],
+      "guardrails": {
+        "bower.json": "untouched",
+        "Gruntfile.js": "untouched",
+        "bower_components/": "untouched",
+        "package.json": "unchanged — no dependency added",
+        "api-mock/": "untouched — git diff empty",
+        "test/": "untouched — git diff empty"
+      },
+      "verification": {
+        "typecheck": "tsc --noEmit clean",
+        "unit": "438 passed (18 files)",
+        "lint": "oxlint --type-aware src — clean",
+        "build": "vite build ✓ 3.34s",
+        "cucumber": "250/250 @existing-behavior across all five modules, 16m41s",
+        "authentication": "51/51"
       }
     }
   },
