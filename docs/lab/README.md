@@ -192,12 +192,23 @@ exists, and why you should read the output rather than clicking approve.
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 12 | [Increment 4 — travel-request](12-deliver-inc4-travel-request.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 13 | [Increment 5 — expenses](13-deliver-inc5-expenses.md) | 2 · Deliver | PR Review | ✅ Verified |
-| 14 | [Cutover](14-cutover.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 14 | [Cutover](14-cutover.md) | 2 · Deliver | PR Review | ✅ Verified |
 
 <sub>⏳ Pending = the doc has the prompt and the expected artifacts, but the **Outcome** section is
 waiting for a real run. ⚠️ Run recorded — gate open = the run happened and the outcome is written
 up, but the human gate has not been approved yet. ✅ Verified = the outcome is recorded from an
 actual execution on this repo and the gate passed.</sub>
+
+### 📎 Companion pages
+
+| Page | What it covers |
+|---|---|
+| [💰 What the migration cost](token-economics.md) | The real bill — **$1,174** — read from the CLI's usage ledger and priced against GitHub's published rates. Also explains why the raw "1.3 billion tokens" figure is throughput, not volume. |
+
+> **The lab is complete.** All fifteen steps ran end to end on this repository. The finished
+> application lives on `lab/final-solution`, AngularJS is fully removed, and [Step 14](14-cutover.md)
+> closes with four user-visible defects that 258 green scenarios could not see — three of which had
+> been shipping in the AngularJS original for years.
 
 ---
 

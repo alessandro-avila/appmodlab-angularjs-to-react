@@ -404,4 +404,81 @@ git branch lab/final-solution lab/14-cutover
 One commit, two names. `lab/final-solution` is where anyone who just wants the working React +
 TypeScript app should start; `main` plus the `lab/NN-*` branches are where the reasoning lives.
 
+---
+
+## 🔍 Post-cutover: four defects the green suite could not see
+
+With 258/258 green and AngularJS deleted, the application was walked screen by screen in a real
+browser. **Four user-visible defects turned up.**
+
+Three of them were **faithful reproductions of AngularJS behaviour**, verified against the legacy
+source before anything was touched:
+
+| | Defect | Legacy evidence |
+|---|---|---|
+| **D-1** | Every page heading clipped behind the navbar | `app/index.html` used `navbar-fixed-top`; `style.css` never set `body { padding-top }`. Measured underlap: **13px**. |
+| **D-2** | Notifications piled up and never left | `app.js:44-50` pushes onto `$rootScope.notifications` with **no `$timeout`** and no removal path. |
+| **D-3** | Booking a flight reported `Confirmation: undefined` | `controller:220` read `booking.confirmationCode`; the API returns `confirmationNumber`. |
+
+The fourth was **introduced by the migration**:
+
+| | Defect | Cause |
+|---|---|---|
+| **D-4** | The navbar username was illegible — **1.05:1** contrast | Increment 6 added the identity as a bare `<span>` in a navbar `<li>`. The ported stylesheet colours only `.navbar-brand` and `.navbar-nav > li > a`, so it matched nothing and inherited `#333` onto the `#1a237e` bar. WCAG AA needs 4.5:1. |
+
+### Why 258 green scenarios missed all four
+
+**Every assertion in the suite reads `innerText`. The text was correct in all four cases.**
+
+What was wrong was geometry (D-1), lifetime (D-2), a value that renders as the literal string
+`"undefined"` (D-3), and colour (D-4). The green baseline pinned *what the application says*. It
+never pinned *whether a human can read it*.
+
+D-3 is the sharpest illustration. `flight-search.feature:183` asserts only the message **prefix** —
+so the scenario passed against `undefined`, and would pass equally against a real code. **The bug
+survived six increments because the assertion stopped one token short.**
+
+### The decision
+
+Preserving legacy behaviour was the right default *during* the increments: it prevented
+unauthorised drift while nobody had reviewed the result. It stops being the right default once the
+cutover is done and a human has looked at the screen.
+
+All four were repaired under [ADR-024](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/14-cutover/specs/adrs/adr-024-presentation-defect-repairs.md),
+which is explicit that three were deliberate reproductions and that reversing them required
+authorisation.
+
+| | Before | After |
+|---|---|---|
+| D-1 | 13px **under** the navbar | 20px clearance |
+| D-2 | stayed forever | expires after 8s; click to dismiss |
+| D-3 | `Confirmation: undefined` | `Confirmation: GTEA6AQR448` |
+| D-4 | 1.05:1 | **8.20:1** — WCAG AA |
+
+### Two things worth stealing from the fix
+
+**The close button that wasn't added.** The obvious fix for D-2 is a `×` on each alert. It was
+rejected: `flight-search.page.js` reads `.notification-area .alert` with `allInnerTexts()`, and
+`the notification counts every flight that was found` compares the result using **strict equality**.
+A `×` glyph joins that string and breaks the assertion for reasons that have nothing to do with the
+behaviour under test. Auto-expiry and click-to-dismiss change **lifetime without adding a single
+character**, so every assertion still holds. *When a test pins text, fix the behaviour without
+touching the text.*
+
+**The test that had to change anyway.** D-3 could not be fixed that way — a unit test pinned the
+literal word `undefined`. That assertion was updated and **labelled as an approved contract
+change**, not quietly edited to make the code pass. The Gherkin scenario was deliberately left
+alone and recorded as `FOLLOW-1`: tightening an assertion is a separate decision from fixing a
+defect, and bundling them hides both.
+
+### Result
+
+`tsc` clean · `oxlint` clean · **459/459 unit** · **258/258 scenarios, 2460/2460 steps**
+
+Zero regressions — including from the one behaviour change that a test had pinned.
+
+> The lasting lesson: **a green suite proves the app says the right things, not that it works.**
+> Three of these four defects were older than the migration and had been shipping in AngularJS for
+> years. It took one person opening the app and looking at it to find all four in ten minutes.
+
 ← Back to [the walkthrough index](README.md)
