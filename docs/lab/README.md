@@ -191,7 +191,7 @@ exists, and why you should read the output rather than clicking approve.
 | 10 | [Increment 2 — hotel-booking](10-deliver-inc2-hotel-booking.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 11 | [Increment 3 — itinerary](11-deliver-inc3-itinerary.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 12 | [Increment 4 — travel-request](12-deliver-inc4-travel-request.md) | 2 · Deliver | PR Review | ✅ Verified |
-| 13 | [Increment 5 — expenses](13-deliver-inc5-expenses.md) | 2 · Deliver | PR Review | ⏳ Pending |
+| 13 | [Increment 5 — expenses](13-deliver-inc5-expenses.md) | 2 · Deliver | PR Review | ✅ Verified |
 | 14 | [Cutover](14-cutover.md) | 2 · Deliver | PR Review | ⏳ Pending |
 
 <sub>⏳ Pending = the doc has the prompt and the expected artifacts, but the **Outcome** section is

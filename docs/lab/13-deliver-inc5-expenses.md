@@ -1,7 +1,7 @@
 # Step 13 · Increment 5 — expense-reconciliation
 
 > **Phase** 2 · Deliver (increment 5) &nbsp;|&nbsp; **Branch** [`lab/13-deliver-inc5-expenses`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/13-deliver-inc5-expenses) &nbsp;|&nbsp; **Parent** `lab/12-deliver-inc4-travel-request`
-> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -147,15 +147,108 @@ Ground truth from `app/components/expense-reconciliation/expense.controller.js`:
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/12-deliver-inc4-travel-request..lab/13-deliver-inc5-expenses`
-> 2. Dashboard figures before and after, side by side — all six
-> 3. How the currency input behaves on partial input, paste, and clear
-> 4. How receipt upload works now
-> 5. **What is left under `app/`** and what still depends on it
-> 6. Unit run, full Playwright, build
+> ✅ **Verified** — branch [`lab/13-deliver-inc5-expenses`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/13-deliver-inc5-expenses) ·
+> [compare with `lab/12-deliver-inc4-travel-request`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/12-deliver-inc4-travel-request...lab/13-deliver-inc5-expenses)
+
+**All six feature areas are React. `app/components/` is empty.**
+
+| Check | Result |
+|---|---|
+| Full `@existing-behavior` suite | ✅ **250 scenarios · 2144 steps** |
+| Unit | ✅ 438 |
+| `tsc` · `oxlint src` · `vite build` | ✅ clean — 426 kB, 120 kB gzipped |
+| `api-mock/` · `test/` | ✅ untouched |
+
+### The third zero-consumer file — and the reading that found it
+
+The prompt said *"read the parser and formatter"*. Doing so is exactly what exposed that **neither
+`currency-input.directive.js` nor `currency.filter.js` has a single consumer**. No template in `app/`
+uses **any** `gt-` directive; the amount field is a plain `<input type="number">`; and the screen's
+money goes through Angular's **built-in** `currency` filter via `formatCurrency()`.
+
+The subtle part it got right: the custom filter registers as **`usdCurrency`**, not `currency`. Had
+it registered as `currency` it would have **shadowed the built-in** — and every `| currency` in the
+app would silently have been running it, making it heavily used rather than dead.
+
+That is the third dead abstraction (`gtDateFormat` makes four): **`approval-status`,
+`currency-input`, `usdCurrency`, `gtDateFormat` — all built to solve problems nobody had.**
+
+> Porting them would ship behaviour the app has never executed: no baseline, no scenario, no
+> authorisation. §13 item 9 — *"Do not replace a dependency nothing used."*
+
+### A bug the baseline could not have caught
+
+Its port hardcoded `submittedBy: 'Demo User'` — the **observed value** of `controller:194`, not its
+**conditional**.
+
+Every scenario exercises the placeholder branch, because the suite signs in by planting a token and
+identity is never read back. So the hardcode was **indistinguishable from correct across all 250
+scenarios**, while being wrong for a live session. And the mock does
+`Object.assign({defaults}, req.body)`, so the client's value wins and would have persisted.
+
+Now ported as the conditional it is, with a unit test pinning the other branch.
+
+> A green suite proves the scenarios pass. It does not prove the code is right — only that nothing
+> written down disagrees with it. This is what "the baseline is a reference, not a contract" means in
+> practice.
+
+### It found a harness bug Increment 4 left behind
+
+`auth.page.js` **restated** the React path set, and Increment 4 forgot to add `travel-request`. Its
+authentication scenarios kept addressing `/#!/travel-request` — a hash with no UI-Router state — so
+`otherwise('/login')` produced **exactly the redirect the guard was supposed to produce**.
+
+Two scenarios green, both meaningless, for a whole increment.
+
+The fix is the right shape: the set is now **derived from `route-ledger.ts`** rather than restated,
+so it cannot drift again. One source of truth, mechanically read.
+
+### ⚠️ The C-1 divergence — right action, wrong reason
+
+Plan §9.3 says supersede `authentication.feature:179`, on the grounds that *"Inc-0's identity
+rehydration means the report is filed by the real user."* The agent found no rehydration exists,
+concluded **nothing authorises the repair**, and preserved the scenario.
+
+**Preserving was correct. The reason was not.** ADR-010:80 explicitly authorises it:
+
+> *"Inc-0 takes the plumbing: the token store…, identity **rehydration via `GET /api/auth/me` (the
+> C-1 repair)** and the 401 handling path."*
+
+So the true position is sharper than either document says:
+
+| | |
+|---|---|
+| **Authorised?** | Yes — ADR-010, restated in plan §10.2 |
+| **Scheduled for?** | Increment **0** |
+| **Built?** | **No** — `auth/me` is never called outside tests |
+| **Where did it go?** | `auth-store.ts:37` reschedules it to Inc-6 — **in a code comment, with no ADR** |
+
+The repair was authorised, scheduled, **silently deferred in a comment**, and then nearly written off
+as unauthorised two increments later. Had that reasoning stood, cutover would have shipped C-1
+permanently and the plan's own supersede would have been quietly dropped.
+
+**`:179` stays preserved — but Increment 6 owes the repair and the supersede.** Added to
+[step 14](14-cutover.md)'s checklist.
+
+> A decision deferred in a code comment is not deferred, it is lost. This one survived only because
+> a later increment tripped over its absence.
+
+### The cutover inventory
+
+Eight files left under `app/`, and only **three** of nine bower libraries are still referenced:
+
+| File | Depended on by |
+|---|---|
+| `index.html`, `app.js`, `app.routes.js` | the front door — still serves `/` and `/dashboard` |
+| `services/auth.service.js` | **live** — the `$stateChangeStart` guard and login |
+| `assets/css/style.css` | both stacks |
+| `services/api.service.js` · `services/user.service.js` · `filters/date-format.filter.js` | **zero consumers** |
+
+**jQuery, jQuery UI, Lodash, ui-bootstrap and bootstrap.js now have zero code references.** Moment
+survives only inside the unused date filter. Bootstrap's *CSS* is still live.
+
+And `app.js:14` still hardcodes `http://localhost:3000/api` — the Increment 0 finding — now feeding
+only dead code.
 
 ---
 
