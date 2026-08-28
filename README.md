@@ -2,6 +2,17 @@
 
 ![Workflow](assets/migrate-modernize-evolve.png)
 
+> ## ✅ You are on `lab/final-solution` — the finished application
+>
+> AngularJS has been removed. This branch is the completed **React 19 + TypeScript** app.
+>
+> **👉 Read [WRAP-UP.md](WRAP-UP.md)** for what was built, what changed, and what is known.
+>
+> **Run it:** `npm install && npm start` → **http://localhost:5173**
+> Sign in with `demo@globaltravel.com` / `password`.
+>
+> Everything below describes the *lab that produced this*. It is kept for context.
+
 ---
 
 ## 🎯 MISSION

@@ -151,17 +151,114 @@ specs/                            updated, not deleted
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/13-deliver-inc5-expenses..lab/14-cutover` — expect a large
->    negative number, and note what `bower_components/` alone accounted for
-> 2. The `package.json` diff
-> 3. Full build, full unit suite, full Playwright
-> 4. **Anything referenced only from `app/index.html`** that had to be rescued
-> 5. Whether every FRD's Current Implementation was actually rewritten, or just tagged
-> 6. Manual pass: login + all five features
-> 7. What broke that the tests did not catch
+> ✅ **Verified** — branch [`lab/14-cutover`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/14-cutover) ·
+> [compare with `lab/13-deliver-inc5-expenses`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/13-deliver-inc5-expenses...lab/14-cutover)
+
+**AngularJS is gone. `app/`, `bower_components/`, `bower.json`, `.bowerrc` and `Gruntfile.js` are
+all zero files on this branch.**
+
+| Check | Result |
+|---|---|
+| Full suite, **before** any deletion | ✅ **258 scenarios · 2460 steps · 11m31s** |
+| Full suite, **after** the decommission | ✅ **258 · 2460 · 11m27s** |
+| Unit | ✅ 459 |
+| `tsc` · `oxlint` · `vite build` | ✅ clean — 504 modules, 428 kB (120 kB gzipped) |
+| Manual pass | ✅ login + refusal, C-1 reload, all five features, hash landing, sign-out |
+| Skip-detection · `@bypasses-ui` · `@existing-behavior` | ✅ clean · 0 · retained on all six files |
+
+**975 files, 384,709 lines deleted.**
+
+### The order was the safety net
+
+Surface first, **prove green, then delete.** That 258/258 ran with every legacy file still on disk —
+so a failure at that moment was still **one ledger-row edit** from rollback. Deleting first would
+have thrown that away for nothing.
+
+### The check that earned its place
+
+This page's checklist said: *"`app/index.html` may be loading things the module graph does not
+mention."* It was.
+
+```html
+<link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="/assets/css/style.css" />
+```
+
+**Two stylesheets reaching the browser through the front-door proxy, neither in the module graph.**
+Deleting on the import graph alone would have stripped both from a running app — and quietly, because
+`style.css` carries four `text-transform: uppercase` rules. The first symptom was scenarios failing
+on `'Create Your First Report'` where the baseline pins `'CREATE YOUR FIRST REPORT'`.
+
+Chasing it exposed something bigger, hidden for the entire migration: at build time Vite resolved
+`/bower_components/…` from disk but `/assets/css/style.css` resolved to **nothing**. **Dev and
+production had disagreed about styling since Increment 0**, and only Q-12 — nothing is deployed —
+kept it invisible. `dist-react/` is self-contained for the first time.
+
+> An import graph tells you what the *bundler* needs. It does not tell you what the *browser* was
+> being handed. When the thing you are deleting is also the thing serving your assets, ask the
+> running server, not the module graph.
+
+### Deleted with evidence, not by inference
+
+| Removed | Size | The evidence |
+|---|---:|---|
+| `app/` | 8 files | No ledger row is `angularjs`; the front door has no `:8080` leg; nothing outside `app/` imports it |
+| `bower_components/` | **964 files** | Only `app/index.html` and `Gruntfile.js` referenced it. React's **entire** external import graph is `react`, `react-dom/client`, `react-router`, `date-fns`, `zod`, `zustand` |
+| `bower.json` · `.bowerrc` | 692 B | Their sole function is populating the above |
+| `Gruntfile.js` + 7 grunt deps | 3 kB | Invoked only by `npm run serve`/`build`, both rewired |
+| `dist/` | 931 files | Grunt output — untracked, gitignored |
+
+**The Karma config and specs were already gone** — deleted in `2b2bdfa` during Increment 1 with the
+19 → 68 mapping. It confirmed rather than assumed, which is the whole habit.
+
+### The guard was repaired without being changed
+
+`isAuthenticated()` is still `!!localStorage.getItem('authToken')` — character for character. What
+changed is that `restoreSession()` now calls `GET /api/auth/me` on boot, so a **rejected token is
+gone before the predicate runs**.
+
+A presence check became a validity check by gaining a *fact*, not a branch. That is the C-1 repair
+that ADR-010 authorised, Increment 0 silently deferred in a code comment, and Increment 5 nearly
+wrote off as unauthorised — landing here, in the increment that always owned it.
+
+### Both pending decisions resolved as PRESERVE
+
+**Sign-out went in the navbar**, not the dashboard — the navbar is the only chrome all six screens
+share, so on the dashboard the control would be unreachable from the five feature screens. That
+settles *"the dashboard carries no controls at all"* as PRESERVE. And it renders **only when
+authenticated**, which is what keeps *"the navigation bar offers no way to sign out"* preserved for a
+stranger while all six rows of the sign-out outline supersede for a signed-in user.
+
+`/login` stays reachable when signed in — nothing authorises changing it, and two scenarios depend on
+it.
+
+Gherkin delta: **13 superseded, 9 net-new**, each naming its ADR.
+
+### Three bugs of its own, and one it found by reading
+
+`TravelRequest.tsx` hardcoded `travelerName` instead of porting the conditional — **the same class as
+Increment 5's `submittedBy` bug**, and invisible until C-1 was repaired. The test seam was created
+lazily by feature routes, so `identity()` did not exist on `/dashboard`. And its React navbar said
+*"Travel Request"* where the legacy says **"Travel Requests"** — caught by reading the legacy source,
+not by a failing test.
+
+That the same bug class appeared twice, two increments apart, is the useful part: **a conditional
+ported as its usual answer is invisible to a suite that only ever exercises one branch.**
+
+### The seam held
+
+`api-mock/server.js` is **byte-identical to the day the baseline was captured**, apart from the three
+authorised seam fixes. And **14 API-only scenarios were never re-pointed and never edited** across
+six increments — the cleanest evidence available that the HTTP API really was the stable boundary
+ADR-005 claimed it was.
+
+### Still open, deliberately
+
+JWT in `localStorage` (**RISK-001**, accepted, owner `@alessandro-avila`, still `OPEN`) · SEAM-4,
+submitted reports stored as drafts · `window.confirm` on the itinerary where two other screens use
+the React dialog · Bootstrap 3 now vendored source rather than a managed dependency.
+
+None is a surprise. All four are written down, owned, and dated.
 
 ---
 
@@ -306,5 +403,82 @@ git branch lab/final-solution lab/14-cutover
 
 One commit, two names. `lab/final-solution` is where anyone who just wants the working React +
 TypeScript app should start; `main` plus the `lab/NN-*` branches are where the reasoning lives.
+
+---
+
+## 🔍 Post-cutover: four defects the green suite could not see
+
+With 258/258 green and AngularJS deleted, the application was walked screen by screen in a real
+browser. **Four user-visible defects turned up.**
+
+Three of them were **faithful reproductions of AngularJS behaviour**, verified against the legacy
+source before anything was touched:
+
+| | Defect | Legacy evidence |
+|---|---|---|
+| **D-1** | Every page heading clipped behind the navbar | `app/index.html` used `navbar-fixed-top`; `style.css` never set `body { padding-top }`. Measured underlap: **13px**. |
+| **D-2** | Notifications piled up and never left | `app.js:44-50` pushes onto `$rootScope.notifications` with **no `$timeout`** and no removal path. |
+| **D-3** | Booking a flight reported `Confirmation: undefined` | `controller:220` read `booking.confirmationCode`; the API returns `confirmationNumber`. |
+
+The fourth was **introduced by the migration**:
+
+| | Defect | Cause |
+|---|---|---|
+| **D-4** | The navbar username was illegible — **1.05:1** contrast | Increment 6 added the identity as a bare `<span>` in a navbar `<li>`. The ported stylesheet colours only `.navbar-brand` and `.navbar-nav > li > a`, so it matched nothing and inherited `#333` onto the `#1a237e` bar. WCAG AA needs 4.5:1. |
+
+### Why 258 green scenarios missed all four
+
+**Every assertion in the suite reads `innerText`. The text was correct in all four cases.**
+
+What was wrong was geometry (D-1), lifetime (D-2), a value that renders as the literal string
+`"undefined"` (D-3), and colour (D-4). The green baseline pinned *what the application says*. It
+never pinned *whether a human can read it*.
+
+D-3 is the sharpest illustration. `flight-search.feature:183` asserts only the message **prefix** —
+so the scenario passed against `undefined`, and would pass equally against a real code. **The bug
+survived six increments because the assertion stopped one token short.**
+
+### The decision
+
+Preserving legacy behaviour was the right default *during* the increments: it prevented
+unauthorised drift while nobody had reviewed the result. It stops being the right default once the
+cutover is done and a human has looked at the screen.
+
+All four were repaired under [ADR-024](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/14-cutover/specs/adrs/adr-024-presentation-defect-repairs.md),
+which is explicit that three were deliberate reproductions and that reversing them required
+authorisation.
+
+| | Before | After |
+|---|---|---|
+| D-1 | 13px **under** the navbar | 20px clearance |
+| D-2 | stayed forever | expires after 8s; click to dismiss |
+| D-3 | `Confirmation: undefined` | `Confirmation: GTEA6AQR448` |
+| D-4 | 1.05:1 | **8.20:1** — WCAG AA |
+
+### Two things worth stealing from the fix
+
+**The close button that wasn't added.** The obvious fix for D-2 is a `×` on each alert. It was
+rejected: `flight-search.page.js` reads `.notification-area .alert` with `allInnerTexts()`, and
+`the notification counts every flight that was found` compares the result using **strict equality**.
+A `×` glyph joins that string and breaks the assertion for reasons that have nothing to do with the
+behaviour under test. Auto-expiry and click-to-dismiss change **lifetime without adding a single
+character**, so every assertion still holds. *When a test pins text, fix the behaviour without
+touching the text.*
+
+**The test that had to change anyway.** D-3 could not be fixed that way — a unit test pinned the
+literal word `undefined`. That assertion was updated and **labelled as an approved contract
+change**, not quietly edited to make the code pass. The Gherkin scenario was deliberately left
+alone and recorded as `FOLLOW-1`: tightening an assertion is a separate decision from fixing a
+defect, and bundling them hides both.
+
+### Result
+
+`tsc` clean · `oxlint` clean · **459/459 unit** · **258/258 scenarios, 2460/2460 steps**
+
+Zero regressions — including from the one behaviour change that a test had pinned.
+
+> The lasting lesson: **a green suite proves the app says the right things, not that it works.**
+> Three of these four defects were older than the migration and had been shipping in AngularJS for
+> years. It took one person opening the app and looking at it to find all four in ten minutes.
 
 ← Back to [the walkthrough index](README.md)
