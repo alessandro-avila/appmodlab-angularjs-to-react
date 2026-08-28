@@ -359,6 +359,10 @@ The container is **multi-architecture** - it is built from `linux/amd64` **and**
 
 ## 🏃 RUNNING THE LEGACY APP
 
+> ▶️ Want the **finished React app** instead, or both side by side?
+> See **[Running the apps](docs/lab/running-the-apps.md)** for commands, ports and credentials
+> for the AngularJS original *and* the React rewrite.
+
 ```bash
 npm start           # mock API (:3000) + web app (:8080) together  ← use this
 npm run api         # mock API only

@@ -203,6 +203,7 @@ actual execution on this repo and the gate passed.</sub>
 
 | Page | What it covers |
 |---|---|
+| [▶️ Running the apps](running-the-apps.md) | How to start and test **both** the AngularJS original and the React rewrite — commands, ports, credentials, and a five-minute walkthrough. |
 | [💰 What the migration cost](token-economics.md) | The real bill — **$1,174** — read from the CLI's usage ledger and priced against GitHub's published rates. Also explains why the raw "1.3 billion tokens" figure is throughput, not volume. |
 
 > **The lab is complete.** All fifteen steps ran end to end on this repository. The finished
