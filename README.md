@@ -132,6 +132,14 @@ Everything above is the map. **[`docs/lab/`](docs/lab/README.md) is the route** 
 step, each with the prompt we actually used, the artifacts it produced, the gate checklist, and
 what went wrong.
 
+> ✅ **The lab has been run end to end.** All fifteen steps are recorded from real executions on
+> this repository. The finished React 19 + TypeScript application is on
+> **[`lab/final-solution`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/final-solution/WRAP-UP.md)**.
+>
+> Companion pages: [Running the apps](docs/lab/running-the-apps.md) ·
+> [Is this really React?](docs/lab/code-tour.md) ·
+> [What it cost](docs/lab/token-economics.md)
+
 | # | Step | Phase | Branch |
 |---|------|-------|--------|
 | 00 | [spec2cloud init](docs/lab/00-spec2cloud-init.md) | B0 · Onboarding | `lab/00-spec2cloud-init` |

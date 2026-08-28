@@ -204,12 +204,55 @@ actual execution on this repo and the gate passed.</sub>
 | Page | What it covers |
 |---|---|
 | [▶️ Running the apps](running-the-apps.md) | How to start and test **both** the AngularJS original and the React rewrite — commands, ports, credentials, and a five-minute walkthrough. |
+| [🔬 Is this really React?](code-tour.md) | A code tour that proves the AngularJS is gone — console checks, the route ledger, an old-pattern → new-pattern map, and the grep traps that will mislead you. |
 | [💰 What the migration cost](token-economics.md) | The real bill — **$1,174** — read from the CLI's usage ledger and priced against GitHub's published rates. Also explains why the raw "1.3 billion tokens" figure is throughput, not volume. |
 
-> **The lab is complete.** All fifteen steps ran end to end on this repository. The finished
-> application lives on `lab/final-solution`, AngularJS is fully removed, and [Step 14](14-cutover.md)
-> closes with four user-visible defects that 258 green scenarios could not see — three of which had
-> been shipping in the AngularJS original for years.
+---
+
+## 🏁 HOW IT ENDED
+
+**All fifteen steps ran end to end on this repository.** The finished application is on
+[`lab/final-solution`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/final-solution)
+— start with its [WRAP-UP.md](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/final-solution/WRAP-UP.md).
+
+| | Before | After |
+|---|---|---|
+| Framework | AngularJS 1.6 (EOL Jan 2022) | **React 19** |
+| Language | JavaScript, untyped | **TypeScript**, strict |
+| Build | Grunt + Bower | **Vite 8** |
+| State | `$scope` + `$rootScope` events | **Zustand** |
+| HTTP | `$http`, unvalidated | **`fetch`** + **Zod** at the boundary |
+| Tests | Karma — **11/11 failing** | **459 unit + 258 scenarios, green** |
+| Specs | none | PRD · 6 FRDs · contracts · **24 ADRs** |
+
+**975 files and 384,709 lines deleted.** Six increments. **~$1,174** in model spend.
+
+### What the lab actually demonstrates
+
+**Eight of the fifteen steps produced no application code.** Extraction, PRD, FRDs, the
+testability gate, the green baseline, assessment and planning came to roughly 40% of the
+budget and produced decisions rather than features. That is what made the final three days
+boring: six increments, no rework, nothing re-litigated.
+
+**The API was never touched.** `api-mock/` is byte-identical to baseline capture day apart
+from three authorised fixes, and 14 API-only scenarios were never re-pointed across six
+increments. A stable seam is what makes an incremental rewrite possible at all.
+
+**The baseline pinned behaviour, not intentions.** 235 scenarios captured what the app *did*,
+including its bugs — which is why nothing drifted silently. It is also why four presentation
+defects survived to the end: every assertion reads `innerText`, and in all four cases the
+text was correct. A green suite proves the app *says* the right things, not that it *works*.
+
+**Escalating beat guessing, every time.** Five contradictions between prompt and specification
+were caught by stopping to ask — four inherited, one authored during the lab. Each would have
+propagated through every later increment.
+
+**Seven zero-consumer files were found and deleted** rather than ported: directives, filters
+and services built to solve problems nobody had.
+
+> **Where to go next.** [Step 14](14-cutover.md) closes the story, including the four
+> user-visible defects found *after* the suite was green — three of which had been shipping in
+> the AngularJS original for years.
 
 ---
 
