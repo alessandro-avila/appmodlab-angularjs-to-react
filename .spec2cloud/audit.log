@@ -450,3 +450,14 @@
 2026-08-28T12:15:00+02:00 action=harness-bug-found-from-inc4 file=tests/pages/auth.page.js detail=stale-REACT_PATHS-missing-travel-request consequence=2-scenarios-passing-for-wrong-reason result=derived-from-ledger
 2026-08-28T12:15:00+02:00 action=plan-divergence-reported scenario=authentication:227 plan=supersede actual=preserve reason=ADR-003-C-1-is-a-defect-candidate-not-an-authorisation rule=ADR-022
 2026-08-28T12:15:00+02:00 action=human-gate gate=inc5PrReview status=pending
+2026-08-28T15:20:00+02:00 action=increment-delivered increment=inc-6 name=cutover result=green unit=459 cucumber=258/258 build=ok lint=clean
+2026-08-28T15:20:00+02:00 action=auth-surface-shipped items=q8-credential-form,sign-out,navbar-identity,c1-identity-repair authorised=ADR-002-Q8,ADR-010,ADR-003-C1
+2026-08-28T15:20:00+02:00 action=pending-decisions-resolved dashboard-controls=PRESERVE login-reachable-when-signed-in=PRESERVE rationale=navbar-is-shared-chrome
+2026-08-28T15:20:00+02:00 action=green-gate-before-deletion result=258/258 note=every-legacy-file-still-on-disk rollback=one-ledger-row-edit
+2026-08-28T15:20:00+02:00 action=decommission deleted=975-files,384709-lines targets=app,bower_components,bower.json,.bowerrc,Gruntfile.js,grunt-deps,dist evidence=ADR-023
+2026-08-28T15:20:00+02:00 action=already-gone item=karma-config-and-specs deleted-in=2b2bdfa increment=1 note=nothing-to-do
+2026-08-28T15:20:00+02:00 action=defect-found-and-fixed item=stylesheets-loaded-via-proxy detail=bootstrap+style.css-not-in-module-graph impact=would-have-broken-on-delete fix=vendored-to-public+src/styles
+2026-08-28T15:20:00+02:00 action=pre-existing-inconsistency-exposed detail=dev-server-and-production-build-disagreed-about-styling-for-whole-migration now=dist-react-self-contained
+2026-08-28T15:20:00+02:00 action=bug-found-own-code file=TravelRequest.tsx field=travelerName detail=hardcoded-not-conditional same-class-as=inc5-submittedBy result=fixed+2-unit-tests
+2026-08-28T15:20:00+02:00 action=specs-closed-out frds=6 detail=Current-Implementation-now-React,AngularJS-forensics-retitled-and-kept
+2026-08-28T15:20:00+02:00 action=human-gate gate=inc6PrReview status=pending

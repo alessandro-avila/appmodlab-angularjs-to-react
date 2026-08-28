@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
   "currentPhase": "2",
-  "currentStep": "inc-5 — PR Review gate",
+  "currentStep": "inc-6 (cutover) — PR Review gate",
   "status": "awaiting-human-gate",
   "project": {
     "name": "globaltravel-portal",
@@ -1435,6 +1435,10 @@
     "inc5PrReview": {
       "status": "pending",
       "requestedAt": "2026-08-28T12:15:00+02:00"
+    },
+    "inc6PrReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-28T15:20:00+02:00"
     }
   },
   "testabilityGateReview": {
@@ -1568,9 +1572,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-28T12:15:00+02:00",
+  "lastUpdated": "2026-08-28T15:20:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-28T12:15:00+02:00",
+  "updatedAt": "2026-08-28T15:20:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -2240,6 +2244,72 @@
         "cucumber": "250/250 @existing-behavior across all five modules, 16m41s",
         "authentication": "51/51"
       }
+    },
+    "inc-6": {
+      "name": "cutover — the authentication surface, then the decommission",
+      "status": "implemented; awaiting PR Review gate",
+      "completedAt": "2026-08-28T15:20:00+02:00",
+      "branch": "lab/14-cutover",
+      "ordering": "The instruction was explicit and was followed literally: build the surface, prove it green, THEN delete. The full baseline ran 258/258 with React owning every route while every legacy file was still on disk. Had it failed, rollback was still one ledger-row edit per route.",
+      "frontDoorCheck": "The standing check INVERTED at this increment. Before cutover, GET / had to return the AngularJS index containing ng-app. After, it must return the React index (1291 bytes, no ng-app). A stale Vite server was found serving the React document at the START of this increment and restarted — the fifth occurrence.",
+      "pendingDecisionsResolved": {
+        "dashboard controls (plan §10.4)": "PRESERVE. Sign-out lives in the NAVBAR, the only chrome all six screens share. On the dashboard it would be unreachable from the five feature screens.",
+        "/login reachable when signed in (plan §10.4)": "PRESERVE. Nothing authorises changing it, and the second-entry scenario depends on it."
+      },
+      "authSurface": {
+        "q8CredentialForm": "email + password, posting what was typed. Mike Chen reachable through the UI for the first time. Button LABEL kept as \"Enter Portal\" so the two \"single way in\" scenarios stay preserved.",
+        "signOut": "net-new. Navbar, visible only when authenticated — which is what keeps \"the navigation bar offers no way to sign out\" preserved for a stranger while all six signed-in rows supersede.",
+        "c1Repair": "restoreSession() calls GET /api/auth/me on boot. Plan §10.2 assumed Inc-0 had built this; it had not, as reported at the Inc-5 gate.",
+        "guardRepairedWithoutBeingChanged": "isAuthenticated() is still !!localStorage.getItem('authToken'), character for character. A rejected token is cleared by restoreSession() before the predicate runs, so the guard became a validity check by gaining a FACT, not a branch.",
+        "portalRoot": "ADR-012 §3 — / RENDERS login-or-dashboard rather than redirecting, so a legacy hash keeps its fragment in the address bar."
+      },
+      "ownBugsFound": [
+        "TravelRequest.tsx hardcoded travelerName/travelerEmail instead of porting the conditional — the same class as the submittedBy bug found in Inc-5, and invisible until C-1 was repaired.",
+        "The test seam was created lazily by feature routes, so identity() did not exist on /login or /dashboard and the harness read null for a signed-in traveller.",
+        "The React navbar said \"Travel Request\"; app/index.html says \"Travel Requests\" (plural), which a preserved scenario pins. Caught by reading the legacy source rather than by a failure.",
+        "auth.page.js onLoginScreen() was URL-based; ADR-012 makes / render login inline, so it had to become content-based.",
+        "hooks.js BeforeAll clicked \"Enter Portal\" and waited for #!/dashboard — both wrong after Q-8. This gates the ENTIRE suite."
+      ],
+      "stylesheetDefectFound": {
+        "what": "index.html linked /bower_components/bootstrap/... and /assets/css/style.css, neither in the module graph, both reaching the AngularJS static server through the front-door proxy.",
+        "whyItMattered": "Deleting on the strength of the import graph alone would have removed both from a running app. The first symptom was three scenarios failing on \"Create Your First Report\" vs the pinned \"CREATE YOUR FIRST REPORT\" — style.css carries four text-transform: uppercase rules.",
+        "preExistingInconsistencyExposed": "At BUILD time Vite resolved /bower_components/... from the project root but /assets/css/style.css resolved to nothing. The dev server and the production build had disagreed about styling for the entire migration; Q-12 (no deployment) is why nobody noticed.",
+        "fix": "app/assets/css/style.css -> src/styles/app.css, imported by main.tsx. Bootstrap 3 CSS + 5 glyphicon fonts -> public/vendor/bootstrap/. dist-react/ is now self-contained for the first time."
+      },
+      "gherkinDelta": {
+        "superseded": 13,
+        "netNew": 9,
+        "detail": "11 in authentication (the Q-8 trio, the six sign-out rows, and the two C-1 scenarios asserting on /), 1 in travel-request (restored-session attribution, named by ADR-010), 1 in expense-reconciliation (credited-to). Net-new: second employee x2, refusals x2, sign-out x2, C-1 positive x2, legacy hash x1.",
+        "reconciliation": "Plan §10.4 budgeted 12. The difference is +1 for an Inc-5 net-new scenario that did not exist when the plan was written, +2 for the cross-feature C-1 scenarios in travel-request and expense, and -2 because :335 and :103 preserve where the plan expected otherwise."
+      },
+      "deleted": {
+        "app/": "8 files",
+        "bower_components/": "964 tracked files",
+        "bower.json + .bowerrc": "692 bytes",
+        "Gruntfile.js": "3024 bytes",
+        "grunt + 6 grunt-contrib-* devDependencies": "",
+        "dist/": "931 files, untracked and gitignored — local housekeeping",
+        "total": "975 files, 384,709 lines"
+      },
+      "alreadyGone": {
+        "test/karma.conf.js and test/spec/flight-search.spec.js": "deleted in commit 2b2bdfa during Increment 1 with an auditable 19 -> 68 test mapping. karma/jasmine/phantom appear nowhere in package.json. Nothing to do."
+      },
+      "evidenceStandard": "Every deletion carries concrete evidence in ADR-023: grep across all source types excluding node_modules/dist/specs, the complete external import graph of src/ (react, react-dom/client, react-router, date-fns, zod, zustand — none of the nine Bower packages), and an asset-by-asset audit of all 12 <link>/<script> tags in app/index.html.",
+      "specsClosedOut": "All six FRDs: new \"Current Implementation (React)\" section; the AngularJS forensics retitled \"Original Implementation (AngularJS — decommissioned in Increment N)\" and KEPT, because every ADR cites it by file:line and the superseded Gherkin blocks refer to it constantly.",
+      "guardrails": {
+        "api-mock/": "untouched — byte-identical to the day the baseline was captured",
+        "@existing-behavior tag": "retained on every scenario, including the 9 net-new ones",
+        "no test skipped": "grep for test.skip/xit/@wip/.only returns nothing"
+      },
+      "verification": {
+        "typecheck": "tsc --noEmit clean",
+        "lint": "oxlint --type-aware clean",
+        "unit": "459 passed (19 files)",
+        "build": "vite build ✓ — dist-react self-contained, 1.48 kB html + 428 kB js + 8.4 kB css + vendored bootstrap",
+        "cucumberBeforeDeletion": "258/258 @existing-behavior, 11m31s",
+        "cucumberAfterDeletion": "258/258 @existing-behavior, 11m27s",
+        "manualPass": "login (incl. refusal), C-1 reload, all five feature screens, a real interaction on each, legacy hash landing, sign-out and post-sign-out guard. Zero page errors, zero failed requests apart from the deliberate 401 from the wrong-password check."
+      }
     }
   },
   "adrs": [
@@ -2285,5 +2355,6 @@
       "increment": "inc-3",
       "supersedes": "ADR-019 in full"
     }
-  ]
+  ],
+  "migrationComplete": true
 }
