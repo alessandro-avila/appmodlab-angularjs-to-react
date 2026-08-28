@@ -417,7 +417,85 @@ feature service is authorised by the interceptor; three feature controllers list
 
 ---
 
-## Current Implementation (Brownfield Extension)
+## Current Implementation (React)
+
+> **Stack:** React 19.2.8 · TypeScript 7.0.2 strict · Vite 8.2.1 · react-router 8.3.0 · Zustand 5.0.15 · Zod 4.4.3 · date-fns 4.4.0. Migrated in **Increment 6**.
+
+### Behaviour notes
+
+This feature has no `src/features/` directory: it is the shell. The plumbing landed in Increment 0 (token store, `Authorization` header, route guard, 401 policy) and the SURFACE landed in Increment 6 (ADR-010) — the Q-8 credential form, sign-out, the navbar identity display and the C-1 identity repair.
+
+### Files
+
+| File Path | Role | Lines |
+|-----------|------|-------|
+| `src/routes/login.tsx` | The Q-8 credential form | 98 |
+| `src/routes/portal-root.tsx` | What `/` renders — login for a stranger, the dashboard when signed in (ADR-012 §3) | 32 |
+| `src/routes/dashboard.tsx` | The dashboard, a faithful port of the inline legacy template | 44 |
+| `src/routes/root-layout.tsx` | The chrome — navbar, identity display, sign-out control | 92 |
+| `src/stores/auth-store.ts` | Session state and the `localStorage` token | 155 |
+| `src/lib/auth-service.ts` | `login()`, `logout()`, `restoreSession()` | — |
+| `src/components/require-auth.tsx` | The route guard | 56 |
+
+### What changed at the cutover
+
+| Was | Is now | Authorised by |
+|---|---|---|
+| One "Enter Portal" button posting two constants | A real email + password form; a second employee (Mike Chen) is reachable for the first time | **Q-8 / ADR-002** |
+| No way to sign out at all — `logout()` had no caller, no control, and zero `auth:logout` listeners | A sign-out control in the navbar, visible only when signed in | **ADR-010** |
+| Identity lost on every reload; `GET /api/auth/me` never called | `restoreSession()` calls it on boot and repopulates the store | **ADR-003 C-1 / ADR-010** |
+| A route guard testing token PRESENCE, so a junk token opened every screen | The same predicate, but a rejected token is cleared before the guard reads it | **Q-8 / ADR-010** |
+| Two hash routes under one `/` document | Real paths, with `/` as the portal root | **ADR-012** |
+
+**The guard was repaired without being changed.** `isAuthenticated()` is still
+`!!localStorage.getItem('authToken')`, character for character. What changed is that
+`restoreSession()` now asks the server who the bearer is, so an unreadable token is gone before the
+predicate runs. The guard became a validity check by gaining a *fact*, not a branch.
+
+**The button label is deliberately unchanged.** "Enter Portal" survives Q-8 because two baseline
+scenarios assert the login screen "offers a single way in", and keeping the label lets both stay
+PRESERVED rather than superseding for a cosmetic reason.
+
+**JWT-in-`localStorage` is preserved deliberately** (ADR-016) — an accepted risk with a follow-up
+owner, not a resolved one.
+
+### Shared infrastructure
+
+Every feature screen is built from the same small set of modules, which is the structural
+difference from the AngularJS application — there, each module carried its own copy of the
+same concerns.
+
+| Module | Lines | Replaces |
+|---|---:|---|
+| `src/lib/api-client.ts` | 127 | Restangular. One base URL from config, one `Authorization` header, one error policy, and **Zod response validation** (ADR-011 §4). |
+| `src/lib/format.ts` | 118 | Angular's `currency`/`number` filters and hand-rolled `toFixed` money. Three primitives, because the baseline pins three distinct renderings. |
+| `src/stores/auth-store.ts` | 155 | `auth.service.js` + `$rootScope.currentUser`. Vanilla Zustand (ADR-013), because two consumers are not components. |
+| `src/stores/notification-store.ts` | 85 | the `notification:add` handler in `app/app.js:44-50`. |
+| `src/components/require-auth.tsx` | 56 | the `$stateChangeStart` guard in `app/app.js:32-37`. |
+| `src/components/modal.tsx` | 102 | Bootstrap 3's jQuery modal. |
+| `src/components/confirm-dialog.tsx` | 123 | `window.confirm()`. |
+| `src/lib/route-ledger.ts` | — | `app/app.routes.js`. Read by BOTH the router and (until cutover) the front door, so they could not disagree. |
+
+**Data flow.** Screen → `*-api.ts` → `api-client.ts` → `fetch` → Zod schema → typed result.
+Nothing reaches the network except through the client, so there is exactly one place a response
+enters the application. Types are erased at runtime; **Zod is what actually validates** (ADR-011,
+finding P-7).
+
+**State.** Local `useState` for screen state, Zustand stores for the two cross-cutting concerns
+(session, notifications). There is no `$rootScope` and no global mutable bag.
+
+---
+## Original Implementation (AngularJS — decommissioned in Increment 6)
+
+> **This section is history, not a description of the running system.** The files and line
+> numbers below refer to `app/`, which was deleted at the cutover (ADR-023).
+>
+> It is preserved deliberately. It is the brownfield extraction record produced in Phase B1,
+> every ADR cites it by file and line, and the superseded Gherkin blocks in
+> `specs/features/` refer to it constantly. Deleting it would leave those references
+> unresolvable and destroy the audit trail from "what the 2016 app did" to "what the React
+> app does".
+
 
 ### Files Involved
 

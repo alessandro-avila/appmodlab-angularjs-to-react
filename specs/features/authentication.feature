@@ -21,6 +21,34 @@
 #     even though GET /api/auth/me answers exactly that question.
 #  6. Signing in again while already signed in is allowed and silently replaces
 #     the token.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHERE THE SIX FINDINGS ENDED UP  (added at Increment 6 — the cutover)
+# ─────────────────────────────────────────────────────────────────────────────
+# This file is the migration's longest-running record, so the resolution of each
+# finding is written here rather than left to be reconstructed from six ADRs.
+#
+#  1. RESOLVED in Inc-6. Q-8's credential form ships; a second employee (Mike
+#     Chen) is reachable through the UI for the first time. The "Enter Portal"
+#     button label is kept, so :36 and :410 preserve.
+#  2. RESOLVED in Inc-6. Sign-out ships in the navbar, visible only when signed
+#     in — which is why :50 (a stranger sees no sign-out) still preserves while
+#     all six rows of the sign-out outline supersede.
+#  3. RESOLVED in Inc-6. Boot-time GET /api/auth/me makes the guard test
+#     validity, not presence: a token the server rejects now clears the session
+#     and bounces to login instead of opening every screen.
+#  4. RESOLVED in Inc-3 and Inc-5 (ADR-018), before the surface existed, because
+#     those scenarios assert on the itinerary and expenses screens rather than
+#     on `/`.
+#  5. RESOLVED in Inc-6 (ADR-003 C-1, authorised by ADR-010). Plan §10.2 assumed
+#     Inc-0 had built it; Inc-0 had not, which was found and reported at the
+#     Inc-5 gate.
+#  6. PRESERVED, deliberately. Signing in again still replaces the token, and
+#     /login stays reachable while signed in. Nothing authorises changing it.
+#
+# The one accepted risk that survives the migration unresolved is the JWT in
+# localStorage (ADR-016) — an accepted risk with a follow-up owner, not a
+# resolved one. `:95` stays green on purpose.
 
 @feature-authentication @existing-behavior
 Feature: Getting into the travel portal
@@ -39,12 +67,27 @@ Feature: Getting into the travel portal
     Then I land on the login screen
     And the login screen offers a single way in
 
-  @unauthenticated
-  Scenario: The login screen asks for no credentials
+  @unauthenticated @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-002 Q-8, per increment plan §10.4.
+  #
+  # The legacy login screen had no inputs — one button that posted hardcoded
+  # credentials (app.routes.js:20). Q-8 authorises the real credential form:
+  # the API has always checked credentials and a second employee has always
+  # existed server-side, unreachable through the UI.
+  #
+  # The BUTTON LABEL is deliberately unchanged. "Enter Portal" is a perfectly
+  # good submit label, and keeping it lets :36 and :329 — which assert the
+  # login screen "offers a single way in" — stay PRESERVED rather than
+  # superseding for a cosmetic reason.
+  #
+  # Replaced by "Signing in with my own credentials" and its siblings below.
+  # ---------------------------------------------------------------------------
+  Scenario: The login screen asks for my credentials
     Given I have never signed in to the portal
     When I open the portal
-    Then the login screen has no fields to type into
-    And the login screen reads "Mock login - click to enter"
+    Then the login screen asks for an email address and a password
+    And the login screen offers a single way in
 
   @unauthenticated
   Scenario: The navigation bar advertises the protected areas to a stranger
@@ -78,18 +121,36 @@ Feature: Getting into the travel portal
   # Signing in
   # ---------------------------------------------------------------------------
 
-  @unauthenticated
-  Scenario: Entering the portal signs me in as the built-in employee
+  @unauthenticated @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-002 Q-8, per increment plan §10.4.
+  #
+  # "The built-in employee" was the whole point: you did not choose who you
+  # signed in as, the app chose for you. With a credential form that premise is
+  # gone — you sign in as whoever you authenticate as. The OUTCOME (arrive at
+  # the dashboard, signed in as Sarah Johnson from Engineering) is preserved
+  # below, but it is now a consequence of the credentials typed, not of a
+  # hardcoded string.
+  # ---------------------------------------------------------------------------
+  Scenario: Signing in with my own credentials
     Given I have never signed in to the portal
-    When I enter the portal
+    When I sign in as "demo@globaltravel.com" with password "password"
     Then I arrive at the dashboard
     And I am signed in as "Sarah Johnson" from "Engineering"
 
-  @unauthenticated
-  Scenario: The portal signs in with credentials nobody typed
+  @unauthenticated @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-002 Q-8, per increment plan §10.4.
+  #
+  # The finding this recorded — that the portal posted credentials the user had
+  # never typed — is exactly what Q-8 authorises removing. The replacement
+  # asserts the opposite: the portal sends the credentials it was GIVEN, and
+  # nothing else.
+  # ---------------------------------------------------------------------------
+  Scenario: The portal sends the credentials I typed and no others
     Given I have never signed in to the portal
-    When I enter the portal
-    Then the portal sent the built-in credentials to the server
+    When I sign in as "demo@globaltravel.com" with password "password"
+    Then the portal sent the credentials I typed to the server
 
   @unauthenticated
   Scenario: Entering the portal stores a session token
@@ -132,10 +193,26 @@ Feature: Getting into the travel portal
   # There is no way out
   # ---------------------------------------------------------------------------
 
-  Scenario Outline: No screen offers a way to sign out
+  @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-002 Q-8 / ADR-010, per increment plan §10.4 — ALL SIX ROWS
+  # TOGETHER.
+  #
+  # This outline is the clearest illustration in the migration of RE-POINT vs
+  # SUPERSEDE. Its six rows changed owner across five increments — flights in
+  # Inc-1, hotels in Inc-2, and so on — and every one of them kept PASSING,
+  # because the React chrome deliberately carried no sign-out control either
+  # (plan §4.2). Superseding them per-increment would have been wrong; ignoring
+  # the per-increment re-point would have left five gates unable to account for
+  # them.
+  #
+  # They supersede HERE, together, in the increment where sign-out ships.
+  # Replaced by "Every screen offers a way to sign out" below, same six areas.
+  # ---------------------------------------------------------------------------
+  Scenario Outline: Every screen offers a way to sign out
     Given I am signed in to the travel portal
     When I visit "<area>"
-    Then nothing on the page offers to sign me out
+    Then the page offers to sign me out
 
     Examples:
       | area           |
@@ -163,11 +240,25 @@ Feature: Getting into the travel portal
   # `:135`'s outline already pins "no screen offers a way to sign out" for all
   # six areas; this keeps the emitter half of the pair explicit.
   # ---------------------------------------------------------------------------
-  Scenario: Nothing anywhere announces a sign-out
+  @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-002 Q-8 / ADR-010, per increment plan §10.4.
+  #
+  # This scenario is itself an Inc-5 replacement — it took over from the
+  # $rootScope.$$listeners check when expenses became React (ADR-005 P-5). It
+  # recorded that auth:logout was dead in both directions and that
+  # AuthService.logout had no caller and no control.
+  #
+  # Sign-out ships in this increment, so the finding is retired: logout now has
+  # a caller, a control, and a server call. The replacement asserts the whole
+  # round trip rather than just the control's presence.
+  # ---------------------------------------------------------------------------
+  Scenario: Signing out ends the session and returns me to the login screen
     Given I am signed in to the travel portal
     When I visit "expenses"
-    Then nothing on the page offers to sign me out
-    And my session token is still stored
+    And I sign out
+    Then I land on the login screen
+    And my session token is no longer stored
 
   Scenario: The dashboard carries no controls at all
     Given I am signed in to the travel portal
@@ -175,28 +266,51 @@ Feature: Getting into the travel portal
     Then the dashboard has no buttons on it
 
   # ---------------------------------------------------------------------------
-  # Identity does not survive a reload  (constraint C-1)
+  # Identity survives a reload  (constraint C-1 — REPAIRED in Inc-6)
   # ---------------------------------------------------------------------------
 
-  # Identity is only ever set by the act of signing in, so these scenarios sign
-  # in for real rather than starting from the shared stored session.
+  # These scenarios sign in for real rather than starting from the shared stored
+  # session, because identity is set by the act of signing in.
 
-  @unauthenticated
-  Scenario: Reloading the page keeps my token but forgets who I am
+  @unauthenticated @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-003 constraint C-1, authorised by ADR-010, per increment
+  # plan §10.4 row `:156`.
+  #
+  # The legacy portal set $rootScope.currentUser on sign-in and never persisted
+  # it (app/app.js:40 nulls it on every boot), so a reload left an
+  # authenticated-but-anonymous session: the token survived, the identity did
+  # not, and every module degraded to hardcoded values.
+  #
+  # ADR-010 assigns the repair to this increment. Note that plan §10.2 assumed
+  # it had been built in Inc-0; it had not — Inc-0's store mirrors the legacy
+  # field exactly. That gap was reported at the Inc-5 gate, which is why
+  # `:235` below preserved there instead of superseding. It lands here.
+  # ---------------------------------------------------------------------------
+  Scenario: Reloading the page keeps both my token and my identity
     Given I have never signed in to the portal
-    When I enter the portal
-    And I am known to the portal as "Sarah Johnson"
+    When I sign in as "demo@globaltravel.com" with password "password"
     And I reload the page
-    Then the portal does not remember who is signed in
-    But my session token is still stored
+    Then the portal still knows me as "Sarah Johnson"
+    And my session token is still stored
 
-  @unauthenticated
-  Scenario: The portal never asks the server who the token belongs to
+  @unauthenticated @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-003 constraint C-1, authorised by ADR-010, per increment
+  # plan §10.4 row `:165`.
+  #
+  # "The client never asks the server who the bearer is" was the root of three
+  # separate defects — C-1, the presence-only route guard, and the missing 401
+  # policy. GET /api/auth/me has existed on the server throughout and was never
+  # called. It is called now, on boot, whenever a token is present without an
+  # identity.
+  # ---------------------------------------------------------------------------
+  Scenario: The portal asks the server who the token belongs to
     Given I have never signed in to the portal
-    When I enter the portal
+    When I sign in as "demo@globaltravel.com" with password "password"
     And I reload the page
-    Then the portal made no request to identify me
-    And the portal does not remember who is signed in
+    Then the portal asked the server to identify me
+    And the portal still knows me as "Sarah Johnson"
 
   Scenario: A reload leaves me where I was rather than at the login screen
     Given I am signed in to the travel portal
@@ -204,42 +318,37 @@ Feature: Getting into the travel portal
     And I reload the page
     Then I am still on "itinerary"
 
-  @unauthenticated
+  @unauthenticated @inc-6
   # ---------------------------------------------------------------------------
-  # PRESERVED — and deliberately NOT superseded, against increment plan §9.3.
+  # SUPERSEDED by ADR-003 constraint C-1, authorised by ADR-010, per increment
+  # plan §10.4.
   #
-  # Plan §9.3 row `:179` expected this to supersede, on the grounds that
-  # "Inc-0's identity rehydration means the report is filed by the real user".
-  # Two things are wrong with that:
+  # HISTORY, because this scenario moved between increments and the reason
+  # matters more than the move.
   #
-  #   1. Increment 0 did not implement rehydration. `src/stores/auth-store.ts`
-  #      mirrors the legacy field exactly — `user: null` at construction, set
-  #      only by a live sign-in, never read back from the token.
-  #   2. Nothing authorises rehydrating it. ADR-003 logs C-1 as a "defect
-  #      CANDIDATE"; ADR-005's supersede list names the four dead controls,
-  #      ngRepeat:dupes, SEAM-3/4/5 and the alerts — not C-1.
+  # Plan §9.3 budgeted this to supersede in Inc-5, on the grounds that "Inc-0's
+  # identity rehydration means the report is filed by the real user". At the
+  # Inc-5 gate that turned out to be wrong twice over: Inc-0 never built
+  # rehydration, and nothing then authorised building it — ADR-003 logs C-1 as
+  # a defect CANDIDATE, and ADR-005's supersede list does not name it. By
+  # ADR-022's rule (authorisation, not mechanism) a defect candidate is not a
+  # decision to fix, so it was PRESERVED in Inc-5 and reported.
   #
-  # ADR-022's rule decides it: authorisation, not mechanism. A defect candidate
-  # is not a decision to fix, which is the same reason `flight:selected` stays
-  # dropped. So the placeholder attribution is PINNED, and stays pinned until
-  # something authorises otherwise.
+  # ADR-010 supplies the authorisation, and assigns it to THIS increment: the
+  # C-1 repair lands with the authentication surface. So it supersedes now.
   #
-  # STEP ORDER CHANGED (not the assertions). "I am known to the portal" now
-  # runs BEFORE the move to expenses. Signing in happens on the AngularJS login
-  # screen, and under ADR-012 `/expenses` is a real path, so that move is a
-  # DOCUMENT BOUNDARY — in-memory identity is already gone on arrival. The
-  # baseline's `#!/expenses` was a same-document fragment, which is why the
-  # original order worked. Every assertion is unchanged and still passes; only
-  # the precondition moved to the side of the crossing where it can hold.
+  # This is also why ExpenseReconciliation.tsx ports controller:194 as the
+  # CONDITIONAL it is rather than as its usual answer. Had it hardcoded the
+  # placeholder, the repair would have been invisible here and this scenario
+  # would have gone on passing while describing something untrue.
   # ---------------------------------------------------------------------------
-  Scenario: After a reload my work is attributed to a placeholder
+  Scenario: After a reload my work is still attributed to me
     Given I have never signed in to the portal
-    When I enter the portal
-    And I am known to the portal as "Sarah Johnson"
+    When I sign in as "demo@globaltravel.com" with password "password"
     And I visit "expenses"
     And I reload the page
-    Then the portal does not remember who is signed in
-    And a new expense report would be filed by "Demo User"
+    Then the portal still knows me as "Sarah Johnson"
+    And a new expense report would be filed by "Sarah Johnson"
 
   # ---------------------------------------------------------------------------
   # The guard checks for a token, never for a valid one
@@ -338,6 +447,91 @@ Feature: Getting into the travel portal
     And I enter the portal again
     Then I arrive at the dashboard
     And my session token has been replaced
+
+  # ---------------------------------------------------------------------------
+  # NET-NEW — the authentication surface (Increment 6)
+  #
+  # None of the behaviour below existed in the AngularJS product. It is not a
+  # port and has no baseline scenario to supersede.
+  #
+  # These scenarios inherit the Feature-level @existing-behavior tag, as every
+  # net-new scenario added in Increments 1-5 does, so they run in the same suite
+  # and are held to the same standard. @inc-6 is what distinguishes them: the
+  # file's record of what the 2016 app DID is the untagged body plus the
+  # superseded blocks above, and anything carrying an @inc-N tag is the
+  # migration's own contract rather than a captured observation.
+  #
+  # Authorised by ADR-002 Q-8 (credential form, second employee), ADR-010
+  # (sign-out, the authentication surface), ADR-003 C-1 (identity restoration)
+  # and ADR-012 (legacy hash addresses break, and where they land instead).
+  # ---------------------------------------------------------------------------
+
+  @inc-6 @unauthenticated
+  Scenario: A second employee can sign in as himself
+    Given I have never signed in to the portal
+    When I sign in as "manager@globaltravel.com" with password "password"
+    Then I arrive at the dashboard
+    And I am signed in as "Mike Chen" from "Engineering"
+
+  @inc-6 @unauthenticated
+  Scenario: The second employee is a manager, not an employee
+    Given I have never signed in to the portal
+    When I sign in as "manager@globaltravel.com" with password "password"
+    Then the session token records my role as "manager"
+
+  @inc-6 @unauthenticated
+  Scenario: A wrong password is refused and nothing is stored
+    Given I have never signed in to the portal
+    When I sign in as "demo@globaltravel.com" with password "not-my-password"
+    Then I am told the credentials were rejected
+    And no session token is stored
+    And I am still on the login screen
+
+  @inc-6 @unauthenticated
+  Scenario: An unknown email is refused the same way as a wrong password
+    Given I have never signed in to the portal
+    When I sign in as "nobody@globaltravel.com" with password "password"
+    Then I am told the credentials were rejected
+    And the refusal does not say whether the account exists
+
+  @inc-6
+  Scenario: Signing out clears my identity as well as my token
+    Given I am signed in to the travel portal
+    When I visit "dashboard"
+    And I sign out
+    Then my session token is no longer stored
+    And the portal no longer knows who I am
+    And the navigation bar offers no way to sign out
+
+  @inc-6
+  Scenario: After signing out a protected area turns me away again
+    Given I am signed in to the travel portal
+    When I visit "dashboard"
+    And I sign out
+    And I go straight to "expenses"
+    Then I am returned to the login screen
+
+  @inc-6
+  # ADR-012: the fragment is never sent to the server, so GET / is transmitted,
+  # React renders the portal root, and the fragment is ignored. No redirect
+  # shim, no error, no 404, no blank page.
+  #
+  # Note the assertion is CONTENT, not URL. The ADR is explicit that "the
+  # fragment remains in the address bar and is ignored", so the address stays
+  # `/#!/flights` while the dashboard is what renders. A URL assertion here
+  # would be asserting the opposite of the decision.
+  Scenario: A legacy hash address lands on the portal root rather than failing
+    Given I am signed in to the travel portal
+    When I go to the legacy address "#!/flights"
+    Then I am shown the dashboard
+    And the address bar still shows "#!/flights"
+    And the page did not fail
+
+  @inc-6 @unauthenticated
+  Scenario: A legacy hash address shows a stranger the login screen
+    Given I have never signed in to the portal
+    When I go to the legacy address "#!/flights"
+    Then I land on the login screen
 
   # ---------------------------------------------------------------------------
   # The server's side of the bargain

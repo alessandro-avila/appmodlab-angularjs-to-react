@@ -418,7 +418,21 @@ Feature: Expense reconciliation as the legacy portal performs it
     And I submit the expense report
     Then the expense error reads "Report title is required."
 
-  Scenario: A submitted report is stored as a draft, credited to Demo User, and stays deletable
+  @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-003 constraint C-1, authorised by ADR-010.
+  #
+  # The "credited to Demo User" half of this scenario was a consequence of C-1:
+  # the suite signs in by planting a token, identity was never read back from
+  # it, and controller:194's conditional therefore always took its fallback
+  # branch. Increment 6 restores identity via GET /api/auth/me, so the report
+  # is credited to the traveller who filed it.
+  #
+  # Everything ELSE this scenario pins is unchanged and still asserted: the
+  # report is stored as a DRAFT despite being submitted (SEAM-4, deliberately
+  # unrepaired), it carries a submission date, and it stays deletable.
+  # ---------------------------------------------------------------------------
+  Scenario: A submitted report is stored as a draft, credited to me, and stays deletable
     When I start a new expense report
     And I name the expense report "Berlin Client Visit"
     And I describe the expense trip destination as "Berlin, Germany"
@@ -428,7 +442,7 @@ Feature: Expense reconciliation as the legacy portal performs it
     Then I see a notification containing "Expense report submitted successfully!"
     And the expense report form is closed
     And the stored expense report "Berlin Client Visit" has the status "draft"
-    And the stored expense report "Berlin Client Visit" was submitted by "Demo User"
+    And the stored expense report "Berlin Client Visit" was submitted by "Sarah Johnson"
     And the stored expense report "Berlin Client Visit" carries a submission date
     And the expense report "Berlin Client Visit" offers the actions "View, Delete"
 

@@ -26,18 +26,22 @@
  *  auth.service.js:51  return $rootScope.currentUser              -> read the store slice
  *
  * ─────────────────────────────────────────────────────────────────────────
- * TWO LEGACY DEFECTS ARE DELIBERATELY REPRODUCED, NOT FIXED
+ * THE TWO LEGACY DEFECTS THIS STORE REPRODUCED, AND WHERE THEY WENT
  * ─────────────────────────────────────────────────────────────────────────
- * 1. `isAuthenticated()` tests token PRESENCE, never validity (FRD-authentication
- *    Known Limitation 8). A planted `not-a-real-jwt` opens every screen. Fixing
- *    it here would be an unauthorised behaviour change: Q-8 / ADR-010 schedule
- *    the real guard for Inc-6.
- * 2. `user` is in-memory only and does NOT survive a reload (ADR-003 constraint
- *    C-1) — `localStorage` holds the token alone. The repair (calling
- *    GET /api/auth/me on boot) is scheduled for Inc-6, where
- *    `authentication.feature:156` and `:165` supersede.
+ * Both were deliberate reproductions through Increments 0-5, and both are
+ * REPAIRED in Increment 6 — not here, but in `lib/auth-service.ts`, which is
+ * the module allowed to talk to the API client. The store stays a state
+ * container with no transport.
  *
- * Both are marked below so nobody "tidies" them early.
+ * 1. `isAuthenticated()` tested token PRESENCE, never validity
+ *    (FRD-authentication Known Limitation 8). A planted `not-a-real-jwt`
+ *    opened every screen. The predicate below is UNCHANGED — what changed is
+ *    that `restoreSession()` now asks the server on boot, so an unreadable
+ *    token is cleared before the guard ever sees it. The guard became a
+ *    validity check by gaining a fact, not by gaining a branch.
+ * 2. `user` was in-memory only and did NOT survive a reload (ADR-003
+ *    constraint C-1). `restoreSession()` repairs it via GET /api/auth/me,
+ *    authorised by ADR-010.
  */
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
@@ -54,8 +58,16 @@ import type { User } from '../types/api';
 export const AUTH_TOKEN_KEY = 'authToken';
 
 export interface AuthState {
-  /** Mirrors $rootScope.currentUser: in-memory only, lost on reload (C-1). */
+  /** Mirrors $rootScope.currentUser. Restored on boot since Inc-6 (C-1). */
   readonly user: User | null;
+  /**
+   * Whether the boot-time identity restoration has finished.
+   *
+   * The guard must not bounce a signed-in traveller to the login screen just
+   * because GET /api/auth/me has not answered yet. Until this is true, a
+   * present token means "probably authenticated, ask again shortly".
+   */
+  readonly restoring: boolean;
   /** Mirrors auth.service.js:22/:33 — the durable artefact. */
   setSession(token: string, user: User): void;
   clearSession(): void;
@@ -64,6 +76,8 @@ export interface AuthState {
   /** Mirrors auth.service.js:51. */
   getCurrentUser(): User | null;
   getToken(): string | null;
+  setUser(user: User | null): void;
+  setRestoring(restoring: boolean): void;
 }
 
 /**
@@ -100,14 +114,22 @@ function safeRemoveToken(): void {
 export const authStore = createStore<AuthState>((set, get) => ({
   user: null,
 
+  /**
+   * Starts true when a token is present, so the very first render of a guarded
+   * route on a reload does NOT see "authenticated but unknown" and bounce.
+   * Reading storage at construction is safe: the same read backs
+   * `isAuthenticated()`.
+   */
+  restoring: !!safeReadToken(),
+
   setSession: (token, user) => {
     safeWriteToken(token); // auth.service.js:22
-    set({ user }); // auth.service.js:23 + :24 (broadcast absorbed into state)
+    set({ user, restoring: false }); // auth.service.js:23 + :24 (broadcast absorbed into state)
   },
 
   clearSession: () => {
     safeRemoveToken(); // auth.service.js:33
-    set({ user: null }); // auth.service.js:34 + :35
+    set({ user: null, restoring: false }); // auth.service.js:34 + :35
   },
 
   // auth.service.js:43 — `!!localStorage.getItem('authToken')`, unchanged.
@@ -117,6 +139,9 @@ export const authStore = createStore<AuthState>((set, get) => ({
 
   getCurrentUser: () => get().user, // auth.service.js:51
   getToken: () => safeReadToken(),
+
+  setUser: (user) => set({ user }),
+  setRestoring: (restoring) => set({ restoring }),
 }));
 
 /** Component-side subscription with a selector (ADR-013). */

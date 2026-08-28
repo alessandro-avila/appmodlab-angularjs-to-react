@@ -26,6 +26,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { notify } from '../../stores/notification-store';
+import { authStore } from '../../stores/auth-store';
 import { publishScope, clearScope } from '../../lib/test-seam';
 import { formatMoneyCurrency, formatMoneyFixed } from '../../lib/format';
 import { Modal } from '../../components/modal';
@@ -233,16 +234,23 @@ export function TravelRequestScreen(): ReactElement {
     setErrorField(null);
     setIsLoading(true);
 
-    // controller:172-173 — currentUser is never persisted (ADR-003 C-1), so a
-    // restored session files the request under the fallback. PRESERVED: the
-    // baseline pins "Demo User", and repairing it here is Inc-6's work.
+    // controller:172-173 — `$rootScope.currentUser ? .name : 'Demo User'`,
+    // ported as the same CONDITIONAL rather than as its usual answer.
+    //
+    // Through Increments 4 and 5 the answer was always the fallback, because
+    // identity was never read back from the token (ADR-003 C-1). Increment 6
+    // repairs C-1 via GET /api/auth/me, so a restored session now knows the
+    // traveller and the request is filed under their real name.
+    //
+    // `travelerEmail` follows the same identity, for the same reason.
+    const currentUser = authStore.getState().getCurrentUser();
     const body = {
       ...draft,
       totalEstimate: draftTotal,
       tripDuration: draftDuration ?? 0,
       submittedAt: new Date().toISOString(),
-      travelerName: 'Demo User',
-      travelerEmail: 'demo@globaltravel.com',
+      travelerName: currentUser?.name ?? 'Demo User',
+      travelerEmail: currentUser?.email ?? 'demo@globaltravel.com',
       travelers: [{ name: '', email: '' }],
     };
 

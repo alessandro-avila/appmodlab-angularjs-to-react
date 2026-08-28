@@ -334,7 +334,73 @@ its output depends on what AngularJS has already rendered.
 
 ---
 
-## Current Implementation (Brownfield Extension)
+## Current Implementation (React)
+
+> **Stack:** React 19.2.8 · TypeScript 7.0.2 strict · Vite 8.2.1 · react-router 8.3.0 · Zustand 5.0.15 · Zod 4.4.3 · date-fns 4.4.0. Migrated in **Increment 3**.
+
+### Files
+
+| File Path | Role | Lines |
+|-----------|------|-------|
+| `src/features/itinerary/Itinerary.tsx` | The screen — JSX, local state, effects | 643 |
+| `src/features/itinerary/itinerary-model.ts` | Pure logic — filtering, sorting, derivation, validation | 277 |
+| `src/features/itinerary/itinerary-api.ts` | Typed calls through the shared API client | 71 |
+| `src/types/` | Zod schemas and the types inferred from them | — |
+
+### Architecture Pattern
+
+Function component with hooks. **Pure logic is separated from the screen** into a `*-model.ts` module, which is the structural change from the AngularJS controller: the controller mixed scope state, business rules, HTTP and DOM manipulation in one file, and the model is testable without rendering anything. Data fetching goes through the shared API client, never through a router loader (ADR-012), so there is one place a response enters the application.
+
+### What was dropped, and what replaced it
+
+| Legacy mechanism | React replacement |
+|---|---|
+| `itinerary:refresh` via `$rootScope` | query invalidation — the booking mutation invalidates the itinerary query |
+| `printItinerary()` cloning `#itinerary-details` into `window.open` | a print stylesheet and `window.print()` (ADR-018 records the changed output) |
+| Moment.js | `date-fns` |
+| Restangular | `src/lib/api-client.ts` |
+
+### Behaviour notes
+
+`formatTime` called `moment(time, "HH:mm")` **with a format string** — the only place in the codebase that parsed dates correctly. That correctness is kept, not loosened to match the rest. The status filter and Add Note were revived under ADR-005 / ADR-022 (authorisation, not mechanism); the Add Note attribution repair came with them.
+
+### Shared infrastructure
+
+Every feature screen is built from the same small set of modules, which is the structural
+difference from the AngularJS application — there, each module carried its own copy of the
+same concerns.
+
+| Module | Lines | Replaces |
+|---|---:|---|
+| `src/lib/api-client.ts` | 127 | Restangular. One base URL from config, one `Authorization` header, one error policy, and **Zod response validation** (ADR-011 §4). |
+| `src/lib/format.ts` | 118 | Angular's `currency`/`number` filters and hand-rolled `toFixed` money. Three primitives, because the baseline pins three distinct renderings. |
+| `src/stores/auth-store.ts` | 155 | `auth.service.js` + `$rootScope.currentUser`. Vanilla Zustand (ADR-013), because two consumers are not components. |
+| `src/stores/notification-store.ts` | 85 | the `notification:add` handler in `app/app.js:44-50`. |
+| `src/components/require-auth.tsx` | 56 | the `$stateChangeStart` guard in `app/app.js:32-37`. |
+| `src/components/modal.tsx` | 102 | Bootstrap 3's jQuery modal. |
+| `src/components/confirm-dialog.tsx` | 123 | `window.confirm()`. |
+| `src/lib/route-ledger.ts` | — | `app/app.routes.js`. Read by BOTH the router and (until cutover) the front door, so they could not disagree. |
+
+**Data flow.** Screen → `*-api.ts` → `api-client.ts` → `fetch` → Zod schema → typed result.
+Nothing reaches the network except through the client, so there is exactly one place a response
+enters the application. Types are erased at runtime; **Zod is what actually validates** (ADR-011,
+finding P-7).
+
+**State.** Local `useState` for screen state, Zustand stores for the two cross-cutting concerns
+(session, notifications). There is no `$rootScope` and no global mutable bag.
+
+---
+## Original Implementation (AngularJS — decommissioned in Increment 3)
+
+> **This section is history, not a description of the running system.** The files and line
+> numbers below refer to `app/`, which was deleted at the cutover (ADR-023).
+>
+> It is preserved deliberately. It is the brownfield extraction record produced in Phase B1,
+> every ADR cites it by file and line, and the superseded Gherkin blocks in
+> `specs/features/` refer to it constantly. Deleting it would leave those references
+> unresolvable and destroy the audit trail from "what the 2016 app did" to "what the React
+> app does".
+
 
 > **⚠ MIGRATION STATUS — React, since Increment 3.**
 >

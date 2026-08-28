@@ -1,53 +1,29 @@
 /**
- * Authentication has no component directory of its own — it lives in
- * app/services/auth.service.js, the route guard in app/app.js, and an inline
- * login template in app/app.routes.js. This page object therefore works across
- * whichever screen a scenario happens to be on.
+ * Authentication page object — after the cutover.
  *
- * FRONT-DOOR ASYMMETRY (Increment 3). A migrated route is a REAL PATH
- * (`/itinerary`); an unmigrated one is a FRAGMENT under `/` (`/#!/expenses`),
- * and a fragment is never sent to the server. Navigating by hash therefore
- * reaches the AngularJS screen even for a route React now owns — which is how
- * two 401 scenarios silently kept testing the legacy behaviour.
+ * ─────────────────────────────────────────────────────────────────────────
+ * THE LARGEST SINGLE RE-POINT IN THE MIGRATION (plan §10.3)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Through Increments 0-5 this file had to speak both stacks at once. It kept a
+ * hash map for unmigrated routes, addressed migrated ones by real path, read
+ * the view through AngularJS's `[ui-view]` and reached identity through the
+ * `$rootScope` injector — because for five increments the answer genuinely
+ * depended on which application was on screen.
  *
- * So navigation always uses the real path and lets the front door decide: it
- * serves React for a migrated row and 302s to the `legacyHash` form otherwise.
- * `currentState()` reads whichever of the two forms it ends up in.
+ * None of that is true any more. React owns every route, so:
+ *   - every area is addressed by its real path; the `#!/` map is gone
+ *   - the view is `[data-testid="shell-outlet"]`, React's outlet
+ *   - identity comes from the store through the test seam
+ *
+ * `currentState()` still tolerates a `#!/` URL. That is deliberate and is NOT
+ * legacy residue: ADR-012 §3 keeps the fragment in the address bar after a
+ * legacy hash address lands on the portal root, so the harness must be able to
+ * read a URL that still carries one.
  */
 const { BASE_URL: BASE } = require('../support/world');
-const fs = require('node:fs');
-const path = require('node:path');
 
-const LEDGER = path.join(__dirname, '..', '..', 'src', 'lib', 'route-ledger.ts');
-
-/**
- * Routes React owns, DERIVED FROM `src/lib/route-ledger.ts` rather than
- * restated here.
- */
-/**
- * Routes React owns, DERIVED FROM `src/lib/route-ledger.ts` rather than
- * restated here.
- *
- * Increment 4 restated it and forgot to update it, so travel-request's
- * authentication scenarios kept addressing `/#!/travel-request` after the
- * module had become React. They still passed — but for the wrong reason: the
- * hash no longer matched a UI-Router state, so `otherwise('/login')` produced
- * the same redirect the guard was supposed to produce. Reading the ledger
- * removes the restatement, so the next migration cannot leave this behind.
- *
- * Anything NOT in the ledger keeps its legacy hash form, which is how the
- * baseline addresses an unknown area (`authentication.feature:72`).
- */
-const REACT_PATHS = new Set(
-  [...fs.readFileSync(LEDGER, 'utf8').matchAll(/path:\s*'\/([^']+)'[^}]*?owner:\s*'react'/g)].map(
-    (m) => m[1]
-  )
-);
-
-const STATES = {
-  login: '#!/login',
-  dashboard: '#!/dashboard'
-};
+/** React's outlet. Replaces AngularJS's `[ui-view]` throughout. */
+const VIEW = '[data-testid="shell-outlet"]';
 
 class AuthPage {
   constructor(page) {
@@ -60,18 +36,21 @@ class AuthPage {
   }
 
   /**
-   * A migrated route is addressed by its real path; an unmigrated one by its
-   * fragment, exactly as before.
-   *
-   * The distinction is not cosmetic. Hash navigation between two legacy states
-   * is a SAME-DOCUMENT navigation — the AngularJS app is not reloaded, so
-   * `$rootScope.currentUser` survives, and two scenarios depend on that.
-   * Addressing a legacy route by real path would 302 and reboot the app,
-   * quietly changing what those scenarios measure.
+   * Every area is a real path now. The hash map that distinguished migrated
+   * from unmigrated routes is gone with the application it existed for.
    */
   async goToState(name) {
-    const target = REACT_PATHS.has(name) ? '/' + name : '/' + (STATES[name] || '#!/' + name);
-    await this.page.goto(BASE + target, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(BASE + '/' + name, { waitUntil: 'domcontentloaded' });
+    await this.settle();
+  }
+
+  /**
+   * A legacy hash address, exactly as a user with an old bookmark would send
+   * it. ADR-012 §3: the fragment is never transmitted, so this is a GET / that
+   * lands on the portal root with the fragment left in the address bar.
+   */
+  async goToLegacyHash(fragment) {
+    await this.page.goto(BASE + '/' + fragment, { waitUntil: 'domcontentloaded' });
     await this.settle();
   }
 
@@ -88,25 +67,32 @@ class AuthPage {
     return this.page.url();
   }
 
-  onLoginScreen() {
-    return this.currentState() === 'login';
+  /**
+   * Content-based, not URL-based.
+   *
+   * ADR-012 makes `/` render the login screen for a stranger rather than
+   * redirecting to `/login`, so the URL alone can no longer answer this: a
+   * visitor on `/`, on `/login`, and on `/#!/flights` are all on the login
+   * screen while showing three different addresses.
+   */
+  async onLoginScreen() {
+    return (await this.page.locator('[data-testid="login"]').count()) > 0;
   }
 
-  /**
-   * The area currently on screen, in whichever form the front door left the
-   * URL: `#!/expenses` for a legacy route, `/itinerary` for a migrated one.
-   */
+  async onDashboard() {
+    return (await this.page.locator('[data-testid="dashboard"]').count()) > 0;
+  }
+
+  /** The area currently on screen, read from the real path. */
   currentState() {
     const url = this.page.url();
-    const hash = /#!\/([^?]*)/.exec(url);
-    if (hash) return hash[1];
     const path = /^https?:\/\/[^/]+\/([^?#]*)/.exec(url);
     return path ? path[1] : '';
   }
 
   /** The view content only — the navbar carries its own .container. */
   viewText() {
-    return this.page.locator('[ui-view]').innerText();
+    return this.page.locator(VIEW).innerText();
   }
 
   bodyText() {
@@ -117,18 +103,53 @@ class AuthPage {
     return this.page.getByRole('button', { name: 'Enter Portal' });
   }
 
-  async enterPortal() {
-    await this.enterButton().click();
-    await this.page.waitForURL(/#!\/dashboard/, { timeout: 15000 });
+  /**
+   * Signs in with the credentials the legacy screen used to post by itself.
+   *
+   * Q-8 turned a click into a form fill. The scenarios that only care about
+   * the OUTCOME — arriving at the dashboard, the token being replaced — are
+   * unchanged because this method absorbs the interaction, which is exactly
+   * what a page object is for.
+   */
+  async enterPortal(email = 'demo@globaltravel.com', password = 'password') {
+    await this.signIn(email, password);
+    await this.page.waitForURL(/\/dashboard$/, { timeout: 15000 });
     await this.settle();
   }
 
+  async signIn(email, password) {
+    await this.page.fill('[data-testid="login-email"]', email);
+    await this.page.fill('[data-testid="login-password"]', password);
+    await this.enterButton().click();
+  }
+
+  /**
+   * Submits and waits for WHICHEVER outcome arrives — the dashboard or a
+   * refusal — so one Gherkin step can serve both. Waiting only for the
+   * dashboard would make every refusal scenario fail by timeout rather than
+   * by assertion, which hides what actually went wrong.
+   */
+  async signInAwaitingOutcome(email, password) {
+    await this.signIn(email, password);
+    await Promise.race([
+      this.page.waitForURL(/\/dashboard$/, { timeout: 15000 }).catch(() => undefined),
+      this.page
+        .waitForSelector('[data-testid="login-error"]', { timeout: 15000 })
+        .catch(() => undefined),
+    ]);
+    await this.settle();
+  }
+
+  loginError() {
+    return this.page.locator('[data-testid="login-error"]');
+  }
+
   loginInputs() {
-    return this.page.locator('[ui-view] input, [ui-view] select, [ui-view] textarea').count();
+    return this.page.locator(`${VIEW} input, ${VIEW} select, ${VIEW} textarea`).count();
   }
 
   async loginButtonNames() {
-    return (await this.page.locator('[ui-view] button').allInnerTexts()).map((t) => t.trim());
+    return (await this.page.locator(`${VIEW} button`).allInnerTexts()).map((t) => t.trim());
   }
 
   navLinks() {
@@ -140,15 +161,30 @@ class AuthPage {
   }
 
   dashboardLinks() {
-    return this.page.locator('[ui-view] a').allInnerTexts();
+    return this.page.locator(`${VIEW} a`).allInnerTexts();
   }
 
   dashboardButtons() {
-    return this.page.locator('[ui-view] button').allInnerTexts();
+    return this.page.locator(`${VIEW} button`).allInnerTexts();
   }
 
   notifications() {
     return this.page.locator('.notification-area .alert').allInnerTexts();
+  }
+
+  // --- sign-out (net-new, Increment 6) --------------------------------------
+
+  signOutButton() {
+    return this.page.locator('[data-testid="sign-out"]');
+  }
+
+  async signOut() {
+    await this.signOutButton().click();
+    await this.settle();
+  }
+
+  async offersSignOut() {
+    return (await this.signOutButton().count()) > 0;
   }
 
   // --- session -------------------------------------------------------------
@@ -181,23 +217,18 @@ class AuthPage {
   }
 
   /**
-   * Who the app thinks is signed in, on EITHER stack.
+   * Who the app thinks is signed in.
    *
-   * AngularJS answers from `$rootScope.currentUser`; React has no `angular`
-   * global, and answers from the `identity()` seam (`src/lib/test-seam.ts`),
-   * which reports the auth store faithfully rather than hard-coding null.
-   * Both report the same thing, so scenarios that pin C-1 keep working as
-   * modules migrate — and will go red together when C-1 is repaired.
+   * Reads the auth store through the `identity()` seam
+   * (`src/lib/test-seam.ts`). The `$rootScope` branch this method carried
+   * through Increments 3-5 is gone with the injector it reached into.
    */
   async signedInUser() {
     return this.page.evaluate(() => {
       const seam = window.__flightSearch;
-      if (seam && typeof seam.identity === 'function') {
-        const u = seam.identity();
-        return u ? JSON.parse(JSON.stringify(u)) : null;
-      }
-      const rs = angular.element(document.body).injector().get('$rootScope');
-      return rs.currentUser ? JSON.parse(JSON.stringify(rs.currentUser)) : null;
+      if (!seam || typeof seam.identity !== 'function') return null;
+      const u = seam.identity();
+      return u ? JSON.parse(JSON.stringify(u)) : null;
     });
   }
 }

@@ -26,9 +26,10 @@ function renderAt(path: string): ReactElement {
   ) as unknown as ReactElement;
 }
 
-const GUARDED = ['/dashboard'];
-/** Migrated routes render a real screen rather than a placeholder. */
+const GUARDED: string[] = [];
+/** Every route now renders a real screen. No placeholders remain. */
 const GUARDED_MIGRATED = [
+  { path: '/dashboard', testId: 'dashboard' },
   { path: '/flights', testId: 'flight-search' },
   { path: '/hotels', testId: 'hotel-booking' },
   { path: '/itinerary', testId: 'itinerary' },
@@ -71,18 +72,34 @@ describe('router guard — a signed-in user reaches every guarded route', () => 
     });
   }
 
-  it('DEFECT PRESERVED: a junk token satisfies the guard', () => {
-    // The legacy guard calls isAuthenticated(), which is presence-only. The
-    // baseline proved "a planted token of not-a-real-jwt opens /expenses and
-    // /itinerary in full". Q-8 / ADR-010 fix this in Inc-6.
+  it('THE DEFECT IS GONE: a junk token no longer satisfies the guard', () => {
+    // Increments 0-5 pinned the opposite. The legacy guard called
+    // isAuthenticated(), which is presence-only, and the baseline proved "a
+    // planted token of not-a-real-jwt opens /expenses and /itinerary in full".
     //
-    // Asserted against /dashboard since Increment 5: it is the last guarded
-    // route that still renders a placeholder, so the guard can be observed
-    // without standing up a feature screen's data layer. The point is that the
-    // guard ADMITS the junk token, not which screen it admits it to.
+    // Q-8 / ADR-010 fix it at the cutover, and the fix is NOT a new branch in
+    // the guard — the predicate is unchanged. restoreSession() asks the server
+    // who the bearer is, the 401 clears the session, and the same
+    // `!!localStorage.getItem('authToken')` then answers false.
+    //
+    // Here the store is put in the state that call leaves behind: cleared, and
+    // no longer restoring. The guard does the rest on its own.
     window.localStorage.setItem('authToken', 'not-a-real-jwt');
+    authStore.getState().clearSession();
     renderAt('/dashboard');
-    expect(screen.getByTestId('placeholder')).toHaveAttribute('data-route', '/dashboard');
+    expect(screen.getByTestId('login')).toBeInTheDocument();
+    expect(screen.queryByTestId('dashboard')).not.toBeInTheDocument();
+  });
+
+  it('waits for the identity answer rather than bouncing a signed-in reload', () => {
+    // C-1 repair: on a reload the token is present but the identity is not yet
+    // known. Bouncing to login here would make every refresh look like a
+    // sign-out, which is worse than the defect being repaired.
+    window.localStorage.setItem('authToken', 'jwt-abc');
+    authStore.setState({ user: null, restoring: true });
+    renderAt('/dashboard');
+    expect(screen.queryByTestId('login')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dashboard')).not.toBeInTheDocument();
   });
 });
 
@@ -104,27 +121,64 @@ describe('route tree — mirrors all seven UI-Router states', () => {
     expect(screen.getByTestId('shell-status')).toHaveTextContent('ok');
   });
 
-  it('the health route reports each ledger row against its current owner', () => {
+  it('the health route reports every ledger row as React', () => {
     renderAt('/__shell');
-    // Increments 1-5 have each moved one row. Every FEATURE route is React;
-    // only login and the dashboard remain for the cutover.
-    for (const state of ['flights', 'hotels', 'itinerary', 'travelRequest', 'expenses']) {
+    // Six increments each moved one or two rows. Nothing is left.
+    for (const state of [
+      'login',
+      'dashboard',
+      'flights',
+      'hotels',
+      'itinerary',
+      'travelRequest',
+      'expenses',
+    ]) {
       expect(screen.getByTestId(`ledger-owner-${state}`)).toHaveTextContent('react');
     }
-    for (const state of ['login', 'dashboard']) {
-      expect(screen.getByTestId(`ledger-owner-${state}`)).toHaveTextContent('angularjs');
-    }
+  });
+
+  it('renders the portal root at "/" — login for a stranger (ADR-012)', () => {
+    renderAt('/');
+    expect(screen.getByTestId('login')).toBeInTheDocument();
+  });
+
+  it('renders the portal root at "/" — the dashboard when signed in (ADR-012)', () => {
+    authStore.getState().setSession('jwt-abc', SARAH);
+    renderAt('/');
+    expect(screen.getByTestId('dashboard')).toBeInTheDocument();
   });
 });
 
-describe('shell chrome — carries no sign-out control before Inc-6', () => {
-  it('offers no sign-out affordance anywhere', () => {
-    // Plan §4.2: shipping sign-out early turns authentication.feature:124's
-    // six per-area rows red one increment at a time. The baseline proved no
-    // legacy screen contains "log out" or "sign out".
+describe('shell chrome — sign-out ships in Inc-6', () => {
+  it('offers a sign-out control when signed in', () => {
+    // Net-new (ADR-010). It supersedes all six rows of the sign-out outline,
+    // which passed unchanged through five increments because the React chrome
+    // deliberately carried no such control either (plan §4.2).
     authStore.getState().setSession('jwt-abc', SARAH);
     renderAt('/dashboard');
+    expect(screen.getByTestId('sign-out')).toBeInTheDocument();
+  });
+
+  it('shows the signed-in traveller by name', () => {
+    authStore.getState().setSession('jwt-abc', SARAH);
+    renderAt('/dashboard');
+    expect(screen.getByTestId('nav-identity')).toHaveTextContent('Sarah Johnson');
+  });
+
+  it('offers NO sign-out control to a stranger', () => {
+    // This is what keeps "the navigation bar offers no way to sign out"
+    // PRESERVED for a signed-out visitor while the signed-in rows supersede.
+    renderAt('/login');
+    expect(screen.queryByTestId('sign-out')).not.toBeInTheDocument();
     expect(screen.queryByText(/sign\s*out/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/log\s*out/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the dashboard free of controls — sign-out lives in the navbar', () => {
+    // Resolves the pending decision in plan §10.4: "The dashboard carries no
+    // controls at all" PRESERVES because the control went to the navbar.
+    authStore.getState().setSession('jwt-abc', SARAH);
+    renderAt('/dashboard');
+    const dashboard = screen.getByTestId('dashboard');
+    expect(dashboard.querySelectorAll('button')).toHaveLength(0);
   });
 });

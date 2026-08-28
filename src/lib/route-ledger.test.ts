@@ -18,11 +18,13 @@ import {
   ownerOf,
 } from './route-ledger';
 
-describe('route ledger — ownership after Increment 5', () => {
-  it('React owns exactly the migrated routes', () => {
-    // Increment 1 moved the first row. This assertion is the ledger's
-    // changelog: it must be edited deliberately, per increment.
+describe('route ledger — ownership after the cutover', () => {
+  it('React owns every route', () => {
+    // The last two rows moved in Increment 6. This assertion is the ledger's
+    // changelog and was edited deliberately, per increment, six times.
     expect(reactOwnedPaths()).toEqual([
+      '/login',
+      '/dashboard',
       '/flights',
       '/hotels',
       '/itinerary',
@@ -32,11 +34,11 @@ describe('route ledger — ownership after Increment 5', () => {
   });
 
   /**
-   * Every FEATURE module is React now. Only login and the dashboard are left,
-   * and they migrate together at the cutover (Q-8 / ADR-010).
+   * The one-line proof that the migration is complete. Nothing is left for the
+   * front door to redirect to, which is why its legacy legs are gone.
    */
-  it('AngularJS owns only login and the dashboard', () => {
-    expect(legacyOwnedPaths()).toEqual(['/login', '/dashboard']);
+  it('AngularJS owns nothing', () => {
+    expect(legacyOwnedPaths()).toEqual([]);
   });
 
   it('the shell health route is not a product route', () => {
@@ -74,7 +76,9 @@ describe('route ledger — mirrors app/app.routes.js exactly', () => {
 
   it('copies requireAuth from the legacy state definitions', () => {
     // Only `login` omits data.requireAuth; the other six declare it true.
-    expect(ownerOf('/login')).toBe('angularjs');
+    // The ledger keeps this column after cutover because App.tsx still reads
+    // it — the guard is the legacy guard's port, not a new policy.
+    expect(ownerOf('/login')).toBe('react');
     const requireAuthByState = Object.fromEntries(
       ROUTE_LEDGER.map((r) => [r.legacyState, r.requireAuth]),
     );

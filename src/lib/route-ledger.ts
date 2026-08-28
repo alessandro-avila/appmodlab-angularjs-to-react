@@ -51,13 +51,15 @@ export interface LedgerRow {
 /**
  * All seven UI-Router states from app/app.routes.js, mirrored.
  *
- * Increment 1 moved the FIRST row: `/flights` is now owned by React. Every
- * other row is still AngularJS, so the remaining 4 feature modules and the
- * login/dashboard pair keep answering exactly as before.
+ * INCREMENT 6 MOVED THE LAST TWO ROWS. Every route is now owned by React, the
+ * AngularJS application has been deleted, and the front door no longer has a
+ * proxy leg to point at. The ledger is kept — as the record of what moved
+ * when, which the `migratesIn` column makes readable — and because `App.tsx`
+ * still reads `requireAuth` from it.
  */
 export const ROUTE_LEDGER: readonly LedgerRow[] = [
-  { path: '/login', legacyState: 'login', legacyHash: '#!/login', owner: 'angularjs', migratesIn: 'Inc-6', requireAuth: false },
-  { path: '/dashboard', legacyState: 'dashboard', legacyHash: '#!/dashboard', owner: 'angularjs', migratesIn: 'Inc-6', requireAuth: true },
+  { path: '/login', legacyState: 'login', legacyHash: '#!/login', owner: 'react', migratesIn: 'Inc-6', requireAuth: false },
+  { path: '/dashboard', legacyState: 'dashboard', legacyHash: '#!/dashboard', owner: 'react', migratesIn: 'Inc-6', requireAuth: true },
   { path: '/flights', legacyState: 'flights', legacyHash: '#!/flights', owner: 'react', migratesIn: 'Inc-1', requireAuth: true },
   { path: '/hotels', legacyState: 'hotels', legacyHash: '#!/hotels', owner: 'react', migratesIn: 'Inc-2', requireAuth: true },
   { path: '/itinerary', legacyState: 'itinerary', legacyHash: '#!/itinerary', owner: 'react', migratesIn: 'Inc-3', requireAuth: true },
@@ -86,8 +88,9 @@ export function ownerOf(path: string, ledger: readonly LedgerRow[] = ROUTE_LEDGE
   return ledger.find((r) => r.path === path)?.owner ?? null;
 }
 
-/**
- * Paths the legacy app owns that are NOT ledger rows: its static assets.
- * The front door must forward these to :8080 for the whole migration.
- */
-export const LEGACY_STATIC_PREFIXES: readonly string[] = ['/components', '/assets', '/bower_components'];
+// `LEGACY_STATIC_PREFIXES` was removed at the cutover. It listed the paths the
+// AngularJS app owned that were NOT ledger rows — /components, /assets and
+// /bower_components — so the front door could forward them to :8080. There is
+// no :8080 any more. The one asset that was genuinely needed,
+// `app/assets/css/style.css`, is now `src/styles/app.css` and part of the
+// module graph; Bootstrap 3 is vendored into `public/vendor/bootstrap/`.

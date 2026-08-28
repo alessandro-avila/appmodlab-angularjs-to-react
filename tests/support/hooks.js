@@ -69,11 +69,22 @@ BeforeAll({ timeout: 120 * 1000 }, async function () {
   browser = await chromium.launch({ headless: !HEADED });
 
   // Authenticate once and persist the state for every scenario to reuse.
+  //
+  // INCREMENT 6 changed how this is done, and it gates the whole suite.
+  // Q-8 replaced the button-only login screen with a credential form, so the
+  // demo credentials are TYPED here rather than posted by the app itself; and
+  // React navigates to the real path `/dashboard` rather than the fragment
+  // `#!/dashboard`. The token obtained is a genuine server-issued JWT, which
+  // matters more than it used to: the C-1 repair calls GET /api/auth/me with
+  // it on every boot, so every scenario's restored session now resolves to a
+  // real identity.
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+  await page.fill('[data-testid="login-email"]', 'demo@globaltravel.com');
+  await page.fill('[data-testid="login-password"]', 'password');
   await page.getByRole('button', { name: 'Enter Portal' }).click();
-  await page.waitForURL(/#!\/dashboard/, { timeout: 15000 });
+  await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
   await page.waitForFunction(() => !!localStorage.getItem('authToken'), null, { timeout: 15000 });
   authToken = await page.evaluate(() => localStorage.getItem('authToken'));
 

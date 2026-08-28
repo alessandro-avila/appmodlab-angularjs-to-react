@@ -38,11 +38,11 @@ const toMinutes = (label) => {
 // ---------------------------------------------------------------- background
 
 Given('I am signed in to the travel portal', async function () {
-  // Increment 1: driven through the front door rather than the legacy server
-  // directly, so the session this asserts is the one BOTH applications share.
-  // localStorage is origin-scoped, so a token on :8080 would be invisible to
-  // the React route (increment-plan §1.2).
-  await this.page.goto(`${BASE_URL}/#!/dashboard`, { waitUntil: 'domcontentloaded' });
+  // Increment 6: `/dashboard` is a real path now, like every other route.
+  // The hash form this used through Increments 1-5 still landed correctly by
+  // accident (ADR-012 sends `/#!/…` to the portal root, which renders the
+  // dashboard for a signed-in user), but it no longer describes anything.
+  await this.page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'domcontentloaded' });
   const token = await this.page.evaluate(() => localStorage.getItem('authToken'));
   assert.ok(token, 'expected an auth token from the stored session');
 });

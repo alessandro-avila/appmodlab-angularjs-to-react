@@ -85,6 +85,22 @@ function seam(): TestSeam | null {
   return w[SEAM_KEY] ?? null;
 }
 
+/**
+ * Creates the seam at boot, so `identity()` is reachable on EVERY route.
+ *
+ * Until Increment 6 the seam was created lazily, by whichever feature route
+ * published its scope. That was sufficient while identity questions were only
+ * ever asked on a feature screen. The cutover moved them to `/` and
+ * `/dashboard`, where nothing publishes a scope — so the seam did not exist
+ * and the harness read `null` for a traveller who was demonstrably signed in.
+ *
+ * Called from `main.tsx`. Still DEV-only: `seam()` returns null in a
+ * production build, so this is a no-op there.
+ */
+export function initTestSeam(): void {
+  seam();
+}
+
 export function publishScope(scope: PublishedScope): void {
   const s = seam();
   if (s) s.scope = scope;

@@ -21,9 +21,20 @@
  * enters history, so the user cannot press Back into it. A push would leave a
  * dead entry the legacy app does not have.
  *
- * DEFECT PRESERVED: the predicate tests token PRESENCE, not validity, so a
- * planted junk token opens every screen — FRD-authentication Known Limitation
- * 8, superseded in Inc-6 by Q-8 / ADR-010. Do not "fix" this here.
+ * THE PREDICATE IS UNCHANGED IN INC-6, AND THAT IS THE POINT.
+ *
+ * Through Increments 0-5 this tested token PRESENCE, not validity, so a
+ * planted junk token opened every screen (FRD-authentication Known Limitation
+ * 8). Q-8 / ADR-010 scheduled the repair for Inc-6 — and the repair is NOT a
+ * branch added here. `restoreSession()` asks `GET /api/auth/me` on boot, and
+ * an unreadable or expired token is cleared before this guard ever runs. The
+ * same `!!localStorage.getItem('authToken')` then answers false on its own.
+ * The guard became a validity check by gaining a FACT, not a condition.
+ *
+ * `restoring` exists so the guard does not bounce a signed-in traveller to
+ * login in the moment between boot and the identity answer. A present token
+ * means "probably authenticated, ask again shortly" — which is why a reload
+ * leaves the traveller where they were.
  */
 import type { ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router';
@@ -33,11 +44,14 @@ export interface RequireAuthProps {
   readonly children: ReactElement;
 }
 
-export function RequireAuth({ children }: RequireAuthProps): ReactElement {
+export function RequireAuth({ children }: RequireAuthProps): ReactElement | null {
   // Subscribing through the store keeps the guard reactive: clearing the
   // session (e.g. from the API client's 401 path) re-evaluates it.
   const authenticated = useAuthStore((s) => s.isAuthenticated());
+  const restoring = useAuthStore((s) => s.restoring);
   const location = useLocation();
+
+  if (authenticated && restoring) return null;
 
   if (!authenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;

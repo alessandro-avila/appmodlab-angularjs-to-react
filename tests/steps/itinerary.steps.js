@@ -271,11 +271,11 @@ Then('that note is attributed to {string}', async function (author) {
   assert.ok(notes.some((n) => n.startsWith(author)), `expected a note by ${author}, saw ${JSON.stringify(notes)}`);
 });
 
-Then('the portal does not remember who is signed in', async function () {
-  const identity = await this.itinerary.signedInIdentity();
-  assert.strictEqual(identity.currentUser, null, 'expected no signed-in user on the root scope');
-  assert.deepStrictEqual(identity.storedKeys, ['authToken'], 'expected only the token to be stored');
-});
+// `the portal does not remember who is signed in` was removed in Increment 6.
+// It pinned ADR-003 constraint C-1 — identity lost across a reload — which the
+// cutover repairs via GET /api/auth/me. The scenarios that used it are
+// superseded in authentication.feature and travel-request.feature, and assert
+// `the portal still knows me as` instead.
 
 Then('the server has stored that note against the item', async function () {
   const item = await this.itinerary.serverItem('trip-1', FIRST_ITEM_ID);

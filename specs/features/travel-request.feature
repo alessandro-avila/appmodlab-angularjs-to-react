@@ -314,16 +314,30 @@ Feature: Travel requests
       | Approved       | 1 |
       | Rejected       | 0 |
 
-  # $rootScope.currentUser is set during login and never persisted, so a restored
-  # browser session cannot say who is signed in. Requests raised in such a
-  # session are filed under the fallback name.
-  @mutates-fixture
-  Scenario: A request raised in a restored session is filed under "Demo User"
+  @mutates-fixture @inc-6
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-003 constraint C-1, authorised by ADR-010.
+  #
+  # ADR-010 named this scenario explicitly when it listed where the latent C-1
+  # defect would surface: "again in Inc-4 (travel-request.feature:233, a
+  # request raised in a restored session filed under 'Demo User')".
+  #
+  # $rootScope.currentUser was set during login and never persisted, so a
+  # restored browser session could not say who was signed in and requests were
+  # filed under a fallback name. Increment 6 restores identity from the token
+  # via GET /api/auth/me, so a restored session knows the traveller and files
+  # the request under their real name.
+  #
+  # The suite signs in by planting a token rather than by typing credentials,
+  # which is exactly the "restored session" this scenario describes — so this
+  # is the ordinary path now, not an edge case.
+  # ---------------------------------------------------------------------------
+  Scenario: A request raised in a restored session is filed under my own name
     Given I have started a new travel request
     When I fill in a complete travel request for "Berlin, Germany"
     And I submit the travel request
-    Then the stored request for "Berlin, Germany" names the traveller "Demo User"
-    And the portal does not remember who is signed in
+    Then the stored request for "Berlin, Germany" names the traveller "Sarah Johnson"
+    And the portal still knows me as "Sarah Johnson"
 
   @mutates-fixture
   Scenario: The form never collects who is travelling

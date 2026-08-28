@@ -307,7 +307,75 @@ the Bootstrap 3 jQuery plugin directly rather than by a scope flag.
 
 ---
 
-## Current Implementation (Brownfield Extension)
+## Current Implementation (React)
+
+> **Stack:** React 19.2.8 · TypeScript 7.0.2 strict · Vite 8.2.1 · react-router 8.3.0 · Zustand 5.0.15 · Zod 4.4.3 · date-fns 4.4.0. Migrated in **Increment 2**.
+
+### Files
+
+| File Path | Role | Lines |
+|-----------|------|-------|
+| `src/features/hotel-booking/HotelBooking.tsx` | The screen — JSX, local state, effects | 536 |
+| `src/features/hotel-booking/hotel-booking-model.ts` | Pure logic — filtering, sorting, derivation, validation | 222 |
+| `src/features/hotel-booking/hotel-booking-api.ts` | Typed calls through the shared API client | 65 |
+| `src/types/` | Zod schemas and the types inferred from them | — |
+
+### Architecture Pattern
+
+Function component with hooks. **Pure logic is separated from the screen** into a `*-model.ts` module, which is the structural change from the AngularJS controller: the controller mixed scope state, business rules, HTTP and DOM manipulation in one file, and the model is testable without rendering anything. Data fetching goes through the shared API client, never through a router loader (ADR-012), so there is one place a response enters the application.
+
+### What was dropped, and what replaced it
+
+| Legacy mechanism | React replacement |
+|---|---|
+| `$("#bookingConfirmationModal").modal("show")` — jQuery **and** `bootstrap.js` | `src/components/modal.tsx` |
+| jQuery UI datepicker | native `<input type="date">` |
+| Lodash | native `Array` methods |
+| Moment.js | `date-fns` with an explicit parse format (ADR-009) |
+| Restangular | `src/lib/api-client.ts` |
+| `flight:selected` via `$rootScope` | a normal store read |
+
+### Behaviour notes
+
+The NaN booking total is PRESERVED. `controller:231` computed the total from a field the room object does not carry, and the assessment had already decided this (plan §6.5, Q-3) — so it was reproduced rather than silently corrected. `bootstrap.js` could not be removed in this increment: expense-reconciliation still needed it until Increment 5.
+
+### Shared infrastructure
+
+Every feature screen is built from the same small set of modules, which is the structural
+difference from the AngularJS application — there, each module carried its own copy of the
+same concerns.
+
+| Module | Lines | Replaces |
+|---|---:|---|
+| `src/lib/api-client.ts` | 127 | Restangular. One base URL from config, one `Authorization` header, one error policy, and **Zod response validation** (ADR-011 §4). |
+| `src/lib/format.ts` | 118 | Angular's `currency`/`number` filters and hand-rolled `toFixed` money. Three primitives, because the baseline pins three distinct renderings. |
+| `src/stores/auth-store.ts` | 155 | `auth.service.js` + `$rootScope.currentUser`. Vanilla Zustand (ADR-013), because two consumers are not components. |
+| `src/stores/notification-store.ts` | 85 | the `notification:add` handler in `app/app.js:44-50`. |
+| `src/components/require-auth.tsx` | 56 | the `$stateChangeStart` guard in `app/app.js:32-37`. |
+| `src/components/modal.tsx` | 102 | Bootstrap 3's jQuery modal. |
+| `src/components/confirm-dialog.tsx` | 123 | `window.confirm()`. |
+| `src/lib/route-ledger.ts` | — | `app/app.routes.js`. Read by BOTH the router and (until cutover) the front door, so they could not disagree. |
+
+**Data flow.** Screen → `*-api.ts` → `api-client.ts` → `fetch` → Zod schema → typed result.
+Nothing reaches the network except through the client, so there is exactly one place a response
+enters the application. Types are erased at runtime; **Zod is what actually validates** (ADR-011,
+finding P-7).
+
+**State.** Local `useState` for screen state, Zustand stores for the two cross-cutting concerns
+(session, notifications). There is no `$rootScope` and no global mutable bag.
+
+---
+## Original Implementation (AngularJS — decommissioned in Increment 2)
+
+> **This section is history, not a description of the running system.** The files and line
+> numbers below refer to `app/`, which was deleted at the cutover (ADR-023).
+>
+> It is preserved deliberately. It is the brownfield extraction record produced in Phase B1,
+> every ADR cites it by file and line, and the superseded Gherkin blocks in
+> `specs/features/` refer to it constantly. Deleting it would leave those references
+> unresolvable and destroy the audit trail from "what the 2016 app did" to "what the React
+> app does".
+
 
 ### Files Involved
 

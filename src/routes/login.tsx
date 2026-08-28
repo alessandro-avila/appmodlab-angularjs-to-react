@@ -1,55 +1,57 @@
 /**
- * LOGIN ROUTE — a faithful mirror of the legacy login state
- * (`app/app.routes.js:13-26`).
+ * LOGIN ROUTE — the Q-8 credential form (ADR-002 Q-8, ADR-010).
  *
  * ─────────────────────────────────────────────────────────────────────────
- * WHY THIS IS A BUTTON AND NOT A CREDENTIAL FORM
+ * WHAT CHANGED, AND WHAT DELIBERATELY DID NOT
  * ─────────────────────────────────────────────────────────────────────────
- * The legacy login screen has NO inputs. It is one button labelled "Enter
- * Portal" that calls `AuthService.login('demo@globaltravel.com', 'password')`
- * with hardcoded credentials (`app.routes.js:20`). The green baseline proved
- * it: the login view contains "0 input, select or textarea elements and
- * exactly one button".
+ * The legacy login screen had NO inputs: one button that posted a pair of
+ * constants (`app/app.routes.js:20`). The green baseline pinned it — "0 input,
+ * select or textarea elements and exactly one button". Q-8 authorises the real
+ * form, because the API has always checked credentials and a second employee
+ * (Mike Chen) has always existed server-side, unreachable through the UI.
  *
- * A real multi-user credential form is **Q-8**, which is NET-NEW behaviour
- * scheduled for **Inc-6** (ADR-010). Building it here would supersede
- * `authentication.feature:43`, `:82` and `:89` five increments early, in the
- * increment whose Gherkin delta must be a literal 0 / 235 / 0.
+ * The BUTTON LABEL is kept as "Enter Portal". It is a perfectly good submit
+ * label, and keeping it lets `authentication.feature`'s "the login screen
+ * offers a single way in" stay PRESERVED on both the opening scenario and the
+ * walk-back-to-login one, rather than superseding for a cosmetic reason.
  *
- * So this route reproduces the legacy behaviour exactly — including the
- * hardcoded credentials and the async ordering bug-fix comment carried in the
- * legacy source, which waits for the token before navigating so the
- * requireAuth guard does not bounce back to /login.
+ * The async ordering carried from `app.routes.js:18-19` is also kept: wait for
+ * the token before navigating, or the requireAuth guard bounces straight back.
  *
- * It is NOT reachable by a user in Increment 0: the front door still routes
- * /login to AngularJS. It exists to prove the auth store port works end to end.
+ * A rejected credential is NOT a session-expiry event. The API client already
+ * distinguishes them — a 401 from an `anonymous` call raises no session notice
+ * (`api-client.ts:119-123`) — so the message shown here is the login screen's
+ * own, and it deliberately does not reveal whether the account exists.
  */
-import { useState, type ReactElement } from 'react';
+import { useState, type FormEvent, type ReactElement } from 'react';
 import { useNavigate } from 'react-router';
 import { login } from '../lib/auth-service';
-import { notify } from '../stores/notification-store';
 
-/** `app/app.routes.js:20` — the hardcoded demo credentials, unchanged. */
-const DEMO_EMAIL = 'demo@globaltravel.com';
-const DEMO_PASSWORD = 'password';
+/** Generalised so it cannot leak whether the account exists. */
+const REJECTED = 'Email or password is incorrect.';
 
 export function Login(): ReactElement {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function enter(): Promise<void> {
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
     setBusy(true);
+    setError('');
     try {
       // login() is async — wait for the token before changing route,
       // otherwise the requireAuth guard bounces back to /login.
       // (The comment above is carried from app/app.routes.js:18-19.)
-      await login(DEMO_EMAIL, DEMO_PASSWORD);
+      await login(email, password);
       await navigate('/dashboard');
-    } catch (error) {
-      // The legacy chain has NO rejection handler (finding P-8) so a failed
-      // login fails silently. The React client has one error policy (plan
-      // §4.2). Unobservable in Inc-0 — no user can reach this route.
-      notify(error instanceof Error ? error.message : 'Sign-in failed', 'danger');
+    } catch {
+      // The legacy chain had NO rejection handler (finding P-8), so a failed
+      // login failed silently. It cannot here: a form the user typed into must
+      // say why it was refused.
+      setError(REJECTED);
     } finally {
       setBusy(false);
     }
@@ -58,10 +60,47 @@ export function Login(): ReactElement {
   return (
     <div className="container" data-testid="login">
       <h2>Login</h2>
-      <p>Mock login - click to enter</p>
-      <button type="button" onClick={() => void enter()} disabled={busy} data-testid="enter-portal">
-        Enter Portal
-      </button>
+      <p>Sign in with your GlobalTravel Corp account</p>
+
+      <form onSubmit={(e) => void submit(e)} data-testid="login-form">
+        <div className="form-group">
+          <label htmlFor="login-email">Email</label>
+          <input
+            id="login-email"
+            type="email"
+            className="form-control"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            required
+            data-testid="login-email"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="login-password">Password</label>
+          <input
+            id="login-password"
+            type="password"
+            className="form-control"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+            data-testid="login-password"
+          />
+        </div>
+
+        {error ? (
+          <div className="alert alert-danger" role="alert" data-testid="login-error">
+            {error}
+          </div>
+        ) : null}
+
+        <button type="submit" disabled={busy} data-testid="enter-portal">
+          Enter Portal
+        </button>
+      </form>
     </div>
   );
 }

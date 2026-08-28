@@ -316,23 +316,14 @@ class ItineraryPage {
    * `authentication.feature:161/:170/:185` and `travel-request.feature` all
    * assert it.
    *
-   * The screen may be either framework. AngularJS keeps the answer on
-   * `$rootScope`; a React screen has no `angular` global at all, so the seam
-   * answers instead. Both read the real thing — neither branch hard-codes a
-   * result, so when Inc-6 repairs C-1 these scenarios go red on purpose.
+   * Reads the auth store through the seam. The `$rootScope` branch this
+   * carried through Increments 3-5 is gone with the injector it reached into.
+   * It still reads the REAL thing rather than hard-coding a result, which is
+   * what let the C-1 scenarios go red on purpose when Inc-6 repaired C-1.
    */
   async signedInIdentity() {
     return this.page.evaluate(() => {
       const storedKeys = Object.keys(localStorage);
-
-      if (typeof angular !== 'undefined' && document.querySelector('[ui-view]')) {
-        const rs = angular.element(document.body).injector().get('$rootScope');
-        return {
-          currentUser: rs.currentUser === undefined ? null : rs.currentUser,
-          storedKeys
-        };
-      }
-
       const seam = window.__flightSearch;
       const user = seam && typeof seam.identity === 'function' ? seam.identity() : null;
       return { currentUser: user === undefined ? null : user, storedKeys };

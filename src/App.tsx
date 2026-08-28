@@ -22,6 +22,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { RootLayout } from './routes/root-layout';
 import { RequireAuth } from './components/require-auth';
 import { Login } from './routes/login';
+import { PortalRoot } from './routes/portal-root';
 import { Dashboard } from './routes/dashboard';
 import { Flights } from './routes/flights';
 import { Hotels } from './routes/hotels';
@@ -36,6 +37,15 @@ export function AppRoutes(): ReactElement {
   return (
     <Routes>
       <Route element={<RootLayout />}>
+        {/*
+          `/` — the portal root. ADR-012 §3: a legacy hash address such as
+          `/#!/flights` transmits `GET /`, so this is where every one of them
+          lands. Login for a stranger, dashboard for a signed-in user. Rendered,
+          not redirected, so the fragment survives in the address bar exactly as
+          the ADR describes.
+        */}
+        <Route index element={<PortalRoot />} />
+
         {/* login — requireAuth: false (app.routes.js:13-26) */}
         <Route path="/login" element={<Login />} />
 

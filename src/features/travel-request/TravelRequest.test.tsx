@@ -24,6 +24,7 @@ vi.mock('./travel-request-api', () => ({
 
 const { TravelRequestScreen } = await import('./TravelRequest');
 const { notificationStore } = await import('../../stores/notification-store');
+const { authStore } = await import('../../stores/auth-store');
 
 const COSTED = { flights: 1200, hotels: 800, meals: 300, transport: 150, other: 50 };
 
@@ -61,6 +62,9 @@ beforeEach(() => {
   updateRequest.mockReset();
   cancelRequest.mockReset();
   notificationStore.setState({ notifications: [] });
+  // The store is module-level; a session planted by one test would otherwise
+  // change the attribution asserted by another.
+  authStore.getState().clearSession();
   getRequests.mockResolvedValue([LONDON, TOKYO]);
 });
 
@@ -526,8 +530,12 @@ describe('creating and editing', () => {
     });
   });
 
-  it('files the request under the Demo User fallback (C-1 preserved)', async () => {
+  it('falls back to the placeholder only when identity is unknown', async () => {
+    // The fallback branch of controller:172-173. It is no longer the ordinary
+    // path — the C-1 repair in Increment 6 means a restored session knows the
+    // traveller — but it is still the branch taken when nobody is signed in.
     const user = userEvent.setup();
+    authStore.getState().clearSession();
     submitRequest.mockResolvedValue({ ...LONDON, id: 'tr-3' });
     await renderScreen();
     await openForm(user);
@@ -538,6 +546,27 @@ describe('creating and editing', () => {
     const body = submitRequest.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(body['travelerName']).toBe('Demo User');
     expect(body['travelers']).toEqual([{ name: '', email: '' }]);
+  });
+
+  it('files the request under the signed-in traveller (C-1 repaired)', async () => {
+    const user = userEvent.setup();
+    authStore.getState().setSession('jwt-abc', {
+      id: 1,
+      name: 'Sarah Johnson',
+      email: 'demo@globaltravel.com',
+      department: 'Engineering',
+      role: 'employee',
+    });
+    submitRequest.mockResolvedValue({ ...LONDON, id: 'tr-3' });
+    await renderScreen();
+    await openForm(user);
+    await fillComplete(user);
+    await user.click(screen.getByRole('button', { name: /Submit Request/ }));
+
+    await waitFor(() => expect(submitRequest).toHaveBeenCalled());
+    const body = submitRequest.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(body['travelerName']).toBe('Sarah Johnson');
+    expect(body['travelerEmail']).toBe('demo@globaltravel.com');
   });
 
   it('opens the edit form already filled in, offering Update', async () => {
