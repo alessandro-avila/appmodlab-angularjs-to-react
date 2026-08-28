@@ -1,18 +1,36 @@
 /**
- * Page object for the travel requests screen.
+ * Page object for the travel requests screen — React since Increment 4.
  *
- * Two things about this screen need exposing rather than hiding:
+ * Two things this page object used to expose have gone, because the defects
+ * they existed to observe were REPAIRED under ADR-005 (see also ADR-022):
  *
- *  - The controller scope and the ng-if child scopes are DIFFERENT objects, and
- *    the difference is the story behind the un-dismissable error alert. Both are
- *    readable here (readScope / readAlertScope).
- *  - The search box is broken: typing into it throws out of the digest. Nothing
- *    in this page object papers over that; scenarios assert the error.
+ *  - `readAlertScope` read the ng-if child scope around the error alert, which
+ *    was the mechanism of the un-dismissable complaint. The alert dismisses
+ *    now, so there is no second scope to read.
+ *  - The search box works, so nothing here has to accommodate a TypeError.
+ *
+ * Scope note: the route publishes a scope-shaped snapshot at
+ * `window.__flightSearch.scope` (see `src/lib/test-seam.ts`) under the same
+ * property names the AngularJS controller used — requests, filteredRequests,
+ * isLoading, errorMessage, showForm, editMode, filterStatus, searchQuery,
+ * selectedRequest, newRequest. Every `fn` written against the legacy still
+ * works.
  */
 const { BASE_URL } = require('../support/world');
 
 const ROOT = '.travel-request-container';
 const API = 'http://localhost:3000/api';
+
+/** "2026-09-10T00:00:00" or a Date -> "2026-09-10". */
+function toDateInputValue(value) {
+  if (value instanceof Date) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(value).slice(0, 10);
+}
 
 class TravelRequestPage {
   constructor(page) {
@@ -22,9 +40,14 @@ class TravelRequestPage {
   // ------------------------------------------------------------------ navigation
 
   async open() {
-    await this.page.goto(`${BASE_URL}/#!/travel-request`, { waitUntil: 'domcontentloaded' });
-    await this.page.waitForSelector(ROOT, { timeout: 15000 });
-    await this.page.waitForSelector('table.table tbody tr, h4.text-muted', { timeout: 15000 });
+    await this.page.goto(`${BASE_URL}/travel-request`, { waitUntil: 'domcontentloaded' });
+    await this.page.waitForSelector(ROOT, { timeout: 20000 });
+    await this.page.waitForFunction(
+      () => !!(window.__flightSearch && window.__flightSearch.scope),
+      null,
+      { timeout: 20000 }
+    );
+    await this.page.waitForSelector('table.table tbody tr, h4.text-muted', { timeout: 20000 });
     await this.settle();
   }
 
@@ -34,29 +57,13 @@ class TravelRequestPage {
 
   // ---------------------------------------------------------------- scope access
 
-  /** The controller's own scope. */
+  /** Read the published snapshot. */
   async readScope(fn) {
     return this.page.evaluate(
-      ([body, sel]) => {
-        const scope = angular.element(document.querySelector(sel)).scope();
+      (body) =>
         // eslint-disable-next-line no-new-func
-        return new Function('sc', `return (${body})(sc)`)(scope);
-      },
-      [fn.toString(), ROOT]
-    );
-  }
-
-  /** The child scope ng-if creates around the error alert. */
-  async readAlertScope(fn) {
-    return this.page.evaluate(
-      ([body]) => {
-        const alert = document.querySelector('.travel-request-container > .alert-danger');
-        if (!alert) return null;
-        const scope = angular.element(alert).scope();
-        // eslint-disable-next-line no-new-func
-        return new Function('sc', `return (${body})(sc)`)(scope);
-      },
-      [fn.toString()]
+        new Function('sc', `return (${body})(sc)`)(window.__flightSearch.scope),
+      fn.toString()
     );
   }
 
@@ -249,12 +256,13 @@ class TravelRequestPage {
   }
 
   async selectPurpose() {
-    await this.form.locator('select[ng-model="newRequest.purpose"]').selectOption({ index: 1 });
+    // Addressed by id now — the ng-model attribute went with AngularJS.
+    await this.page.locator('#trPurpose').selectOption({ index: 1 });
     await this.settle();
   }
 
   async selectDepartment() {
-    await this.form.locator('select[ng-model="newRequest.department"]').selectOption({ index: 1 });
+    await this.page.locator('#trDepartment').selectOption({ index: 1 });
     await this.settle();
   }
 
@@ -265,21 +273,18 @@ class TravelRequestPage {
   }
 
   /**
-   * The two date fields are jQuery UI datepickers whose ng-model holds a Date
-   * object, not the typed string. Scenarios need exact dates, so they are set
-   * on the model the same way the picker's onSelect handler does.
+   * Both date fields are native date inputs now (ADR-009 / ADR-014). The
+   * jQuery UI datepickers, whose ng-model held a Date object rather than the
+   * typed string, are gone — so the dates are simply typed.
+   *
+   * The scenarios pass the values the legacy needed, which are full local
+   * datetime strings ("2026-09-10T00:00:00"). A native date input accepts only
+   * `yyyy-MM-dd`, so the day part is taken here rather than rewriting every
+   * step: the SCENARIOS should not churn because the widget changed.
    */
   async setTripDates(depart, ret) {
-    await this.page.evaluate(
-      ([sel, d, r]) => {
-        const scope = angular.element(document.querySelector(sel)).scope();
-        scope.$apply(() => {
-          scope.newRequest.departDate = new Date(d);
-          scope.newRequest.returnDate = new Date(r);
-        });
-      },
-      [ROOT, depart, ret]
-    );
+    await this.page.locator('#trDepartDate').fill(toDateInputValue(depart));
+    await this.page.locator('#trReturnDate').fill(toDateInputValue(ret));
     await this.settle();
   }
 
@@ -320,19 +325,26 @@ class TravelRequestPage {
     await this.page.waitForTimeout(700);
   }
 
-  /** Cancelling goes through a native confirm(); the dialogues seen are returned. */
+  /**
+   * Cancelling goes through a REACT confirmation now, not `window.confirm()`.
+   * It is still blocking: nothing is sent until a button is pressed. The
+   * message is returned in the same shape the dialog handler produced, so the
+   * step definitions and scenarios are unchanged.
+   */
   async cancelRequest(destination, { accept = true } = {}) {
-    const seen = [];
-    const handler = async (dialog) => {
-      seen.push({ type: dialog.type(), message: dialog.message() });
-      if (accept) await dialog.accept();
-      else await dialog.dismiss();
-    };
-    this.page.on('dialog', handler);
     await this.row(destination).locator('button[title="Cancel"]').click();
-    await this.page.waitForTimeout(1500);
-    this.page.off('dialog', handler);
-    return seen;
+
+    const dialog = this.page.locator('[data-testid="confirm-dialog"]');
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    const message = (
+      await this.page.locator('[data-testid="confirm-message"]').innerText()
+    ).trim();
+
+    await dialog.getByRole('button', { name: accept ? 'OK' : 'Cancel' }).click();
+    await dialog.waitFor({ state: 'detached', timeout: 10000 });
+    await this.page.waitForTimeout(1200);
+
+    return [{ type: 'confirm', message }];
   }
 
   // --------------------------------------------------------------- notifications

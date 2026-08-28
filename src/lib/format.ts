@@ -109,3 +109,24 @@ export function formatMoneyCurrency(amount: number): string {
   if (!Number.isFinite(amount)) return '';
   return CURRENCY.format(amount);
 }
+
+/**
+ * FIXED-2 money — reproduces `'$' + (n || 0).toFixed(2)`.
+ *
+ * A third rendering, and it is genuinely distinct from the other two: always
+ * two decimals like CURRENCY, but UNGROUPED like PLAIN.
+ *
+ *   itinerary item costs   `'$' + (item.cost || 0).toFixed(2)`  -> "$1250.00"
+ *   travel-request estimate `'$' + (req.totalEstimate || 0).toFixed(2)`
+ *
+ * Extracted here in Increment 4, where travel-request needed the identical
+ * implementation the itinerary already had.
+ *
+ * THE SAME SCREEN USES TWO OF THESE. `travel-request.feature` pins it: the
+ * modal's cost-breakdown rows render through `number:2` and ARE grouped
+ * ("$1,200.00"), while the Total row beneath them renders through
+ * `totalFormatted` and is NOT ("$2500.00"). Both are reproduced exactly.
+ */
+export function formatMoneyFixed(amount: number | undefined): string {
+  return `$${(amount ?? 0).toFixed(2)}`;
+}

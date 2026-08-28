@@ -17,6 +17,7 @@
  * absent from a production build. It is removed entirely at cutover.
  */
 import type { Flight, Filters, PriceRange, SearchParams, SortField } from '../types/flight';
+import { authStore } from '../stores/auth-store';
 
 export interface FlightSearchScope {
   searchParams: SearchParams;
@@ -46,11 +47,25 @@ interface TestSeam {
    * Counts of announcements the app makes to the rest of the system. Replaces
    * `$rootScope.$broadcast` for the harness.
    *
-   * `itinerary:refresh` is announced on booking exactly as the legacy
-   * controllers do, and — exactly as in the legacy app — NOTHING CONSUMES IT.
-   * ADR-013 defers the consumer to Increment 3.
+   * `itinerary:refresh` is announced on invalidation exactly as the legacy
+   * controllers broadcast it (ADR-021), so `flight-search.feature:231` observes
+   * the same name it always did.
    */
   events: Record<string, number>;
+  /**
+   * WHO THE APP THINKS IS SIGNED IN — the React answer to
+   * `angular.element(document.body).injector().get('$rootScope').currentUser`.
+   *
+   * `authentication.feature` and `travel-request.feature` both assert that the
+   * portal forgets the user across a reload (ADR-003 constraint C-1). On an
+   * AngularJS screen the harness reads `$rootScope`; on a React one there is no
+   * `angular` global at all, so the same question is answered here.
+   *
+   * This reports the store faithfully. It does NOT hard-code `null`: the C-1
+   * repair is scheduled for Inc-6, and when it lands this must start returning
+   * a user so the scenarios that pin the defect go red on purpose.
+   */
+  identity: () => unknown;
 }
 
 const SEAM_KEY = '__flightSearch';
@@ -62,7 +77,11 @@ function seamEnabled(): boolean {
 function seam(): TestSeam | null {
   if (!seamEnabled()) return null;
   const w = globalThis as unknown as Record<string, TestSeam | undefined>;
-  w[SEAM_KEY] ??= { scope: null, events: {} };
+  w[SEAM_KEY] ??= {
+    scope: null,
+    events: {},
+    identity: () => authStore.getState().getCurrentUser(),
+  };
   return w[SEAM_KEY] ?? null;
 }
 

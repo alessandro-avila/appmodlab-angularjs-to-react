@@ -406,6 +406,54 @@ no other controller or service references `TravelRequestService`.
 
 ## Current Implementation (Brownfield Extension)
 
+> **⚠ MIGRATION STATUS — React, since Increment 4.**
+>
+> The AngularJS module described below has been **deleted**, along with
+> `app/directives/approval-status.directive.js`. It is retained here as the record of
+> what the React implementation was built against.
+>
+> | Was | Is now |
+> |---|---|
+> | `travel-request.controller.js` | `src/features/travel-request/TravelRequest.tsx` + `travel-request-model.ts` |
+> | `travel-request.service.js` | `src/features/travel-request/travel-request-api.ts` |
+> | `travel-request.template.html` | JSX in `TravelRequest.tsx` |
+> | `approval-status.directive.js` | **deleted, not ported** (Q-10 — zero consumers) |
+> | `'travelRequest'` UI-Router state | ledger row `/travel-request` → `owner: 'react'` |
+>
+> **Two defects REPAIRED, both under ADR-005 (see also ADR-022):**
+>
+> - **The search works.** `applyFilters()` called `req.travelerName.toLowerCase()` on
+>   requests that carry no such field, throwing a TypeError out of the digest before
+>   `filteredRequests` was reassigned. It now searches destination, purpose and traveller
+>   name, with an absent field contributing nothing. The TypeScript type makes the
+>   unguarded call a compile error, so it cannot come back by accident.
+> - **The complaint dismisses.** Its close button sat inside the alert's own `ng-if`, so
+>   `errorMessage = ''` landed on a child scope. ADR-005's Supersede row names "the
+>   un-dismissable alerts" in the same sentence as the four dead controls.
+>
+> **`window.confirm()` → a React confirmation**, still BLOCKING: nothing is sent until
+> the user answers. `useConfirm()` returns a promise so the call site keeps the shape of
+> `if (!confirm(...)) return;`.
+>
+> **What deliberately did NOT change:**
+>
+> - **Validation is fail-fast and order-dependent.** Six checks, first failure wins, one
+>   message at a time. No form library — one would have had to be configured back into
+>   this shape. The order and the message text are both contractual.
+> - The traveller line in the detail dialogue is **blank** — no request carries a
+>   `travelerName`.
+> - **No approval chain is shown**, though the server holds one. SEAM-2 is ACCEPTED under
+>   ADR-001 Q-1, not a defect to fix.
+> - **The travel policy is never fetched** (SEAM-1). Q-2 makes it display-only later.
+> - A request cancelled under the Pending filter **stays on screen** while the summary
+>   cards already disagree — the cancel handler patches in place and never re-runs
+>   `applyFilters()`. Reproduced deliberately, including the `useRef` that stops React
+>   from "helpfully" recomputing the view.
+> - New requests are filed under **"Demo User"** (ADR-003 C-1); the repair is Inc-6's.
+> - Table and modal-total money is **ungrouped** (`$2500.00`) while the form total and the
+>   modal's cost-breakdown rows are **grouped** (`$1,200.00`). Two renderings on one
+>   screen, both pinned by the baseline.
+
 ### Files Involved
 
 | File | Lines | Role |

@@ -7,26 +7,39 @@ Feature: Travel requests
   regression net for the React migration, not a statement of what it should do.
   Everything below was confirmed by driving the running application.
 
-  Three findings shape this file and must survive into the migration as
-  DECISIONS, not as behaviour to copy:
+  Three findings shape this file. Two of them were repaired in Increment 4;
+  the third was already correct and is preserved:
 
-  1. THE SEARCH BOX IS BROKEN. applyFilters() reads req.travelerName, a field
+  1. THE SEARCH BOX WAS BROKEN. applyFilters() read req.travelerName, a field
      the seeded requests do not carry. Typing anything into the search box
-     throws a TypeError out of the digest, so filteredRequests is never
-     reassigned and the table does not change. The user sees their text in the
+     threw a TypeError out of the digest, so filteredRequests was never
+     reassigned and the table did not change. The user saw their text in the
      box and no effect whatsoever. (controller :122)
 
-  2. THE ERROR ALERT CANNOT BE DISMISSED. The alert is wrapped in ng-if, which
-     creates a child scope; its close button assigns errorMessage = '' onto
-     that child, shadowing the controller's copy. ng-if still watches the
-     parent, which is still truthy, so the alert stays on screen. This is the
-     same ng-if scope-shadowing defect already recorded against the itinerary
-     status filter — a defect class, not a one-off.
+     SUPERSEDED in Inc-4 by ADR-005, which lists the inert search among "the
+     four dead controls" and resolves them "by being reimplemented correctly".
 
-  3. THE STATUS FILTER, BY CONTRAST, WORKS. The filter row sits outside the
-     ng-if, so its assignments land on the controller scope. Where the form
-     lives inside an ng-if it is still safe, because its ng-models are dotted
-     (newRequest.destination) and resolve up the prototype chain.
+  2. THE ERROR ALERT COULD NOT BE DISMISSED. The alert was wrapped in ng-if,
+     which creates a child scope; its close button assigned errorMessage = ''
+     onto that child, shadowing the controller's copy. ng-if still watched the
+     parent, which was still truthy, so the alert stayed on screen. The same
+     ng-if scope-shadowing defect recorded against the itinerary status filter
+     — a defect class, not a one-off.
+
+     SUPERSEDED in Inc-4 by ADR-005, whose Supersede row names "the
+     un-dismissable alerts" in the same breath as the four dead controls.
+
+  3. THE STATUS FILTER, BY CONTRAST, WORKED ALL ALONG. The filter row sits
+     outside the ng-if, so its assignments landed on the controller scope.
+     Where the form lives inside an ng-if it was still safe, because its
+     ng-models are dotted (newRequest.destination) and resolve up the
+     prototype chain. Nothing here changed.
+
+  VALIDATION IS FAIL-FAST AND ORDER-DEPENDENT, AND STAYS THAT WAY. Six checks
+  run in a fixed order; the first failure wins and exactly one message is shown
+  (controller :198-228). The React form reproduces the order and the message
+  text exactly. Showing every error at once would be a different product
+  decision and is not taken here.
 
   Requests are held in a mutable module-level array in the mock API, so
   creating, editing or cancelling one survives for the life of the server
@@ -92,25 +105,77 @@ Feature: Travel requests
     When I filter the requests by "Pending"
     Then the requests were not fetched again
 
-  # ------------------------------------------------------- searching (broken)
+  # ------------------------------------------------------- searching (was broken)
 
-  Scenario: Searching throws an error and filters nothing
+  @inc-4
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 (see also ADR-022), per increment plan §8.3.
+  #
+  # ADR-005's scenario classification lists "the four dead controls" under
+  # Supersede — "the scenario encodes a defect that ADR-001/002 already decided
+  # to fix" — and its rejection of the Fix-Bugs path says those defects "are
+  # resolved by being reimplemented correctly". The inert search box is one of
+  # the four. It searches.
+  #
+  # The legacy read `req.travelerName.toLowerCase()` on requests that carry no
+  # such field, throwing a TypeError out of the digest before
+  # `filteredRequests` was reassigned. The intent was plainly to search
+  # destination, purpose and traveller name; that is what it does now, with the
+  # absent field simply contributing nothing rather than throwing.
+  #
+  # NOT writing code to reproduce a TypeError is the point: the defect is
+  # resolved by reimplementation, not preserved by simulation.
+  # ---------------------------------------------------------------------------
+  Scenario: Searching narrows the list to matching requests
     When I search the requests for "London"
-    Then the browser reports that travelerName could not be read
-    And the requests listed are "London, UK, Tokyo, Japan"
+    Then the requests listed are "London, UK"
+    And the browser reported no error
 
-  Scenario: The search box keeps the text I typed even though nothing happens
+  @inc-4
+  # SUPERSEDED by ADR-005 — the box still keeps the text, but something happens
+  # now. The assertion is unchanged; the scenario's claim about it is not.
+  Scenario: The search box keeps the text I typed
     When I search the requests for "Tokyo"
     Then the request search box still reads "Tokyo"
+    And the requests listed are "Tokyo, Japan"
 
-  Scenario: Searching for something no request matches still lists everything
+  @inc-4
+  # SUPERSEDED by ADR-005 — a search nothing matches now empties the table
+  # rather than leaving every request on screen.
+  Scenario: Searching for something no request matches empties the table
     When I search the requests for "zzzznowhere"
-    Then the requests listed are "London, UK, Tokyo, Japan"
+    Then no request table is shown
+    And I am invited to create my first request
 
-  Scenario: A status filter set before a search survives the failed search
+  @inc-4
+  # SUPERSEDED by ADR-005 — the two filters now COMBINE rather than the search
+  # failing and leaving the status filter's result untouched. The expected list
+  # is unchanged, because "London" is the only pending request either way; what
+  # changed is why.
+  Scenario: A status filter and a search combine
     When I filter the requests by "Pending"
     And I search the requests for "London"
     Then the requests listed are "London, UK"
+
+  @inc-4
+  # NET-NEW — searching has never had behaviour to pin before.
+  Scenario: Searching matches the purpose as well as the destination
+    When I search the requests for "onboarding"
+    Then the requests listed are "London, UK"
+
+  @inc-4
+  # NET-NEW — the legacy lower-cased the query and the field, so case
+  # insensitivity was always intended; it was simply never reachable.
+  Scenario: Searching ignores case
+    When I search the requests for "tOkYo"
+    Then the requests listed are "Tokyo, Japan"
+
+  @inc-4
+  # NET-NEW — clearing the box restores the full list.
+  Scenario: Clearing the search restores every request
+    When I search the requests for "London"
+    And I clear the request search
+    Then the requests listed are "London, UK, Tokyo, Japan"
 
   # ------------------------------------------------------------- request details
 
@@ -181,11 +246,34 @@ Feature: Travel requests
     When I fill the travel request form as far as "nothing" and submit it
     Then the request destination field is marked as being in error
 
-  Scenario: The complaint cannot be dismissed
+  @inc-4
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 — "the un-dismissable alerts" appear in the SAME
+  # Supersede row as the four dead controls, and for the same reason.
+  #
+  # The close button sat inside the alert's own ng-if, so `errorMessage = ''`
+  # landed on the child scope and shadowed the controller's copy. ng-if kept
+  # watching the parent, which was still truthy, so the alert never went away.
+  # Same scope-shadowing class as the itinerary status filter (finding P-2).
+  #
+  # React has no scope chain and, more to the point, ADR-005 authorises the
+  # repair. The complaint dismisses.
+  # ---------------------------------------------------------------------------
+  Scenario: The complaint can be dismissed
     Given I have started a new travel request
     When I fill the travel request form as far as "nothing" and submit it
     And I dismiss the travel request complaint
-    Then the travel request form still complains "Destination is required."
+    Then the travel request form complains about nothing
+
+  @inc-4
+  # NET-NEW — dismissing must not be mistaken for fixing. Submitting again with
+  # the same empty form raises the same complaint.
+  Scenario: A dismissed complaint returns if the form is still wrong
+    Given I have started a new travel request
+    When I fill the travel request form as far as "nothing" and submit it
+    And I dismiss the travel request complaint
+    And I submit the travel request
+    Then the travel request form complains "Destination is required."
 
   Scenario: The estimate adds up the cost categories as I type
     Given I have started a new travel request

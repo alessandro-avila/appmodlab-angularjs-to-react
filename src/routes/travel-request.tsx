@@ -1,16 +1,12 @@
 /**
- * TRAVEL REQUEST ROUTE — placeholder.
+ * TRAVEL REQUEST ROUTE — migrated in Increment 4.
  *
- * Mirrors the legacy `travelRequest` state (app/app.routes.js), which today loads
- * `components/...` via templateUrl and its AngularJS controller.
- *
- * Increment 0 migrates nothing. This route is replaced with the real screen in
- * **Inc-4**, at which point the ledger row for `/travel-request` flips to
- * `owner: 'react'` and the front door stops proxying it to :8080.
+ * The ledger row for `/travel-request` is now `owner: 'react'`, so the front
+ * door serves this route instead of redirecting to `#!/travel-request`.
  */
 import type { ReactElement } from 'react';
-import { Placeholder } from './placeholder';
+import { TravelRequestScreen } from '../features/travel-request/TravelRequest';
 
 export function TravelRequest(): ReactElement {
-  return <Placeholder path="/travel-request" title="Travel Request" />;
+  return <TravelRequestScreen />;
 }

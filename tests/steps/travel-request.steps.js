@@ -122,13 +122,19 @@ When('I search the requests for {string}', async function (text) {
   await this.travelRequests.search(text);
 });
 
-Then('the browser reports that travelerName could not be read', function () {
+When('I clear the request search', async function () {
+  await this.travelRequests.search('');
+});
+
+Then('the browser reported no error', function () {
+  // The search used to throw a TypeError out of the digest on every keystroke.
+  // ADR-005 repaired it; this asserts the repair rather than the defect.
   const hit = this.consoleErrors.find(
-    (e) => /travelerName/.test(e) || /Cannot read properties of undefined \(reading 'toLowerCase'\)/.test(e)
+    (e) => /travelerName/.test(e) || /Cannot read properties of undefined/.test(e)
   );
   assert.ok(
-    hit,
-    `expected a TypeError from applyFilters, saw ${JSON.stringify(this.consoleErrors)}`
+    !hit,
+    `expected no TypeError from the search, saw ${JSON.stringify(this.consoleErrors)}`
   );
 });
 
@@ -264,14 +270,6 @@ Then('the request destination field is marked as being in error', async function
 
 When('I dismiss the travel request complaint', async function () {
   await this.travelRequests.dismissError();
-});
-
-Then('the travel request form still complains {string}', async function (expected) {
-  assert.strictEqual(await this.travelRequests.errorAlert.isVisible(), true);
-  assert.strictEqual(await this.travelRequests.errorMessage(), expected);
-  // The click did land — it just landed on the ng-if child scope.
-  const onChild = await this.travelRequests.readAlertScope((sc) => sc.errorMessage);
-  assert.strictEqual(onChild, '', 'expected the child scope to have been cleared instead');
 });
 
 When('I estimate {int} for flights and {int} for hotels', async function (flights, hotels) {

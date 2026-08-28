@@ -26,7 +26,7 @@
  * `parse` is local, which is what the baseline pins.
  */
 import { parse, format } from 'date-fns';
-import { differenceInDays } from '../../lib/format';
+import { differenceInDays, formatMoneyFixed } from '../../lib/format';
 import type { Trip, ItineraryItem } from '../../types/itinerary';
 
 /* ------------------------------------------------------------------ formats */
@@ -60,20 +60,11 @@ export function formatTime(time: string | undefined): string {
 /**
  * `'$' + (item.cost || 0).toFixed(2)` — `itinerary.service.js:36`.
  *
- * DELIBERATELY UNGROUPED, and this is not the same as the trip total. The
- * template renders trip and summary money through AngularJS `number:2`, which
- * groups (`$1,330.00`); item costs are built by string concatenation with
- * `toFixed`, which does not (`$1250.00`). Both renderings were measured against
- * the running legacy app.
- *
- * Until Increment 3 the difference was unreachable, because no seeded item cost
- * $1,000 or more. SEAM-3 makes it reachable: a booked hotel can. The
- * inconsistency is a defect, it is now visible, and it is PRESERVED — no
- * scenario pins it and nothing authorises changing it (ADR-020).
+ * Re-exported from the shared `format.ts` since Increment 4, where
+ * travel-request needed the identical rendering. The commentary on why this
+ * differs from the grouped trip total lives with the implementation.
  */
-export function formatItemCost(cost: number | undefined): string {
-  return `$${(cost ?? 0).toFixed(2)}`;
-}
+export const formatItemCost = formatMoneyFixed;
 
 /**
  * `moment().format('MMM D, YYYY h:mm A')` — `itinerary.controller.js:146`.

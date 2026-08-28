@@ -61,7 +61,7 @@ export const ROUTE_LEDGER: readonly LedgerRow[] = [
   { path: '/flights', legacyState: 'flights', legacyHash: '#!/flights', owner: 'react', migratesIn: 'Inc-1', requireAuth: true },
   { path: '/hotels', legacyState: 'hotels', legacyHash: '#!/hotels', owner: 'react', migratesIn: 'Inc-2', requireAuth: true },
   { path: '/itinerary', legacyState: 'itinerary', legacyHash: '#!/itinerary', owner: 'react', migratesIn: 'Inc-3', requireAuth: true },
-  { path: '/travel-request', legacyState: 'travelRequest', legacyHash: '#!/travel-request', owner: 'angularjs', migratesIn: 'Inc-4', requireAuth: true },
+  { path: '/travel-request', legacyState: 'travelRequest', legacyHash: '#!/travel-request', owner: 'react', migratesIn: 'Inc-4', requireAuth: true },
   { path: '/expenses', legacyState: 'expenses', legacyHash: '#!/expenses', owner: 'angularjs', migratesIn: 'Inc-5', requireAuth: true },
 ];
 
