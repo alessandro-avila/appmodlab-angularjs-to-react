@@ -1,26 +1,45 @@
 /**
  * ExpensePage — Page Object for the expense-reconciliation screen.
  *
- * Green baseline (Track A): every accessor reports what the AngularJS application
- * does today. Where a control is inert, the accessor exposes the evidence rather
- * than hiding it — see readAlertScope() and dateRangeModel().
+ * React since Increment 5. Three things this page object used to expose have
+ * gone, because the defects they existed to observe were REPAIRED:
+ *
+ *  - `readAlertScope` / `scopeIdOf` read the ng-if child scope around the error
+ *    alert, which was the mechanism of the un-dismissable complaint. The alert
+ *    dismisses now (ADR-005), so there is no second scope to compare against.
+ *  - the jQuery UI calendar accessors: both date fields are native date inputs
+ *    (ADR-009 / ADR-014).
+ *
+ * Scope note: the route publishes a scope-shaped snapshot at
+ * `window.__flightSearch.scope` under the property names the AngularJS
+ * controller used — reports, filteredReports, dashboard, filterStatus,
+ * searchQuery, dateRange, newReport, newExpense — so every `fn` written against
+ * the legacy still works.
  */
 const { BASE_URL } = require('../support/world');
 
 'use strict';
 
-const ROOT = '.container-fluid';
+const ROOT = '.expense-container';
 const FORM = '#new-expense-report';
 const SEARCH = 'input[placeholder="Search reports..."]';
-const DESC = FORM + ' input[ng-model="newExpense.description"]';
-const AMOUNT = FORM + ' input[ng-model="newExpense.amount"]';
-const CATEGORY = FORM + ' select[ng-model="newExpense.category"]';
-const CURRENCY = FORM + ' select[ng-model="newExpense.currency"]';
-const TITLE = FORM + ' input[ng-model="newReport.title"]';
-const DESTINATION = FORM + ' input[ng-model="newReport.tripDestination"]';
-const LINK_FIELD = FORM + ' input[ng-model="newReport.travelRequestId"]';
-const NOTES = FORM + ' textarea[ng-model="newReport.notes"]';
+const DESC = '#expenseDescription';
+const AMOUNT = '#expenseAmount';
+const CATEGORY = '#expenseCategory';
+const CURRENCY = '#expenseCurrency';
+const TITLE = '#expTitle';
+const DESTINATION = '#expDestination';
+const LINK_FIELD = '#expTravelRequestId';
+const NOTES = '#expNotes';
 const MODAL = '#expenseDetailModal';
+
+/** "01/01/2025" or "2025-01-01" -> "2025-01-01" for a native date input. */
+function toDateInputValue(value) {
+  const s = String(value);
+  const us = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+  if (us) return `${us[3]}-${us[1]}-${us[2]}`;
+  return s.slice(0, 10);
+}
 
 class ExpensePage {
   constructor(page) {
@@ -30,7 +49,13 @@ class ExpensePage {
   // ---------- navigation ----------
 
   async open() {
-    await this.page.goto(`${BASE_URL}/#!/expenses`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`${BASE_URL}/expenses`, { waitUntil: 'domcontentloaded' });
+    await this.page.waitForSelector(ROOT, { timeout: 20000 });
+    await this.page.waitForFunction(
+      () => !!(window.__flightSearch && window.__flightSearch.scope),
+      null,
+      { timeout: 20000 }
+    );
     await this.page.waitForSelector(ROOT + ' table.table tbody tr, h4:has-text("No expense reports found")', { timeout: 20000 });
     await this.settle();
   }
@@ -51,33 +76,12 @@ class ExpensePage {
 
   // ---------- scope access ----------
 
-  /** Read the controller scope (the element that owns filterStatus, searchQuery, dateRange). */
+  /** Read the published snapshot. */
   async readScope(fn) {
-    return this.page.evaluate(([body, root]) => {
-      const sc = angular.element(document.querySelector(root)).scope();
-      return new Function('sc', 'return (' + body + ')(sc)')(sc);
-    }, [fn.toString(), ROOT]);
-  }
-
-  /** Read the scope attached to the error alert — an ng-if CHILD of the controller scope. */
-  async readAlertScope(fn) {
-    return this.page.evaluate((body) => {
-      const el = document.querySelector('.alert-danger');
-      if (!el) return null;
-      const sc = angular.element(el).scope();
-      return new Function('sc', 'return (' + body + ')(sc)')(sc);
-    }, fn.toString());
-  }
-
-  async scopeIdOf(selector) {
-    return this.page.evaluate((sel) => {
-      const el = document.querySelector(sel);
-      return el ? angular.element(el).scope().$id : null;
-    }, selector);
-  }
-
-  async controllerScopeId() {
-    return this.scopeIdOf(ROOT);
+    return this.page.evaluate(
+      (body) => new Function('sc', 'return (' + body + ')(sc)')(window.__flightSearch.scope),
+      fn.toString()
+    );
   }
 
   // ---------- dashboard ----------
@@ -165,12 +169,12 @@ class ExpensePage {
   }
 
   async setFromDate(value) {
-    await this.page.fill('#reportStartDate', value);
+    await this.page.fill('#reportStartDate', toDateInputValue(value));
     await this.settle(800);
   }
 
   async setToDate(value) {
-    await this.page.fill('#reportEndDate', value);
+    await this.page.fill('#reportEndDate', toDateInputValue(value));
     await this.settle(800);
   }
 
@@ -182,33 +186,19 @@ class ExpensePage {
     return this.readScope(sc => sc.dateRange);
   }
 
-  async calendarIsOpenFor(selector) {
-    await this.page.click(selector);
-    await this.settle(700);
-    const open = await this.page.locator('#ui-datepicker-div').isVisible().catch(() => false);
-    return open;
+  /** Both bounds are native date inputs now (ADR-009 / ADR-014). */
+  async isDateField(selector) {
+    return this.page.locator(selector).getAttribute('type');
   }
 
-  async closeCalendar() {
-    await this.page.keyboard.press('Escape');
-    await this.settle(300);
+  async expenseDateMax() {
+    return this.page.locator('#expenseDate').getAttribute('max');
   }
 
-  async pickFirstAvailableCalendarDay() {
-    await this.page.locator('#ui-datepicker-div a.ui-state-default').first().click();
-    await this.settle(800);
-  }
-
-  async calendarNextMonthDisabled() {
-    const cls = await this.page.locator('#ui-datepicker-div .ui-datepicker-next').getAttribute('class');
-    return /ui-state-disabled/.test(cls || '');
-  }
-
-  async calendarUnselectableCounts() {
-    return {
-      unselectable: await this.page.locator('#ui-datepicker-div td.ui-datepicker-unselectable').count(),
-      total: await this.page.locator('#ui-datepicker-div td').count()
-    };
+  /** "08/26/2026" -> fills the native date input. */
+  async setExpenseDate(usDate) {
+    await this.page.fill('#expenseDate', toDateInputValue(usDate));
+    await this.settle(400);
   }
 
   // ---------- new report form ----------
@@ -485,17 +475,26 @@ class ExpensePage {
 
   // ---------- delete ----------
 
-  /** Returns the dialogue records in the shape the shared "I am asked" step expects. */
+  /**
+   * Deleting goes through the REACT confirmation now, not `window.confirm()`.
+   * It is still blocking: nothing is sent until a button is pressed. The record
+   * is returned in the shape the shared "I am asked" step already expects.
+   */
   async deleteReport(title, { accept = true } = {}) {
     await this.waitForToastsToClear();
-    const dialogs = [];
-    this.page.once('dialog', async d => {
-      dialogs.push({ type: d.type(), message: d.message() });
-      if (accept) await d.accept(); else await d.dismiss();
-    });
     await this.reportRow(title).locator('button[title="Delete"]').click();
-    await this.settle(1400);
-    return dialogs;
+
+    const dialog = this.page.locator('[data-testid="confirm-dialog"]');
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    const message = (
+      await this.page.locator('[data-testid="confirm-message"]').innerText()
+    ).trim();
+
+    await dialog.getByRole('button', { name: accept ? 'OK' : 'Cancel' }).click();
+    await dialog.waitFor({ state: 'detached', timeout: 10000 });
+    await this.settle(1200);
+
+    return [{ type: 'confirm', message }];
   }
 
   async deleteButtonCount(title) {

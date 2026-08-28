@@ -26,13 +26,14 @@ function renderAt(path: string): ReactElement {
   ) as unknown as ReactElement;
 }
 
-const GUARDED = ['/dashboard', '/expenses'];
+const GUARDED = ['/dashboard'];
 /** Migrated routes render a real screen rather than a placeholder. */
 const GUARDED_MIGRATED = [
   { path: '/flights', testId: 'flight-search' },
   { path: '/hotels', testId: 'hotel-booking' },
   { path: '/itinerary', testId: 'itinerary' },
   { path: '/travel-request', testId: 'travel-request' },
+  { path: '/expenses', testId: 'expenses' },
 ];
 
 describe('router guard — a stranger is sent to login (app/app.js:32-37)', () => {
@@ -74,9 +75,14 @@ describe('router guard — a signed-in user reaches every guarded route', () => 
     // The legacy guard calls isAuthenticated(), which is presence-only. The
     // baseline proved "a planted token of not-a-real-jwt opens /expenses and
     // /itinerary in full". Q-8 / ADR-010 fix this in Inc-6.
+    //
+    // Asserted against /dashboard since Increment 5: it is the last guarded
+    // route that still renders a placeholder, so the guard can be observed
+    // without standing up a feature screen's data layer. The point is that the
+    // guard ADMITS the junk token, not which screen it admits it to.
     window.localStorage.setItem('authToken', 'not-a-real-jwt');
-    renderAt('/expenses');
-    expect(screen.getByTestId('placeholder')).toHaveAttribute('data-route', '/expenses');
+    renderAt('/dashboard');
+    expect(screen.getByTestId('placeholder')).toHaveAttribute('data-route', '/dashboard');
   });
 });
 
@@ -100,12 +106,12 @@ describe('route tree — mirrors all seven UI-Router states', () => {
 
   it('the health route reports each ledger row against its current owner', () => {
     renderAt('/__shell');
-    // Increments 1, 2, 3 and 4 have each moved one row.
-    expect(screen.getByTestId('ledger-owner-flights')).toHaveTextContent('react');
-    expect(screen.getByTestId('ledger-owner-hotels')).toHaveTextContent('react');
-    expect(screen.getByTestId('ledger-owner-itinerary')).toHaveTextContent('react');
-    expect(screen.getByTestId('ledger-owner-travelRequest')).toHaveTextContent('react');
-    for (const state of ['login', 'dashboard', 'expenses']) {
+    // Increments 1-5 have each moved one row. Every FEATURE route is React;
+    // only login and the dashboard remain for the cutover.
+    for (const state of ['flights', 'hotels', 'itinerary', 'travelRequest', 'expenses']) {
+      expect(screen.getByTestId(`ledger-owner-${state}`)).toHaveTextContent('react');
+    }
+    for (const state of ['login', 'dashboard']) {
       expect(screen.getByTestId(`ledger-owner-${state}`)).toHaveTextContent('angularjs');
     }
   });

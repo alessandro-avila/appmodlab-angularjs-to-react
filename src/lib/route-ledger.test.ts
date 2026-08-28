@@ -18,15 +18,25 @@ import {
   ownerOf,
 } from './route-ledger';
 
-describe('route ledger — ownership after Increment 4', () => {
+describe('route ledger — ownership after Increment 5', () => {
   it('React owns exactly the migrated routes', () => {
     // Increment 1 moved the first row. This assertion is the ledger's
     // changelog: it must be edited deliberately, per increment.
-    expect(reactOwnedPaths()).toEqual(['/flights', '/hotels', '/itinerary', '/travel-request']);
+    expect(reactOwnedPaths()).toEqual([
+      '/flights',
+      '/hotels',
+      '/itinerary',
+      '/travel-request',
+      '/expenses',
+    ]);
   });
 
-  it('AngularJS still owns the other three', () => {
-    expect(legacyOwnedPaths()).toEqual(['/login', '/dashboard', '/expenses']);
+  /**
+   * Every FEATURE module is React now. Only login and the dashboard are left,
+   * and they migrate together at the cutover (Q-8 / ADR-010).
+   */
+  it('AngularJS owns only login and the dashboard', () => {
+    expect(legacyOwnedPaths()).toEqual(['/login', '/dashboard']);
   });
 
   it('the shell health route is not a product route', () => {

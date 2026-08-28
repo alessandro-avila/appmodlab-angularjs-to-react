@@ -110,12 +110,23 @@ Feature: Getting into the travel portal
       | Submit Travel Request |
       | Expense Reconciliation|
 
-  @unauthenticated
-  Scenario: Signing in announces itself to the modules that care
+  @unauthenticated @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 (finding P-5), per increment plan §9.
+  #
+  # This asserted that a `$rootScope` listener for 'auth:login' is registered —
+  # checked ON THE EXPENSES PAGE. Expenses is React now, so there is no
+  # `$rootScope` to inspect and nothing to count listeners on. ADR-013 absorbed
+  # the announcement into the store.
+  #
+  # The OUTCOME it protected is kept: arriving at expenses signed in shows the
+  # traveller's reports.
+  # ---------------------------------------------------------------------------
+  Scenario: Signing in gets me into the expenses area
     Given I have never signed in to the portal
     When I enter the portal
     And I visit the expenses area
-    Then something is listening for a sign-in announcement
+    Then I am let in to "expenses"
 
   # ---------------------------------------------------------------------------
   # There is no way out
@@ -135,10 +146,28 @@ Feature: Getting into the travel portal
       | travel-request |
       | expenses       |
 
-  Scenario: Nothing is listening for a sign-out announcement
+  @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 (finding P-5), per increment plan §9.3.
+  #
+  # This counted `$rootScope` listeners for 'auth:logout' — checked ON THE
+  # EXPENSES PAGE. Expenses is React now, so there is no `$rootScope` and no
+  # `$$listeners` to count. The mechanism the assertion reached for is gone.
+  #
+  # The FINDING it recorded is not gone, and is not weakened: auth:logout was
+  # dead in both directions, and `AuthService.logout` still has no caller and
+  # no control anywhere in the portal. That is what the replacement asserts,
+  # through the UI rather than through the digest — which is also the stronger
+  # statement, since it holds for both stacks at once.
+  #
+  # `:135`'s outline already pins "no screen offers a way to sign out" for all
+  # six areas; this keeps the emitter half of the pair explicit.
+  # ---------------------------------------------------------------------------
+  Scenario: Nothing anywhere announces a sign-out
     Given I am signed in to the travel portal
     When I visit "expenses"
-    Then nothing is listening for a sign-out announcement
+    Then nothing on the page offers to sign me out
+    And my session token is still stored
 
   Scenario: The dashboard carries no controls at all
     Given I am signed in to the travel portal
@@ -176,11 +205,38 @@ Feature: Getting into the travel portal
     Then I am still on "itinerary"
 
   @unauthenticated
+  # ---------------------------------------------------------------------------
+  # PRESERVED — and deliberately NOT superseded, against increment plan §9.3.
+  #
+  # Plan §9.3 row `:179` expected this to supersede, on the grounds that
+  # "Inc-0's identity rehydration means the report is filed by the real user".
+  # Two things are wrong with that:
+  #
+  #   1. Increment 0 did not implement rehydration. `src/stores/auth-store.ts`
+  #      mirrors the legacy field exactly — `user: null` at construction, set
+  #      only by a live sign-in, never read back from the token.
+  #   2. Nothing authorises rehydrating it. ADR-003 logs C-1 as a "defect
+  #      CANDIDATE"; ADR-005's supersede list names the four dead controls,
+  #      ngRepeat:dupes, SEAM-3/4/5 and the alerts — not C-1.
+  #
+  # ADR-022's rule decides it: authorisation, not mechanism. A defect candidate
+  # is not a decision to fix, which is the same reason `flight:selected` stays
+  # dropped. So the placeholder attribution is PINNED, and stays pinned until
+  # something authorises otherwise.
+  #
+  # STEP ORDER CHANGED (not the assertions). "I am known to the portal" now
+  # runs BEFORE the move to expenses. Signing in happens on the AngularJS login
+  # screen, and under ADR-012 `/expenses` is a real path, so that move is a
+  # DOCUMENT BOUNDARY — in-memory identity is already gone on arrival. The
+  # baseline's `#!/expenses` was a same-document fragment, which is why the
+  # original order worked. Every assertion is unchanged and still passes; only
+  # the precondition moved to the side of the crossing where it can hold.
+  # ---------------------------------------------------------------------------
   Scenario: After a reload my work is attributed to a placeholder
     Given I have never signed in to the portal
     When I enter the portal
-    And I visit "expenses"
     And I am known to the portal as "Sarah Johnson"
+    And I visit "expenses"
     And I reload the page
     Then the portal does not remember who is signed in
     And a new expense report would be filed by "Demo User"
@@ -189,19 +245,38 @@ Feature: Getting into the travel portal
   # The guard checks for a token, never for a valid one
   # ---------------------------------------------------------------------------
 
-  @unauthenticated
-  Scenario: A token the server rejects still opens the portal
+  @unauthenticated @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-018 — the session-expiry policy, exactly as that ADR
+  # predicted:
+  #
+  #   ":199 — A rejected session looks like an empty expense account — is
+  #    UNTOUCHED, because expenses is still AngularJS. It supersedes when that
+  #    module migrates in Increment 5, and until then the suite deliberately
+  #    holds both behaviours at once."
+  #
+  # This is that increment. The two scenarios below are the expense
+  # counterparts of the itinerary pair superseded in Inc-3.
+  #
+  # The presence-only guard is UNCHANGED and still defective: a planted junk
+  # token opens every screen. What changed is what happens when the SERVER
+  # rejects the token. Q-8 / ADR-010 fix the guard itself at the cutover.
+  # ---------------------------------------------------------------------------
+  Scenario: A token the server rejects sends me back to the login screen
     Given my browser holds a session token the server will reject
     When I go straight to "expenses"
-    Then I am let in to "expenses"
+    Then I am returned to the login screen
+    And I am told my session has expired
 
-  @unauthenticated
-  Scenario: A rejected session looks like an empty expense account
+  @unauthenticated @inc-5
+  # SUPERSEDED by ADR-018 — the notice named the data; it now names the session,
+  # and the traveller is never shown an empty account that misdescribes it.
+  Scenario: A rejected session says so rather than looking like an empty account
     Given my browser holds a session token the server will reject
     When I go straight to "expenses"
     Then the server refused the request with 401
-    And I am invited to create my first expense report
-    And nothing on the page tells me my session is the problem
+    And I see a notification containing "session has expired"
+    And I am not invited to create my first expense report
 
   @unauthenticated @inc-3
   # ---------------------------------------------------------------------------

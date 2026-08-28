@@ -272,10 +272,12 @@ Then('the dashboard offers these ways on:', async function (table) {
   }
 });
 
-Then('something is listening for a sign-in announcement', async function () {
-  const count = await this.auth.listenerCount('auth:login');
-  assert.ok(count > 0, 'expected at least one auth:login listener');
-});
+// Both `$rootScope.$$listeners` steps were removed in Increment 5. They
+// inspected the digest's listener registry to prove auth:login was heard and
+// auth:logout was not — a MECHANISM that no longer exists once the last
+// feature module is React (ADR-005 P-5, ADR-013). The scenarios that used
+// them are superseded in authentication.feature at :113 and :149, and the
+// findings they recorded are re-asserted there through the UI instead.
 
 // ---------------------------------------------------------------------------
 // Then — no way out
@@ -285,12 +287,6 @@ Then('nothing on the page offers to sign me out', async function () {
   // FINDING: AuthService.logout exists but has no caller and no control.
   const body = (await this.auth.bodyText()).toLowerCase();
   assert.ok(!/log ?out|sign ?out/.test(body), `page mentioned signing out: ${JSON.stringify(body.slice(0, 300))}`);
-});
-
-Then('nothing is listening for a sign-out announcement', async function () {
-  // FINDING: auth:logout is dead in both directions — no emitter, no listener.
-  const count = await this.auth.listenerCount('auth:logout');
-  assert.strictEqual(count, 0, `expected no auth:logout listeners, found ${count}`);
 });
 
 Then('the dashboard has no buttons on it', async function () {
@@ -319,13 +315,15 @@ Then('I am still on {string}', function (area) {
 
 Then('a new expense report would be filed by {string}', async function (placeholder) {
   // FINDING: with currentUser gone, every module falls back to a placeholder.
+  //
+  // Reads the app's REAL identity — `$rootScope.currentUser` on AngularJS, the
+  // auth store via the seam on React — and applies the fallback the expense
+  // controller applies (controller:194, ported at
+  // ExpenseReconciliation.tsx:300). It used to read `$rootScope` directly and
+  // therefore stopped meaning anything once expenses became React.
   const user = await this.auth.signedInUser();
   assert.strictEqual(user, null, 'expected the signed-in user to have been forgotten');
-  const fallback = await this.page.evaluate(() => {
-    const rs = angular.element(document.body).injector().get('$rootScope');
-    return (rs.currentUser && rs.currentUser.name) || 'Demo User';
-  });
-  assert.strictEqual(fallback, placeholder);
+  assert.strictEqual((user && user.name) || 'Demo User', placeholder);
 });
 
 // ---------------------------------------------------------------------------
@@ -343,9 +341,17 @@ Then('the server refused the request with 401', function () {
 });
 
 Then('I am invited to create my first expense report', async function () {
-  // FINDING: a 401 is rendered as an empty account.
   const body = await this.auth.bodyText();
   assert.ok(/CREATE YOUR FIRST REPORT/i.test(body), 'expected the first-report invitation');
+});
+
+// ADR-018 — a rejected session must not be dressed up as an empty account.
+Then('I am not invited to create my first expense report', async function () {
+  const body = await this.auth.bodyText();
+  assert.ok(
+    !/CREATE YOUR FIRST REPORT/i.test(body),
+    'a rejected session must not be reported as an empty expense account'
+  );
 });
 
 Then('I am told {string}', async function (text) {

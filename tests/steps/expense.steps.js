@@ -131,16 +131,10 @@ Then('the expense filter is set to {string}', async function (status) {
   assert.strictEqual(await this.expenses.filterStatus(), status);
 });
 
-Then('the expense status filter shares the controller scope', async function () {
-  const controller = await this.expenses.controllerScopeId();
-  const button = await this.expenses.scopeIdOf('.btn-group.btn-group-sm .btn');
-  assert.strictEqual(button, controller, 'the filter buttons sit on a child scope');
-});
-
-Then('the expense search box shares the controller scope', async function () {
-  const controller = await this.expenses.controllerScopeId();
-  const box = await this.expenses.scopeIdOf('input[placeholder="Search reports..."]');
-  assert.strictEqual(box, controller, 'the search box sits on a child scope');
+Then('the expense from-date is a date field', async function () {
+  // ADR-009 / ADR-014 — a native date input, always ready, whether or not the
+  // new-report form has been opened.
+  assert.strictEqual(await this.expenses.isDateField('#reportStartDate'), 'date');
 });
 
 // The Draft button's ng-class names only the unselected state, so selecting it
@@ -191,20 +185,6 @@ Then('the recorded expense date range is empty', async function () {
 Then('the recorded expense date range start is not empty', async function () {
   const range = await this.expenses.dateRangeModel();
   assert.ok(range.start, 'the calendar did not reach the model');
-});
-
-Then('clicking the expense from-date opens no calendar', async function () {
-  assert.strictEqual(await this.expenses.calendarIsOpenFor('#reportStartDate'), false);
-});
-
-Then('clicking the expense from-date opens a calendar', async function () {
-  assert.strictEqual(await this.expenses.calendarIsOpenFor('#reportStartDate'), true);
-  await this.expenses.closeCalendar();
-});
-
-When('I pick the first available day from the expense from-date calendar', async function () {
-  await this.expenses.calendarIsOpenFor('#reportStartDate');
-  await this.expenses.pickFirstAvailableCalendarDay();
 });
 
 // ---------------------------------------------------------------- the form
@@ -366,32 +346,32 @@ Then('no expense entry field is flashed {int} seconds later', async function (se
 
 // ---------------------------------------------------------------- expense date
 
-When('I pick the first available day from the expense date calendar', async function () {
-  await this.expenses.calendarIsOpenFor('#expenseDate');
-  await this.expenses.pickFirstAvailableCalendarDay();
+When('I set the expense date to {string}', async function (usDate) {
+  await this.expenses.setExpenseDate(usDate);
 });
 
-When('I open the expense date calendar', async function () {
-  assert.strictEqual(await this.expenses.calendarIsOpenFor('#expenseDate'), true);
+// ADR-009 / ADR-014 — a native date input parsed with an explicit format,
+// replacing a text field whose ng-model held a Date and rendered toString().
+Then('the expense date field reads the calendar date {string}', async function (expected) {
+  const [m, d, y] = expected.split('/');
+  assert.strictEqual(await this.expenses.expenseDateFieldText(), `${y}-${m}-${d}`);
 });
 
-// onSelect assigns a Date object, which ng-model renders through toString() —
-// so the field fills with "Sat Aug 01 2026 00:00:00 GMT+0200 (…)".
-Then('the expense date field shows a raw JavaScript date string', async function () {
-  const text = await this.expenses.expenseDateFieldText();
-  assert.ok(/^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4} \d{2}:\d{2}:\d{2} GMT/.test(text),
-    `expected a JavaScript date string, got "${text}"`);
-});
-
-Then('the calendar cannot advance to the next month', async function () {
-  assert.strictEqual(await this.expenses.calendarNextMonthDisabled(), true);
-});
-
-Then('most days in the expense date calendar are unselectable', async function () {
-  const counts = await this.expenses.calendarUnselectableCounts();
-  assert.ok(counts.unselectable > counts.total / 2,
-    `only ${counts.unselectable} of ${counts.total} cells were unselectable`);
-  await this.expenses.closeCalendar();
+// The datepicker's `maxDate: 0` becomes the input's `max`.
+Then('the expense date field refuses dates after today', async function () {
+  const max = await this.expenses.expenseDateMax();
+  assert.ok(max, 'expected a max attribute on the expense date field');
+  // Today according to the BROWSER, whose clock the suite pins (plan §0.6).
+  // Node's clock is not pinned, so comparing against it would drift.
+  const expected = await this.page.evaluate(() => {
+    const d = new Date();
+    return [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, '0'),
+      String(d.getDate()).padStart(2, '0')
+    ].join('-');
+  });
+  assert.strictEqual(max, expected, `max was "${max}", expected today (${expected})`);
 });
 
 // ---------------------------------------------------------------- receipts
@@ -433,21 +413,11 @@ When('I press the close button on the expense error', async function () {
   await this.expenses.dismissError();
 });
 
-// ng-if creates a child scope; the close button writes errorMessage on the
-// child, so the controller's copy — and therefore the alert — never clears.
-Then('the expense error is still shown', async function () {
-  assert.strictEqual(await this.expenses.errorVisible(), true);
-});
-
-Then('the controller still holds the expense error message', async function () {
-  const message = await this.expenses.errorModel();
-  assert.ok(message, 'the controller message was cleared after all');
-});
-
-Then('the expense error alert sits on a different scope from the controller', async function () {
-  const controller = await this.expenses.controllerScopeId();
-  const alert = await this.expenses.scopeIdOf('.alert-danger');
-  assert.notStrictEqual(alert, controller, 'the alert shares the controller scope');
+// ADR-005 repaired this: the close button now clears the message the alert is
+// rendered from, so the complaint goes away.
+Then('the expense error is no longer shown', async function () {
+  assert.strictEqual(await this.expenses.errorVisible(), false);
+  assert.strictEqual(await this.expenses.errorModel(), '');
 });
 
 Then('the stored expense report {string} has the status {string}', async function (title, status) {

@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { decide, pathnameOf, isViteInternal } from './front-door';
 import { ROUTE_LEDGER, type LedgerRow } from './route-ledger';
 
-describe('front door — ownership after Increment 4', () => {
+describe('front door — ownership after Increment 5', () => {
   it('serves the legacy document at the root', () => {
     expect(decide('/')).toEqual({ kind: 'proxy-to-legacy' });
   });
@@ -18,23 +18,31 @@ describe('front door — ownership after Increment 4', () => {
     expect(decide('/flights')).toEqual({ kind: 'react' });
   });
 
-  it('still redirects every UNMIGRATED product route to its legacy hash form', () => {
+  it('still redirects every UNMIGRATED route to its legacy hash form', () => {
     // The legacy static server has no /hotels resource — its states are
     // fragments under '/'. Proxying the real path would 404, which is exactly
     // the bug this rule exists to prevent.
-    for (const path of ['/login', '/dashboard', '/expenses']) {
+    //
+    // Only login and the dashboard are left; they migrate at the cutover.
+    for (const path of ['/login', '/dashboard']) {
       expect(decide(path).kind, `${path} should still redirect`).toBe('redirect-to-legacy-hash');
     }
   });
 
-  it('serves /travel-request from React — the row Increment 4 moved', () => {
-    expect(decide('/travel-request')).toEqual({ kind: 'react' });
+  it('serves /expenses from React — the row Increment 5 moved', () => {
+    expect(decide('/expenses')).toEqual({ kind: 'react' });
+  });
+
+  it('serves every FEATURE route from React', () => {
+    for (const path of ['/flights', '/hotels', '/itinerary', '/travel-request', '/expenses']) {
+      expect(decide(path), path).toEqual({ kind: 'react' });
+    }
   });
 
   it('redirects to the exact hash URL the legacy router understands', () => {
-    expect(decide('/expenses')).toEqual({
+    expect(decide('/login')).toEqual({
       kind: 'redirect-to-legacy-hash',
-      location: '/#!/expenses',
+      location: '/#!/login',
     });
     expect(decide('/dashboard')).toEqual({
       kind: 'redirect-to-legacy-hash',
@@ -86,35 +94,34 @@ describe('front door — url parsing', () => {
   });
 });
 
-describe('front door — what the NEXT increment changes', () => {
-  /** The ledger as it will look after Inc-5 flips the expenses row. */
-  const afterInc5: readonly LedgerRow[] = ROUTE_LEDGER.map((r) =>
-    r.path === '/expenses' ? { ...r, owner: 'react' as const } : r,
+describe('front door — what the CUTOVER increment changes', () => {
+  /** The ledger as it will look after Inc-6 flips login and the dashboard. */
+  const afterCutover: readonly LedgerRow[] = ROUTE_LEDGER.map((r) =>
+    r.path === '/login' || r.path === '/dashboard' ? { ...r, owner: 'react' as const } : r,
   );
 
-  it('flipping ONE row moves that route to React', () => {
-    expect(decide('/expenses', afterInc5)).toEqual({ kind: 'react' });
+  it('flipping the last two rows moves those routes to React', () => {
+    expect(decide('/login', afterCutover)).toEqual({ kind: 'react' });
+    expect(decide('/dashboard', afterCutover)).toEqual({ kind: 'react' });
   });
 
-  it('and leaves every other route exactly where it was', () => {
-    for (const row of afterInc5.filter((r) => r.owner === 'angularjs')) {
-      expect(decide(row.path, afterInc5).kind, `${row.path} must not move`).toBe(
-        'redirect-to-legacy-hash',
-      );
+  /**
+   * The end state: nothing redirects to a legacy hash, because there is no
+   * AngularJS left to redirect to. `/` still proxies until the front door
+   * itself is retired at cutover.
+   */
+  it('leaves NO route redirecting to a legacy hash', () => {
+    for (const row of afterCutover) {
+      expect(decide(row.path, afterCutover).kind, `${row.path}`).toBe('react');
     }
-    expect(decide('/flights', afterInc5)).toEqual({ kind: 'react' });
-    expect(decide('/hotels', afterInc5)).toEqual({ kind: 'react' });
-    expect(decide('/itinerary', afterInc5)).toEqual({ kind: 'react' });
-    expect(decide('/travel-request', afterInc5)).toEqual({ kind: 'react' });
-    expect(decide('/', afterInc5)).toEqual({ kind: 'proxy-to-legacy' });
-    expect(decide('/api/hotels', afterInc5)).toEqual({ kind: 'proxy-to-api' });
+    expect(afterCutover.every((r) => r.owner === 'react')).toBe(true);
   });
 
   it('so the SAME address survives the migration — only the answerer changes', () => {
-    // Before its increment: /expenses -> 302 -> the AngularJS screen
-    expect(decide('/expenses').kind).toBe('redirect-to-legacy-hash');
-    // After:                 /expenses -> 200 -> the React screen
-    expect(decide('/expenses', afterInc5).kind).toBe('react');
+    // Before the cutover: /login -> 302 -> the AngularJS screen
+    expect(decide('/login').kind).toBe('redirect-to-legacy-hash');
+    // After:              /login -> 200 -> the React screen
+    expect(decide('/login', afterCutover).kind).toBe('react');
   });
 
   it('rolling a row back restores the legacy route in one edit', () => {

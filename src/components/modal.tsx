@@ -29,7 +29,11 @@ import { useEffect, useRef, type ReactElement, type ReactNode } from 'react';
 export interface ModalProps {
   readonly id: string;
   readonly open: boolean;
-  readonly title: string;
+  /**
+   * ReactNode rather than string: the expense dialogue's heading carries a
+   * status badge alongside the title, exactly as the legacy template did.
+   */
+  readonly title: ReactNode;
   readonly onClose: () => void;
   readonly children: ReactNode;
   readonly closeLabel?: string;

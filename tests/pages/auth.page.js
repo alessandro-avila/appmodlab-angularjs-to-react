@@ -15,18 +15,38 @@
  * `currentState()` reads whichever of the two forms it ends up in.
  */
 const { BASE_URL: BASE } = require('../support/world');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const LEDGER = path.join(__dirname, '..', '..', 'src', 'lib', 'route-ledger.ts');
 
 /**
- * Routes React owns. Kept in step with `src/lib/route-ledger.ts`: a route joins
- * this set in the increment that migrates it.
+ * Routes React owns, DERIVED FROM `src/lib/route-ledger.ts` rather than
+ * restated here.
  */
-const REACT_PATHS = new Set(['flights', 'hotels', 'itinerary']);
+/**
+ * Routes React owns, DERIVED FROM `src/lib/route-ledger.ts` rather than
+ * restated here.
+ *
+ * Increment 4 restated it and forgot to update it, so travel-request's
+ * authentication scenarios kept addressing `/#!/travel-request` after the
+ * module had become React. They still passed — but for the wrong reason: the
+ * hash no longer matched a UI-Router state, so `otherwise('/login')` produced
+ * the same redirect the guard was supposed to produce. Reading the ledger
+ * removes the restatement, so the next migration cannot leave this behind.
+ *
+ * Anything NOT in the ledger keeps its legacy hash form, which is how the
+ * baseline addresses an unknown area (`authentication.feature:72`).
+ */
+const REACT_PATHS = new Set(
+  [...fs.readFileSync(LEDGER, 'utf8').matchAll(/path:\s*'\/([^']+)'[^}]*?owner:\s*'react'/g)].map(
+    (m) => m[1]
+  )
+);
 
 const STATES = {
   login: '#!/login',
-  dashboard: '#!/dashboard',
-  'travel-request': '#!/travel-request',
-  expenses: '#!/expenses'
+  dashboard: '#!/dashboard'
 };
 
 class AuthPage {
@@ -160,27 +180,25 @@ class AuthPage {
     };
   }
 
-  /** Reach $rootScope through the injector, the way the legacy app does. */
-  rootScope(fn) {
-    return this.page.evaluate(
-      (source) =>
-        new Function(
-          'rs',
-          'return (' + source + ')(rs)'
-        )(angular.element(document.body).injector().get('$rootScope')),
-      fn.toString()
-    );
-  }
-
-  signedInUser() {
-    return this.rootScope((rs) => (rs.currentUser ? JSON.parse(JSON.stringify(rs.currentUser)) : null));
-  }
-
-  listenerCount(event) {
-    return this.page.evaluate((name) => {
+  /**
+   * Who the app thinks is signed in, on EITHER stack.
+   *
+   * AngularJS answers from `$rootScope.currentUser`; React has no `angular`
+   * global, and answers from the `identity()` seam (`src/lib/test-seam.ts`),
+   * which reports the auth store faithfully rather than hard-coding null.
+   * Both report the same thing, so scenarios that pin C-1 keep working as
+   * modules migrate — and will go red together when C-1 is repaired.
+   */
+  async signedInUser() {
+    return this.page.evaluate(() => {
+      const seam = window.__flightSearch;
+      if (seam && typeof seam.identity === 'function') {
+        const u = seam.identity();
+        return u ? JSON.parse(JSON.stringify(u)) : null;
+      }
       const rs = angular.element(document.body).injector().get('$rootScope');
-      return (rs.$$listeners[name] || []).filter(Boolean).length;
-    }, event);
+      return rs.currentUser ? JSON.parse(JSON.stringify(rs.currentUser)) : null;
+    });
   }
 }
 

@@ -463,6 +463,58 @@ no other controller or service references `ExpenseService`.
 
 ## Current Implementation (Brownfield Extension)
 
+> **⚠ MIGRATION STATUS — React, since Increment 5. The last feature module.**
+>
+> The AngularJS module described below has been **deleted**, along with
+> `currency-input.directive.js` and `currency.filter.js`.
+>
+> | Was | Is now |
+> |---|---|
+> | `expense.controller.js` | `src/features/expense-reconciliation/ExpenseReconciliation.tsx` + `expense-model.ts` |
+> | `expense.service.js` | `src/features/expense-reconciliation/expense-api.ts` |
+> | `expense.template.html` | JSX in `ExpenseReconciliation.tsx` |
+> | `currency-input.directive.js` | **deleted, not ported** — zero consumers (Q-10) |
+> | `currency.filter.js` (`usdCurrency`) | **deleted, not ported** — zero consumers (Q-10) |
+> | `'expenses'` UI-Router state | ledger row `/expenses` → `owner: 'react'` |
+>
+> **On the two currency files.** Both were read before being replaced, and the reading is
+> what showed there was nothing to reproduce: no template in `app/` used any `gt-`
+> directive, the amount field was a plain `<input type="number">`, and the screen's money
+> went through Angular's **built-in** `currency` filter via `formatCurrency()` — never the
+> custom one. The directive's parser, formatter and keydown filter never ran. Porting them
+> would have added behaviour the app never had (§13 item 9: *"Do not replace a dependency
+> nothing used."*). Money renders through the shared `formatMoneyCurrency`.
+>
+> **Two defects REPAIRED, both under ADR-005 (see also ADR-022):**
+>
+> - **The date filter works both ways.** `$watch('dateRange')` re-filtered only when a
+>   bound was SET (`controller:50-54`), so clearing both left the table narrowed while the
+>   inputs read empty. Fourth and last of "the four dead controls".
+> - **The error alert dismisses.** Fourth and last instance of the `ng-if`
+>   scope-shadowing class, after the itinerary status filter, itinerary Add Note, and the
+>   travel-request alert.
+>
+> **Receipt upload** no longer triggers a hidden input with jQuery. A ref replaces
+> `$('#receiptFileInput')` and `.click()` replaces `.trigger('click')`. Same button, same
+> file name shown, and still nothing uploaded — the legacy never called its own receipt
+> endpoint either, which a scenario pins.
+>
+> **What deliberately did NOT change:**
+>
+> - the undated draft renders the literal words **"Invalid date"**, and **sorts above** the
+>   dated report in a most-recent-first list (both measured against moment and lodash in
+>   the running app before being reproduced)
+> - the detail dialogue shows a **blank submitted date** and a **blank item count**, because
+>   `getReportDetails` never re-applies those two fields
+> - the **Draft filter button** gives no visual sign of being selected
+> - removing the **last** line leaves a stale total in the model
+> - a submitted report is stored as a **draft** (SEAM-4), so the Approved tile is
+>   structurally `$0.00` and a submitted report stays deletable
+> - the dashboard **average is over ALL reports**, never the filtered set
+> - `travelRequestId` is stored without being checked (SEAM-5)
+
+### Files Involved
+
 ### Files Involved
 
 | File | Lines | Role |

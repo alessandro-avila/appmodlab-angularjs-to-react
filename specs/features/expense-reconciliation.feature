@@ -4,37 +4,58 @@
 # regression net for the React migration, not a statement of intent. Where the code
 # is wrong, the scenario records the wrong behaviour and says so.
 #
-# Six findings were proved by execution against the running app and are pinned here so
-# they survive into the migration as decisions rather than accidents:
+# Six findings were proved by execution against the running app. Increment 5 migrated
+# this module to React; each finding is marked with what became of it:
 #
-#   1. THE DATE-RANGE FILTER IS ONE-WAY. `$watch('dateRange')` re-filters only when a
-#      bound is set (`controller:50-54`). Clearing both dates leaves `filteredReports`
-#      narrowed, so the table stays filtered while both inputs read empty. Touching the
-#      search box or a status button escapes it, because those run through $watchGroup.
+#   1. THE DATE-RANGE FILTER WAS ONE-WAY. `$watch('dateRange')` re-filtered only when a
+#      bound was set (`controller:50-54`). Clearing both dates left `filteredReports`
+#      narrowed, so the table stayed filtered while both inputs read empty. Touching the
+#      search box or a status button escaped it, because those ran through $watchGroup.
 #
-#   2. THE ERROR ALERT CANNOT BE DISMISSED. `ng-if="errorMessage"` creates a child scope;
-#      `ng-click="errorMessage = ''"` writes to the child, never the controller
+#      SUPERSEDED in Inc-5 by ADR-005 — the fourth and last of "the four dead controls".
+#
+#   2. THE ERROR ALERT COULD NOT BE DISMISSED. `ng-if="errorMessage"` created a child
+#      scope; `ng-click="errorMessage = ''"` wrote to the child, never the controller
 #      (`template:16-18`). Fourth confirmed instance of this defect class, after the
 #      itinerary status filter, the itinerary Add Note control, and the travel-request
 #      error alert.
+#
+#      SUPERSEDED in Inc-5 by ADR-005, whose Supersede row names "the un-dismissable
+#      alerts". The travel-request one was repaired in Inc-4 on the same clause.
 #
 #   3. THE DETAIL MODAL SHOWS TWO BLANK FIELDS. `getReportDetails` re-fetches the report
 #      and does not re-apply `submittedFormatted` / `expenseCount` (`service:31-44`), both
 #      of which the modal binds (`template:339`, `:351`). Every report shows "Submitted:"
 #      with no date and " expense items" with no number.
 #
+#      PRESERVED — nothing authorises repairing it.
+#
 #   4. THE STATUS FILTER AND SEARCH BOX WORK HERE. They sit outside every `ng-if`, and
 #      both seeded reports carry `title` and `tripDestination`, so the unguarded
 #      `.toLowerCase()` at `controller:102-103` has nothing to trip over. Contrast the
-#      travel-request search, which is inert for exactly the opposite reason.
+#      travel-request search, which was inert for exactly the opposite reason.
+#
+#      PRESERVED — it was already correct. The scenario that asserted WHY (scope sharing)
+#      is superseded, because React has no scope chain to assert about; what it protected
+#      is now covered by exercising both controls directly.
 #
 #   5. THE DRAFT FILTER BUTTON GIVES NO VISUAL CONFIRMATION. Its `ng-class` defines only
 #      the unselected state (`template:245-246`), so selecting it strips `btn-default`
 #      and adds nothing.
 #
+#      PRESERVED — a real defect, but no decision authorises changing it.
+#
 #   6. A SUBMITTED REPORT IS STORED AS A DRAFT. Neither side ever writes a status other
 #      than 'draft' (`api-mock/server.js:625`), so the Approved tile is structurally $0.00
 #      and a submitted report stays deletable. This is SEAM-4.
+#
+#      PRESERVED. SEAM-4 is marked defect-to-fix in ADR-001, but its repair follows Q-4's
+#      vocabulary work and is not scheduled here; `api-mock/` stays untouched this
+#      increment.
+#
+# Also superseded in Inc-5, under ADR-009 + ADR-014: the two expense-date scenarios and
+# the two from-date calendar scenarios, which described jQuery UI's grid. Both fields are
+# native date inputs now. The no-future-dates CONSTRAINT is preserved via `max`.
 #
 # Fixture: the seeded reports exp-1 (pending, $1875.50, 4 items) and exp-2 (draft,
 # $250.00, 2 items, submittedAt null) are rebuilt before and after every scenario.
@@ -106,9 +127,18 @@ Feature: Expense reconciliation as the legacy portal performs it
       | Pending  | NYC Business Trip Expenses |
       | Draft    | Q1 Miscellaneous           |
 
-  Scenario: The filter controls belong to the controller scope, so the status filter works
-    Then the expense status filter shares the controller scope
-    And the expense search box shares the controller scope
+  @inc-5
+  # SUPERSEDED as a MECHANISM scenario. It asserted that the filter controls sit
+  # on the controller scope rather than an ng-if child — the reason they worked
+  # while the alert and the date filter did not. React has no scope chain, so
+  # there is nothing to share. The OUTCOME it protected is kept: both controls
+  # still work, which the scenarios above and below exercise directly.
+  Scenario: The status filter and the search box both work
+    When I filter expense reports by "Pending"
+    Then the expense report list contains exactly "NYC Business Trip Expenses"
+    When I filter expense reports by "All"
+    And I search expense reports for "nyc"
+    Then the expense report list contains exactly "NYC Business Trip Expenses"
 
   Scenario: The Draft filter is applied but the button shows no sign of being selected
     When I filter expense reports by "Draft"
@@ -152,28 +182,57 @@ Feature: Expense reconciliation as the legacy portal performs it
     When I set the expense from-date to "01/01/2020"
     Then the expense report list contains exactly "NYC Business Trip Expenses"
 
-  Scenario: Clearing the dates does not bring the reports back
+  @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 (see also ADR-022), per increment plan §9.
+  #
+  # ADR-005's Supersede row lists "the four dead controls" — the scenario
+  # "encodes a defect that ADR-001/002 already decided to fix" — and its
+  # rejection of the Fix-Bugs path says they "are resolved by being
+  # reimplemented correctly". The trapped date filter is the fourth and last of
+  # them. It now works both ways.
+  #
+  # The legacy `$watch('dateRange')` re-filtered only when a bound was SET
+  # (`controller:50-54`), so clearing both left the table narrowed while the
+  # inputs read empty. No code reproduces that guard.
+  # ---------------------------------------------------------------------------
+  Scenario: Clearing the dates brings the reports back
     When I set the expense from-date to "01/01/2025"
     And I clear the expense from-date
     Then the expense from-date reads ""
     And the recorded expense date range is empty
-    And no expense reports are listed
+    And the expense report list contains "NYC Business Trip Expenses" and "Q1 Miscellaneous"
 
-  Scenario: Touching the search box escapes the stuck date filter
+  @inc-5
+  # SUPERSEDED by ADR-005 — there is no stuck filter left to escape from. The
+  # scenario existed only to record the workaround; the result is now reached
+  # directly. Kept as a regression on the search-then-clear path.
+  Scenario: Searching and clearing leaves every report listed
     When I set the expense from-date to "01/01/2025"
     And I clear the expense from-date
     And I search expense reports for "a"
     And I search expense reports for ""
     Then the expense report list contains "NYC Business Trip Expenses" and "Q1 Miscellaneous"
 
-  Scenario: The from-date has no calendar until the new report form is opened
-    Then clicking the expense from-date opens no calendar
+  @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-009 + ADR-014 — the same authorisation used for every
+  # datepicker in increments 1, 2 and 4.
+  #
+  # The from-date was a text input that only became a calendar when
+  # `initDatepickers()` ran, which happened when the NEW REPORT form opened —
+  # so the filter's own calendar depended on an unrelated form. It is a native
+  # date input now and is always ready.
+  # ---------------------------------------------------------------------------
+  Scenario: The from-date is a date field whether or not the form is open
+    Then the expense from-date is a date field
     When I start a new expense report
-    Then clicking the expense from-date opens a calendar
+    Then the expense from-date is a date field
 
-  Scenario: Choosing a from-date from the calendar reaches the filter
-    When I start a new expense report
-    And I pick the first available day from the expense from-date calendar
+  @inc-5
+  # SUPERSEDED by ADR-009 + ADR-014 — no jQuery calendar to open.
+  Scenario: Choosing a from-date reaches the filter
+    When I set the expense from-date to "01/01/2020"
     Then the recorded expense date range start is not empty
 
   # ---------------------------------------------------------------- the form
@@ -277,16 +336,29 @@ Feature: Expense reconciliation as the legacy portal performs it
 
   # ---------------------------------------------------------------- expense date
 
-  Scenario: Picking an expense date fills the field with a raw JavaScript date string
+  @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-009 + ADR-014 — the same authorisation as every other
+  # datepicker in this migration.
+  #
+  # The legacy field was <input type="text"> whose ng-model held a Date object,
+  # so AngularJS re-rendered Date.prototype.toString() over whatever the picker
+  # had written: "Wed Aug 26 2026 00:00:00 GMT+0200 (…)". Date entry is a native
+  # date input now, parsed with an explicit format.
+  # ---------------------------------------------------------------------------
+  Scenario: A chosen expense date is displayed as a calendar date
     When I start a new expense report
-    And I pick the first available day from the expense date calendar
-    Then the expense date field shows a raw JavaScript date string
+    And I set the expense date to "08/26/2026"
+    Then the expense date field reads the calendar date "08/26/2026"
 
-  Scenario: Future days cannot be chosen as an expense date
+  @inc-5
+  # SUPERSEDED by ADR-009 + ADR-014. The CONSTRAINT is preserved — the legacy
+  # datepicker used `maxDate: 0`, and the native input carries the equivalent
+  # `max` of today — but "the calendar cannot advance" and "most days are
+  # unselectable" describe jQuery UI's grid, which no longer exists.
+  Scenario: An expense date cannot be in the future
     When I start a new expense report
-    And I open the expense date calendar
-    Then the calendar cannot advance to the next month
-    And most days in the expense date calendar are unselectable
+    Then the expense date field refuses dates after today
 
   # ---------------------------------------------------------------- receipts
 
@@ -318,14 +390,33 @@ Feature: Expense reconciliation as the legacy portal performs it
     And I submit the expense report
     Then the expense error reads "Add at least one expense item."
 
-  Scenario: The expense error alert cannot be dismissed
+  @inc-5
+  # ---------------------------------------------------------------------------
+  # SUPERSEDED by ADR-005 — "the un-dismissable alerts", named in the same
+  # Supersede row as the four dead controls. Repaired in travel-request in
+  # Increment 4 on the ruling that fixing one and not the other is incoherent;
+  # this is the last instance, so the finished product has no alert that
+  # refuses to close.
+  #
+  # The scope assertion is dropped rather than translated: React has no scope
+  # chain, so "the alert sits on a different scope from the controller" has
+  # nothing to measure. What replaces it is the observable outcome.
+  # ---------------------------------------------------------------------------
+  Scenario: The expense error alert can be dismissed
     When I start a new expense report
     And I submit the expense report
     Then the expense error reads "Report title is required."
     When I press the close button on the expense error
-    Then the expense error is still shown
-    And the controller still holds the expense error message
-    And the expense error alert sits on a different scope from the controller
+    Then the expense error is no longer shown
+
+  @inc-5
+  # NET-NEW — dismissing must not be mistaken for fixing.
+  Scenario: A dismissed expense error returns if the report is still wrong
+    When I start a new expense report
+    And I submit the expense report
+    And I press the close button on the expense error
+    And I submit the expense report
+    Then the expense error reads "Report title is required."
 
   Scenario: A submitted report is stored as a draft, credited to Demo User, and stays deletable
     When I start a new expense report
