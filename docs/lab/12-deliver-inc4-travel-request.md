@@ -1,7 +1,7 @@
 # Step 12 · Increment 4 — travel-request
 
 > **Phase** 2 · Deliver (increment 4) &nbsp;|&nbsp; **Branch** [`lab/12-deliver-inc4-travel-request`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/12-deliver-inc4-travel-request) &nbsp;|&nbsp; **Parent** `lab/11-deliver-inc3-itinerary`
-> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ⏳ Pending
+> **Human gate** 🧑‍⚖️ PR Review &nbsp;|&nbsp; **Status** ✅ Verified
 
 ---
 
@@ -139,16 +139,89 @@ message — *"Destination is required."* — and nothing else.
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/11-deliver-inc3-itinerary..lab/12-deliver-inc4-travel-request`
-> 2. **Is validation still fail-fast?** Submit an empty form — one message or six?
-> 3. Did it introduce a form library, and did the library's defaults win?
-> 4. Does same-day travel (return == depart) still validate?
-> 5. What replaced `confirm()`, and is it still blocking
-> 6. Where `approval-status` ended up, and whether anything else used it
-> 7. Unit run, full Playwright, build
+> ✅ **Verified** — branch [`lab/12-deliver-inc4-travel-request`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/12-deliver-inc4-travel-request) ·
+> [compare with `lab/11-deliver-inc3-itinerary`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/11-deliver-inc3-itinerary...lab/12-deliver-inc4-travel-request)
+
+| Check | Result |
+|---|---|
+| Full `@existing-behavior` suite | ✅ **249 scenarios · 2133 steps** — re-run *after* the deletion |
+| Unit | ✅ 357 |
+| `tsc` · `oxlint src` · `vite build` | ✅ all clean |
+| bower · Grunt · `package.json` · lockfile · **`api-mock/`** | ✅ untouched — **no dependency added** |
+
+**One AngularJS module left.** `app/directives/` is down to `currency-input.directive.js`.
+
+### Validation preserved — and tested as an *order*
+
+Six checks, fixed order, first failure wins, one message. **No form library**: one would have had to
+be configured back into this shape, and the configuration would exceed the six `if`s.
+
+The interesting part is how it was tested. Not six independent cases — the suite **walks the form
+field by field and asserts each satisfied check hands over to the next**. Fill destination, get the
+*dates* complaint. That fails on a reordering; six independent cases would still pass.
+
+> A fail-fast validator's contract is the **sequence**, not the set. Test the handover.
+
+### The directive question, answered with evidence rather than assumption
+
+`gtApprovalStatus` has **zero consumers** — confirming Q-10. Its status vocabulary spans *every*
+module, so it was built to unify them and never used once.
+
+The prompt warned *"don't assume it's travel-request-only"*. It checked, and found expense **does**
+render approval words — but a report **status enum** plus filter buttons, not an approval **chain**.
+And the three modules' mappings genuinely disagree: travel-request falls back to `label-info` where
+the itinerary falls back to `label-default`.
+
+So **no shared component was extracted**. The badge dissolves into a local `statusClass()`
+reproducing the *template's* output — lowercase, no icon — not the directive's richer unused one,
+which would have been a visible change nothing authorises. The directive is **deleted, not ported**.
+
+> Shared vocabulary is not a shared concern. Three modules saying "approved" is not three modules
+> needing one component — and the unused abstraction that already tried is the evidence.
+
+### It stopped on the un-dismissable alert
+
+ADR-005's Supersede row names *"the un-dismissable alerts"* **in the same sentence** as the four dead
+controls — and this module has one: the close button sits inside an `ng-if`, so `errorMessage = ''`
+lands on the child scope and the alert stays.
+
+The prompt authorised only the search box. It raised the inconsistency rather than picking either
+way. **Ruling: fix both** — one ADR clause cannot authorise half its own list.
+
+That is ADR-022's distinction working as intended, one increment after it was written: the question
+was never *"does React make this work?"* but *"is there an authorisation?"*
+
+### Two bugs it caught in its own work
+
+**React was silently repairing a pinned defect.** Its first cut had the filtered snapshot depend on
+`requests`, so cancelling under the *Pending* filter made the row vanish — a tidier app, and a
+behaviour change nothing authorised. The legacy `$watchGroup` watches **only** the two filter inputs.
+Fixed with a ref, caught by its own component test.
+
+**`signedInIdentity()` came due**, exactly as flagged at the previous gate: it read `angular`, which
+is undefined on a React page. It now branches — and **both** branches read the real thing rather than
+hard-coding `null`, so when Inc-6 repairs C-1 the scenarios pinning that defect go red **on purpose**.
+
+### And one run it refused to believe
+
+A full run reported 248/249 with a **60-second step timeout — not an assertion** — and took
+**171 minutes** against 18m33s for the identical suite. It accepted neither the pass nor the failure:
+re-probed the services (healthy, 14–144 ms), re-ran the feature (49/49 in 3m51s), then the full suite
+(**249/249 in 17m36s**).
+
+> A 9× runtime with a timeout-shaped failure is a question about the environment, not an answer about
+> the code. Same discipline as `BASELINE-ISOLATION` in [step 09](09-deliver-inc1-flight-search.md#-new-finding--the-baseline-is-not-hermetic).
+
+### Recorded, not resolved
+
+`window.confirm()` became a React dialog that is **still blocking** — `useConfirm()` returns a
+promise, so the call site keeps the shape and meaning of `if (!confirm(...)) return;`. It lives in
+`src/components/` because expense needs it next.
+
+But the **itinerary still uses the native `confirm`**, because its scenarios observe the native
+dialog and nothing authorises changing that. Two confirmation mechanisms now coexist. That
+inconsistency is **written down rather than tidied away** — which is the correct call, and Inc-6's to
+settle.
 
 ---
 
