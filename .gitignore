@@ -22,10 +22,8 @@ node_modules/
 vendor/
 
 # Build output
-# Build output (repo root only — bower_components/*/dist must stay tracked)
-/dist/
-/build/
 /dist-react/
+/build/
 coverage/
 
 # Tooling scratch
