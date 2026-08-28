@@ -1,7 +1,7 @@
 {
   "mode": "brownfield",
   "currentPhase": "2",
-  "currentStep": "inc-3 — reworked; awaiting PR Review gate",
+  "currentStep": "inc-4 — awaiting PR Review gate",
   "status": "awaiting-human-gate",
   "project": {
     "name": "globaltravel-portal",
@@ -1104,12 +1104,12 @@
     "legacyUnitTests": 19,
     "skipMarkers": 0,
     "bowerTrackedFiles": 964,
-    "scenarios": 245,
-    "steps": 2098,
-    "unitTests": 281,
-    "bypassesUi": 3,
-    "reactRoutes": 3,
-    "angularRoutes": 4
+    "scenarios": 249,
+    "steps": 2133,
+    "unitTests": 357,
+    "bypassesUi": 0,
+    "reactRoutes": 4,
+    "angularRoutes": 3
   },
   "humanGates": {
     "brownfield-b1-extraction-approved": true,
@@ -1427,6 +1427,10 @@
     "inc3PrReview": {
       "status": "pending",
       "requestedAt": "2026-08-27T19:55:00+02:00"
+    },
+    "inc4PrReview": {
+      "status": "pending",
+      "requestedAt": "2026-08-28T06:20:00+02:00"
     }
   },
   "testabilityGateReview": {
@@ -1560,9 +1564,9 @@
       "Should the 13 unstructured authentication requirements be restructured into Input/Processing/Output/Error handling before Phase 2 Step 2 (contract-generation) consumes them?"
     ]
   },
-  "lastUpdated": "2026-08-27T23:55:00+02:00",
+  "lastUpdated": "2026-08-28T06:20:00+02:00",
   "humanGateApprovedAt": "2026-08-04T18:58:30+02:00",
-  "updatedAt": "2026-08-27T23:55:00+02:00",
+  "updatedAt": "2026-08-28T06:20:00+02:00",
   "planReDerivation": {
     "performedAt": "2026-08-23T12:40:00+02:00",
     "reason": "Phase P brief required re-deriving every figure from source; the assessment summary block disagrees with its own tables and two figures were carried from ADR-005",
@@ -2085,6 +2089,78 @@
         "addNote": "per-row draft posted by the add button. 4 scenarios superseded.",
         "attributionRepair": "ADR-003 C-1 / plan §7.4 row 22. Repaired SERVER-side: the note is credited from the authenticated caller, so no client identity is needed. Stronger than the plan expected — §7.4 assumed \"Inc-0 identity rehydration\" which Inc-0 never built (auth-store.ts schedules it for Inc-6). authentication.feature:156/:165 therefore stay green and honest.",
         "persistenceRepair": "plan §7.4 row 23, gated separately at the user’s request. POST /api/itinerary-items/:id/notes read req.body.notes (never sent) and overwrote rather than appended. It now appends and the note persists. Second gated extension of the api-mock exception."
+      }
+    },
+    "inc-4": {
+      "name": "travel-request — the form increment",
+      "status": "implemented; awaiting PR Review gate",
+      "completedAt": "2026-08-28T06:20:00+02:00",
+      "branchNote": "lab/12-deliver-inc4-travel-request already existed and was correctly cut: a descendant of the inc-3 rework commit d79d494, with one docs-only commit on top. Verified before use, after the lab/11 mis-cut.",
+      "frontDoorCheck": "Per instruction, the front door was restarted after cutting the branch and GET / confirmed to return the AngularJS index — 4021 bytes containing ng-app — before any suite ran.",
+      "scopeQuestionsClosedAtGate": {
+        "un-dismissable-alert": "ADR-005’s Supersede row names \"the un-dismissable alerts\" in the same sentence as \"the four dead controls\". The instruction authorised only the search box. Asked rather than assumed; answered YES, repair it too, since fixing one and not the other on the same ADR clause would be inconsistent. travel-request.feature:184 superseded."
+      },
+      "directiveQuestion": {
+        "asked": "whether any other module renders approval status before assuming it is travel-request’s alone",
+        "finding": "The gtApprovalStatus directive has ZERO consumers, confirming Q-10 — the only references anywhere are its own declaration and its <script> tag. Its status vocabulary spans modules (confirmed/pending/approved/rejected/cancelled/draft/in-review), so it was built to unify all of them and never used once.",
+        "crossModule": "expense-reconciliation DOES render approval-related text, but it is a single report STATUS enum plus filter buttons — not an approval CHAIN. itinerary renders item status. All three render inline with their OWN mapping, and the mappings differ: travel-request falls back to label-info where the itinerary falls back to label-default.",
+        "decision": "The badge concern dissolves into travel-request-local `statusClass()`, reproducing the TEMPLATE’s output (lowercase status, no icon) rather than the unused directive’s richer output (capitalised label + glyphicon), which would have been a visible change no scenario authorises. The directive file is DELETED, not ported, per Q-10 and plan §8.2. No shared component was extracted, because the mappings genuinely disagree."
+      },
+      "validation": {
+        "preserved": "fail-fast, order-dependent, first failure wins, one message at a time",
+        "checks": [
+          "destination missing -> \"Destination is required.\"",
+          "either date missing -> \"Travel dates are required.\"",
+          "return before depart -> \"Return date must be after departure date.\"",
+          "purpose missing -> \"Travel purpose is required.\"",
+          "department missing -> \"Department is required.\"",
+          "total estimate <= 0 -> \"Please provide cost estimates.\""
+        ],
+        "formLibrary": "None adopted. A library would have had to be configured back into this shape, and the configuration would be more code than the six ifs. All-errors-at-once was NOT shipped; it is offered as a possible delta, not taken.",
+        "testedAsAnOrder": "The unit suite walks the form one field at a time and asserts each newly-satisfied check hands over to the NEXT one, so a reordering fails even though six independent cases would still pass."
+      },
+      "gherkinDelta": {
+        "superseded": 6,
+        "netNew": 4,
+        "detail": "search: 4 superseded (:97 TypeError, :102 title, :106 no-match, :110 combine) + 3 net-new (purpose match, case-insensitivity, clearing). alert: 1 superseded (:184) + 1 net-new (a dismissed complaint returns if still wrong).",
+        "total": 49
+      },
+      "reactConfirm": "window.confirm() replaced by useConfirm(), which returns a PROMISE so the call site keeps the shape and meaning of `if (!confirm(...)) return;`. Nothing is sent until the user answers. Lives in src/components/ because expense needs it in Inc-5. The ITINERARY deliberately still uses the native confirm — its scenarios observe the native dialog through Playwright’s dialog handler and nothing authorises changing that.",
+      "preservedDefects": [
+        "the traveller line in the detail dialogue is blank — no request carries travelerName",
+        "no approval chain shown though the server holds one (SEAM-2 ACCEPTED under Q-1)",
+        "the travel policy is never fetched (SEAM-1)",
+        "a request cancelled under the Pending filter stays on screen while the cards disagree — needed a useRef so React would not \"helpfully\" recompute the snapshot",
+        "new requests filed under \"Demo User\" (ADR-003 C-1); repair is Inc-6’s",
+        "table + modal-total money UNGROUPED ($2500.00) while form total + breakdown rows are GROUPED ($1,200.00)"
+      ],
+      "harnessChanges": {
+        "pageObject": "travel-request.page.js re-pointed to the real path and the seam; readAlertScope DELETED (there is no second scope now); selects addressed by id rather than ng-model; setTripDates types into native date inputs, normalising the ISO datetimes the scenarios pass so the SCENARIOS did not have to churn for a widget change.",
+        "signedInIdentityFixed": "FLAGGED AT THE INC-3 GATE AND NOW DUE: signedInIdentity() read `angular`, which is undefined on a React page. It now branches — $rootScope on an AngularJS screen, the test seam on a React one — and BOTH branches read the real thing. It does not hard-code null, so when Inc-6 repairs C-1 the scenarios that pin the defect go red on purpose.",
+        "seamIdentity": "test-seam.ts gained `identity()`, reading the auth store. Verified in a browser: {\"hasIdentity\":true,\"currentUser\":null,\"keys\":[\"authToken\"]}."
+      },
+      "sharedCode": "formatItemCost moved from itinerary-model into lib/format.ts as formatMoneyFixed, because travel-request needed the identical `'$' + toFixed(2)` rendering. Reused rather than reinvented; the itinerary now re-exports it.",
+      "deleted": [
+        "app/components/travel-request/travel-request.controller.js (311)",
+        "app/components/travel-request/travel-request.service.js (90)",
+        "app/components/travel-request/travel-request.template.html (372)",
+        "app/directives/approval-status.directive.js (130, Q-10 — deleted not ported)",
+        "the 'travelRequest' UI-Router state",
+        "three <script> tags at app/index.html"
+      ],
+      "guardrails": {
+        "bower.json": "untouched",
+        "Gruntfile.js": "untouched",
+        "bower_components/": "untouched",
+        "package.json": "unchanged — no dependency added; no form library adopted",
+        "api-mock/": "untouched this increment",
+        "bootstrap.min.js": "still required by expense (Inc-5)"
+      },
+      "verification": {
+        "unit": "357 passed (16 files)",
+        "typecheck": "tsc --noEmit clean",
+        "cucumber": "PENDING — clean re-run in progress",
+        "flakiness": "One full run reported 248/249 with a 60s step TIMEOUT (not an assertion) and took 171 MINUTES against 18m33s for the identical suite earlier — ~9x. Diagnosed as environmental: services re-probed healthy (14-144 ms) and the affected feature then passed 49/49 in 3m51s."
       }
     }
   },
