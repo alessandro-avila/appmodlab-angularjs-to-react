@@ -151,17 +151,114 @@ specs/                            updated, not deleted
 
 ## 📤 Outcome
 
-> ⏳ **Pending** — filled in from the real run.
->
-> Paste back:
-> 1. `git --no-pager diff --stat lab/13-deliver-inc5-expenses..lab/14-cutover` — expect a large
->    negative number, and note what `bower_components/` alone accounted for
-> 2. The `package.json` diff
-> 3. Full build, full unit suite, full Playwright
-> 4. **Anything referenced only from `app/index.html`** that had to be rescued
-> 5. Whether every FRD's Current Implementation was actually rewritten, or just tagged
-> 6. Manual pass: login + all five features
-> 7. What broke that the tests did not catch
+> ✅ **Verified** — branch [`lab/14-cutover`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/14-cutover) ·
+> [compare with `lab/13-deliver-inc5-expenses`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/compare/lab/13-deliver-inc5-expenses...lab/14-cutover)
+
+**AngularJS is gone. `app/`, `bower_components/`, `bower.json`, `.bowerrc` and `Gruntfile.js` are
+all zero files on this branch.**
+
+| Check | Result |
+|---|---|
+| Full suite, **before** any deletion | ✅ **258 scenarios · 2460 steps · 11m31s** |
+| Full suite, **after** the decommission | ✅ **258 · 2460 · 11m27s** |
+| Unit | ✅ 459 |
+| `tsc` · `oxlint` · `vite build` | ✅ clean — 504 modules, 428 kB (120 kB gzipped) |
+| Manual pass | ✅ login + refusal, C-1 reload, all five features, hash landing, sign-out |
+| Skip-detection · `@bypasses-ui` · `@existing-behavior` | ✅ clean · 0 · retained on all six files |
+
+**975 files, 384,709 lines deleted.**
+
+### The order was the safety net
+
+Surface first, **prove green, then delete.** That 258/258 ran with every legacy file still on disk —
+so a failure at that moment was still **one ledger-row edit** from rollback. Deleting first would
+have thrown that away for nothing.
+
+### The check that earned its place
+
+This page's checklist said: *"`app/index.html` may be loading things the module graph does not
+mention."* It was.
+
+```html
+<link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="/assets/css/style.css" />
+```
+
+**Two stylesheets reaching the browser through the front-door proxy, neither in the module graph.**
+Deleting on the import graph alone would have stripped both from a running app — and quietly, because
+`style.css` carries four `text-transform: uppercase` rules. The first symptom was scenarios failing
+on `'Create Your First Report'` where the baseline pins `'CREATE YOUR FIRST REPORT'`.
+
+Chasing it exposed something bigger, hidden for the entire migration: at build time Vite resolved
+`/bower_components/…` from disk but `/assets/css/style.css` resolved to **nothing**. **Dev and
+production had disagreed about styling since Increment 0**, and only Q-12 — nothing is deployed —
+kept it invisible. `dist-react/` is self-contained for the first time.
+
+> An import graph tells you what the *bundler* needs. It does not tell you what the *browser* was
+> being handed. When the thing you are deleting is also the thing serving your assets, ask the
+> running server, not the module graph.
+
+### Deleted with evidence, not by inference
+
+| Removed | Size | The evidence |
+|---|---:|---|
+| `app/` | 8 files | No ledger row is `angularjs`; the front door has no `:8080` leg; nothing outside `app/` imports it |
+| `bower_components/` | **964 files** | Only `app/index.html` and `Gruntfile.js` referenced it. React's **entire** external import graph is `react`, `react-dom/client`, `react-router`, `date-fns`, `zod`, `zustand` |
+| `bower.json` · `.bowerrc` | 692 B | Their sole function is populating the above |
+| `Gruntfile.js` + 7 grunt deps | 3 kB | Invoked only by `npm run serve`/`build`, both rewired |
+| `dist/` | 931 files | Grunt output — untracked, gitignored |
+
+**The Karma config and specs were already gone** — deleted in `2b2bdfa` during Increment 1 with the
+19 → 68 mapping. It confirmed rather than assumed, which is the whole habit.
+
+### The guard was repaired without being changed
+
+`isAuthenticated()` is still `!!localStorage.getItem('authToken')` — character for character. What
+changed is that `restoreSession()` now calls `GET /api/auth/me` on boot, so a **rejected token is
+gone before the predicate runs**.
+
+A presence check became a validity check by gaining a *fact*, not a branch. That is the C-1 repair
+that ADR-010 authorised, Increment 0 silently deferred in a code comment, and Increment 5 nearly
+wrote off as unauthorised — landing here, in the increment that always owned it.
+
+### Both pending decisions resolved as PRESERVE
+
+**Sign-out went in the navbar**, not the dashboard — the navbar is the only chrome all six screens
+share, so on the dashboard the control would be unreachable from the five feature screens. That
+settles *"the dashboard carries no controls at all"* as PRESERVE. And it renders **only when
+authenticated**, which is what keeps *"the navigation bar offers no way to sign out"* preserved for a
+stranger while all six rows of the sign-out outline supersede for a signed-in user.
+
+`/login` stays reachable when signed in — nothing authorises changing it, and two scenarios depend on
+it.
+
+Gherkin delta: **13 superseded, 9 net-new**, each naming its ADR.
+
+### Three bugs of its own, and one it found by reading
+
+`TravelRequest.tsx` hardcoded `travelerName` instead of porting the conditional — **the same class as
+Increment 5's `submittedBy` bug**, and invisible until C-1 was repaired. The test seam was created
+lazily by feature routes, so `identity()` did not exist on `/dashboard`. And its React navbar said
+*"Travel Request"* where the legacy says **"Travel Requests"** — caught by reading the legacy source,
+not by a failing test.
+
+That the same bug class appeared twice, two increments apart, is the useful part: **a conditional
+ported as its usual answer is invisible to a suite that only ever exercises one branch.**
+
+### The seam held
+
+`api-mock/server.js` is **byte-identical to the day the baseline was captured**, apart from the three
+authorised seam fixes. And **14 API-only scenarios were never re-pointed and never edited** across
+six increments — the cleanest evidence available that the HTTP API really was the stable boundary
+ADR-005 claimed it was.
+
+### Still open, deliberately
+
+JWT in `localStorage` (**RISK-001**, accepted, owner `@alessandro-avila`, still `OPEN`) · SEAM-4,
+submitted reports stored as drafts · `window.confirm` on the itinerary where two other screens use
+the React dialog · Bootstrap 3 now vendored source rather than a managed dependency.
+
+None is a surprise. All four are written down, owned, and dated.
 
 ---
 
