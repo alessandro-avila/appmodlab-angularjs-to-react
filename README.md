@@ -291,9 +291,19 @@ Four of those are worth a second look, because they are the ones a stack diagram
    ```bash
    npm start
    ```
-4. Open the forwarded port **8080**. Click **Enter Portal**. You are in.
+4. Open the forwarded port **5173**. Sign in with `demo@globaltravel.com` / `password`. You are in.
 
 > ⏱️ First build should take ~4–6 minutes.
+>
+> 📍 **Port 5173, not 8080.** Until the cutover increment, `npm start` ran the AngularJS app on
+> `:8080` behind a Vite front door on `:5173`. The AngularJS application and its Grunt/Bower build
+> chain were deleted in Increment 6 (ADR-023), so `npm start` now runs exactly two processes —
+> the mock API on `:3000` and Vite on `:5173`.
+>
+> 🔑 **The login screen asks for credentials now.** The 2016 app had a single "Enter Portal"
+> button that posted two hardcoded constants. Increment 6 shipped the real form (ADR-002 Q-8),
+> so there are two accounts: `demo@globaltravel.com` (Sarah Johnson) and
+> `manager@globaltravel.com` (Mike Chen), both with password `password`.
 
 ### Option B: Local dev container (VS Code + Docker)
 
@@ -314,8 +324,9 @@ npm start
 
 ### Option C: Bare metal (no container)
 
-Only if A and B are impossible. You need **Node.js 22 LTS**, **git**, and a Chromium
-browser on `CHROME_BIN` for the Karma suite.
+Only if A and B are impossible. You need **Node.js 22 LTS** and **git**. A Chromium browser is
+needed for the Playwright baseline (`npm run test:baseline`); `npx playwright install chromium`
+fetches one.
 
 ```bash
 git clone https://github.com/alessandro-avila/appmodlab-angularjs-to-react.git
