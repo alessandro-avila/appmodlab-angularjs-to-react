@@ -1,7 +1,7 @@
 # Step 02 · B2 · Spec-Enable
 
 > **Phase** B2 · Spec-Enable &nbsp;|&nbsp; **Branch** [`lab/02-b2-spec-enable`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/tree/lab/02-b2-spec-enable) &nbsp;|&nbsp; **Parent** `lab/01-b1-extract`
-> **Human gates** 🧑‍⚖️ PRD Review ✅ · FRD Review · Refinement Review &nbsp;|&nbsp; **Status** 🟡 B2a approved, B2b next
+> **Human gates** 🧑‍⚖️ PRD Review ✅ · FRD Review ✅ · Refinement Review ✅ &nbsp;|&nbsp; **Status** ✅ Verified — PRD + 6 FRDs approved
 
 ---
 
