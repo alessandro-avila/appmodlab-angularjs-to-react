@@ -11,6 +11,13 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f5f5f5;
   color: #333;
+  /*
+    ADR-024 D-1. The navbar is `navbar-fixed-top`, so it is out of flow and
+    covers the top of the document. The legacy stylesheet never reserved this
+    space, which clipped the first ~13px of every page heading. Carried over
+    verbatim at the cutover, and repaired here.
+  */
+  padding-top: 53px;
 }
 
 .navbar-inverse {
@@ -30,6 +37,19 @@ body {
 }
 
 .navbar-inverse .navbar-nav > li > a {
+  color: #c5cae9;
+  font-weight: 500;
+}
+
+/*
+  ADR-024 D-4. Bootstrap's `.navbar-inverse` rules only reach anchors and
+  `.btn-link`. Increment 6 added the signed-in username as a bare <span> in a
+  navbar <li>, which matched nothing and inherited #333 from body — 1.05:1
+  against the #1a237e bar, effectively invisible. Match the nav links (8.2:1).
+*/
+.navbar-inverse .navbar-nav > li > span {
+  display: inline-block;
+  padding: 15px;
   color: #c5cae9;
   font-weight: 500;
 }

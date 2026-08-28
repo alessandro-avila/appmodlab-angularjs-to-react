@@ -264,29 +264,26 @@ export function foundNotification(count: number): string {
 /**
  * controller:220 — 'Flight booked successfully! Confirmation: ' + booking.confirmationCode
  *
- * DEFECT REPRODUCED DELIBERATELY. The booking payload carries
- * `confirmationNumber`, not `confirmationCode`, so the legacy expression is
- * `undefined` and the user is shown the literal text:
+ * DEFECT REPAIRED — ADR-024 D-3.
+ *
+ * The legacy controller read `booking.confirmationCode`. The API returns
+ * `confirmationNumber`, so the legacy expression evaluated to `undefined` and
+ * every successful booking told the user:
  *
  *     "Flight booked successfully! Confirmation: undefined"
  *
- * `flight-search.feature:183` asserts only the PREFIX, so it passes either way
- * and never caught this. Reading `confirmationNumber` here would be a
- * user-visible behaviour change that no decision authorises.
+ * That was reproduced deliberately through the increments, on the grounds that
+ * no decision authorised changing it. Post-cutover review authorised the repair,
+ * so this now reads the field the payload actually carries and shows a real code.
  *
- * The parameter type states the mismatch rather than hiding it behind a cast:
- * the REAL payload, intersected with the optional property the legacy code
- * believed was there. `confirmationCode` is never present, so this always
- * renders "undefined" — exactly as today.
+ * Worth remembering how it survived: `flight-search.feature:183` asserts only the
+ * message PREFIX. The scenario passed against `undefined` and would pass equally
+ * against a real code — an assertion that stopped one token short of the bug.
+ * Tightening it is tracked as FOLLOW-1 rather than smuggled in here.
  *
- * TypeScript is what forced this to be written honestly. Typing the parameter
- * as `{ confirmationCode?: string }` alone was rejected — "no properties in
- * common with type FlightBooking" — because a weak type accepts nothing. The
- * compiler would not let the phantom field be described without also describing
- * the payload it is missing from.
+ * The hotel path (`hotel-booking-model.ts`) always read `confirmationNumber` and
+ * needed no change.
  */
-export function bookedNotification(
-  booking: FlightBooking & { confirmationCode?: string | undefined },
-): string {
-  return `Flight booked successfully! Confirmation: ${booking.confirmationCode}`;
+export function bookedNotification(booking: FlightBooking): string {
+  return `Flight booked successfully! Confirmation: ${booking.confirmationNumber}`;
 }

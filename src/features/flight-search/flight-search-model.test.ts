@@ -421,13 +421,17 @@ describe('notifications', () => {
     expect(foundNotification(7)).toBe('Found 7 flights');
   });
 
-  it('DEFECT PRESERVED: the booking confirmation reads "undefined"', () => {
-    // controller:220 reads booking.confirmationCode; the payload carries
-    // confirmationNumber. The scenario asserts only the prefix, so it never
-    // caught this. Reading the right field would be an unauthorised change.
+  it('DEFECT REPAIRED (ADR-024 D-3): the booking confirmation shows the real code', () => {
+    // controller:220 read booking.confirmationCode; the payload carries
+    // confirmationNumber, so the legacy expression rendered "undefined".
+    // Preserved through the increments, repaired after post-cutover review.
+    //
+    // This assertion previously pinned the literal word "undefined". Changing it
+    // is a deliberate contract change, approved by the product owner — not a
+    // silent edit to make an implementation pass.
     const payload = { confirmationNumber: 'GTI84N8R6HD', flightId: 'f1', status: 'confirmed', bookedAt: '' };
     expect(bookedNotification(payload)).toBe(
-      'Flight booked successfully! Confirmation: undefined',
+      'Flight booked successfully! Confirmation: GTI84N8R6HD',
     );
   });
 });

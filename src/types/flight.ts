@@ -43,11 +43,11 @@ export const FlightListSchema = z.array(FlightSchema);
 /**
  * POST /api/flights/:id/book response.
  *
- * NOTE the field name: `confirmationNumber`. The legacy controller reads
+ * NOTE the field name: `confirmationNumber`. The legacy controller read
  * `booking.confirmationCode` (`flight-search.controller.js:220`), which does not
- * exist on this payload, so the notification it builds ends in the literal text
- * "undefined". That defect is reproduced deliberately — see
- * `src/features/flight-search/flight-search-model.ts`.
+ * exist on this payload, so the notification it built ended in the literal text
+ * "undefined". Reproduced deliberately through the increments, then repaired
+ * under ADR-024 D-3 — see `src/features/flight-search/flight-search-model.ts`.
  */
 export const FlightBookingSchema = z.object({
   confirmationNumber: z.string(),

@@ -198,9 +198,9 @@ export function FlightSearch(): ReactElement {
         passengers: searchParams.passengers,
         cabinClass: searchParams.cabinClass,
       });
-      // controller:220 — reproduces the legacy "Confirmation: undefined". The
-      // payload has `confirmationNumber`; the legacy code read
-      // `confirmationCode`. See bookedNotification() for why that is preserved.
+      // controller:220 — the legacy code read `confirmationCode` from a payload
+      // that carries `confirmationNumber`, so it showed "Confirmation: undefined".
+      // Repaired under ADR-024 D-3; see bookedNotification().
       notify(bookedNotification(booking), 'success');
       // controller:221 — the broadcast becomes query invalidation (ADR-021).
       // The itinerary now HAS a consumer, and this is how it hears about it.
