@@ -156,12 +156,14 @@ During the migration a route read `owner: 'angularjs'` until its increment lande
 flipped to `'react'`. Today:
 
 ```bash
-grep -c "owner: 'react'"     src/lib/route-ledger.ts   # 7
-grep -c "owner: 'angularjs'" src/lib/route-ledger.ts   # 0  (only a comment example)
+# the ledger rows only — the file's header comment shows both values as an
+# example, so an unfiltered `grep -c` counts one too many
+grep "owner: 'react'"     src/lib/route-ledger.ts | grep -c '^\s*{'   # 7
+grep "owner: 'angularjs'" src/lib/route-ledger.ts | grep -c '^\s*{'   # 0
 ```
 
 **All seven routes are React-owned.** That file is the single most direct answer to the
-question.
+question — and note that it needed the same comment filtering as §4. The habit is the point.
 
 ---
 
