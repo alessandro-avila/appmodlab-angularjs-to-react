@@ -172,8 +172,24 @@ specs/                            updated, not deleted
 
 - [ ] **The React login screen exists and works**, and the auth-surface Gherkin delta was reviewed
       before any deletion happened (ADR-010)
+- [ ] ⚠️ **The C-1 repair is built** — `GET /api/auth/me` on boot, so identity survives a reload.
+      ADR-010:80 authorised it and scheduled it for **Increment 0**; Inc-0 deferred it to here in a
+      **code comment with no ADR** (`auth-store.ts:37`), and Increment 5 nearly wrote it off as
+      unauthorised. It is the last thing standing between the product and a permanent C-1
+- [ ] **`authentication.feature:179` supersedes** once the repair lands — plan §9.3 expected this in
+      Inc-5 and it was correctly preserved instead, because the repair did not exist yet
 - [ ] **Sign-out exists** — net-new behaviour, with its own scenarios, not a port
 - [ ] `app/`, `bower.json`, `.bowerrc`, `bower_components/`, `Gruntfile.js` all gone
+- [ ] **Six of the nine bower libraries were already dead before this increment** — jQuery, jQuery
+      UI, Lodash, ui-bootstrap and bootstrap.js have **zero code references** after Inc-5, and Moment
+      survives only inside the unused `date-format.filter.js`. Only angular, ui-router and
+      restangular are still referenced, the last only via `app.js`'s config block feeding two dead
+      services. Bootstrap's **CSS** is live and is a separate question from its JS
+- [ ] **Three zero-consumer files go without ceremony** — `services/api.service.js`,
+      `services/user.service.js`, `filters/date-format.filter.js`. Increments 4 and 5 deleted four
+      more of the same kind (`approval-status`, `currency-input`, `usdCurrency`)
+- [ ] `app.js:14`'s hardcoded `http://localhost:3000/api` goes with the file — the Increment 0
+      finding, closed by deletion rather than by fix
 - [ ] **The front door's proxy leg is retired** — one origin, one document, one app (plan §10.2)
 - [ ] **Two confirmation mechanisms are reconciled.** Increment 4 gave travel-request a React
       `useConfirm()`; the itinerary still uses the native `confirm()`, because its scenarios observe
