@@ -136,8 +136,9 @@ what went wrong.
 > this repository. The finished React 19 + TypeScript application is on
 > **[`lab/final-solution`](https://github.com/alessandro-avila/appmodlab-angularjs-to-react/blob/lab/final-solution/WRAP-UP.md)**.
 >
-> Companion pages: [Running the apps](docs/lab/running-the-apps.md) ·
-> [Is this really React?](docs/lab/code-tour.md) ·
+> Companion pages:
+> [Running the apps](docs/lab/running-the-apps.md)
+> [Is this really React?](docs/lab/code-tour.md)
 > [What it cost](docs/lab/token-economics.md)
 
 | # | Step | Phase | Branch |
@@ -288,20 +289,52 @@ Four of those are worth a second look, because they are the ones a stack diagram
 
 ## ⚡ QUICK START
 
-### Option A: GitHub Codespaces (recommended for the hackathon)
+### Option A: GitHub Codespaces (recommended)
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/alessandro-avila/appmodlab-angularjs-to-react)
 
 1. Click the badge (or **Code ▸ Codespaces ▸ Create codespace on main**).
 2. Wait for `post-create.sh` — it installs everything **and verifies it**.
    You should see `Dev container is ready.` in green. If you see red `[FAIL]` lines, tell a facilitator.
-3. In the terminal:
+3. **Open the codespace in VS Code Desktop**: see the box below. This step is required for the legacy app.
+4. In the terminal:
    ```bash
    npm start
    ```
-4. Open the forwarded port **8080**. Click **Enter Portal**. You are in.
+5. In the **PORTS** panel, open port **8080**. Click **Enter Portal**. You are in.
 
-> ⏱️ First build should take ~4–6 minutes.
+
+
+> ### ⚠️ Use VS Code Desktop, not the browser
+>
+> The legacy AngularJS app **will not log in** from a browser-based codespace
+> (`*.app.github.dev`). You will get `ERR_CONNECTION_REFUSED` on `localhost:3000` and an empty
+> Local Storage.
+>
+> That is not a broken setup — it is the app. `app/services/auth.service.js:18` and
+> `app/app.js:14` hardcode `http://localhost:3000`. In a browser codespace, `localhost` means
+> **your own laptop**, where nothing is listening. In VS Code Desktop, ports are tunnelled to
+> your real localhost, so the hardcoded URL resolves correctly.
+>
+> This is assessment finding **A-5** - *"configuration is compiled into source"* - meeting reality.
+> The React app does not have the problem: it calls a relative `/api` path that Vite
+> proxies server-side, which is why it works in either mode.
+>
+> **To switch:** `Cmd/Ctrl + Shift + P` → **Codespaces: Open in VS Code Desktop**
+> (or from [github.com/codespaces](https://github.com/codespaces), the **`…`** menu ▸
+> **Open in Visual Studio Code**).
+>
+> **Then verify** in the **PORTS** panel - the *Forwarded Address* column must read:
+>
+> | Port | Expected |
+> |---|---|
+> | 3000 | `localhost:3000` |
+> | 8080 | `localhost:8080` |
+>
+> If you see `…app.github.dev`, you are still in the browser. If you see `localhost:3001`,
+> something on your machine already holds 3000, free it (see **Troubleshooting** at the end of
+> this file) and reload the window. The port number must match exactly, because the app
+> hardcodes `3000`.
 
 ### Option B: Local dev container (VS Code + Docker)
 
@@ -716,6 +749,82 @@ appmodlab-angularjs-to-react/
 ---
 
 ## 🛠️ TROUBLESHOOTING
+
+<details>
+<summary><b><code>EADDRINUSE: address already in use :::3000</code> — how to free a port</b></summary>
+
+Something is already listening on the port. Usually an earlier `npm start` that was
+interrupted: `concurrently -k` only kills processes **it** spawned, so an API server from a
+previous run survives as an orphan and `Ctrl+C` will not touch it.
+
+**Works everywhere** (Windows, macOS, Linux, Codespaces) — no tools to install:
+
+```bash
+npx kill-port 3000
+npx kill-port 3000 8080      # both at once
+```
+
+If you would rather not use npx:
+
+**Codespaces / Linux / macOS**
+```bash
+pkill -f "api-mock/server.js"     # targets this repo's API precisely
+lsof -ti :3000 | xargs -r kill -9 # or: anything on the port
+fuser -k 3000/tcp                 # or: if lsof is unavailable
+```
+
+**Windows (PowerShell)**
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen |
+  Select-Object -ExpandProperty OwningProcess -Unique |
+  ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+**Windows (cmd)**
+```cmd
+netstat -ano | findstr :3000
+taskkill /PID <pid-from-the-last-column> /F
+```
+
+Confirm it is clear, then restart:
+
+```bash
+npx kill-port 3000 8080 && npm start
+```
+
+> 💡 In a codespace, **stopping and restarting the codespace** clears every orphan at once and
+> is often quicker than hunting processes.
+
+Ports this lab uses: **3000** mock API · **8080** legacy AngularJS · **5173** React (Vite) ·
+**4173** React preview · **35729** LiveReload.
+</details>
+
+<details>
+<summary><b>Legacy app: <code>ERR_CONNECTION_REFUSED</code> on <code>localhost:3000</code>, login does nothing</b></summary>
+
+You are running the codespace **in a browser** (the URL bar shows `*.app.github.dev`). The
+legacy app cannot work there.
+
+`app/services/auth.service.js:18` and `app/app.js:14` hardcode `http://localhost:3000`. From a
+browser codespace, `localhost` is **your own laptop**, not the codespace — nothing is
+listening, so the login POST fails. Local Storage stays empty because the token is only
+written inside the request's success handler.
+
+**Fix:** open the codespace in **VS Code Desktop**, where ports are tunnelled to your real
+localhost.
+
+`Cmd/Ctrl + Shift + P` → **Codespaces: Open in VS Code Desktop**
+
+Then check the **PORTS** panel — *Forwarded Address* must read `localhost:3000` and
+`localhost:8080`. If it shows `localhost:3001`, free port 3000 on your machine (see above) and
+reload the window; the app hardcodes `3000`, so the number has to match.
+
+Open **`http://localhost:8080`** — not the `app.github.dev` URL.
+
+> This is assessment finding **A-5** (*"configuration is compiled into source"*) showing up as a
+> portability problem. The React app is unaffected: it calls a relative `/api` path that Vite
+> proxies server-side, so it works in the browser and the desktop alike.
+</details>
 
 <details>
 <summary><b><code>'concurrently' is not recognized</code> / <code>command not found</code> when running <code>npm start</code></b></summary>
